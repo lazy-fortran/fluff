@@ -60,3 +60,8 @@ name = "test_cli_override"
 source-dir = "test"
 main = "test_cli_override.f90"
 
+[[test]]
+name = "test_config_schema"
+source-dir = "test"
+main = "test_config_schema.f90"
+

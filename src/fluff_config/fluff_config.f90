@@ -49,6 +49,8 @@ module fluff_config
     ! Public procedures
     public :: create_default_config
     public :: load_config
+    public :: load_config_profile
+    public :: get_config_schema_doc
     
 contains
     
@@ -168,6 +170,7 @@ contains
         class(fluff_config_t), intent(in) :: this
         character(len=:), allocatable, intent(out), optional :: error_msg
         logical :: valid
+        character(len=:), allocatable :: invalid_code
         
         valid = .true.
         if (present(error_msg)) error_msg = ""
@@ -176,7 +179,7 @@ contains
         if (this%line_length < 40 .or. this%line_length > 200) then
             valid = .false.
             if (present(error_msg)) then
-                error_msg = "line-length must be between 40 and 200"
+                error_msg = "line-length must be between 40 and 200. Valid range: [40, 200]"
             end if
             return
         end if
@@ -211,10 +214,15 @@ contains
         
         ! Validate rule codes
         if (allocated(this%rules%select)) then
-            if (.not. validate_rule_codes(this%rules%select)) then
+            if (.not. validate_rule_codes(this%rules%select, invalid_code)) then
                 valid = .false.
                 if (present(error_msg)) then
-                    error_msg = "invalid rule code in select"
+                    if (allocated(invalid_code)) then
+                        error_msg = "invalid rule code in select: " // invalid_code // &
+                                  ". Valid prefixes: F, W, C, P, S or ALL"
+                    else
+                        error_msg = "invalid rule code in select"
+                    end if
                 end if
                 return
             end if
@@ -437,13 +445,15 @@ contains
     end subroutine parse_rule_selection
     
     ! Validate rule codes
-    function validate_rule_codes(codes) result(valid)
+    function validate_rule_codes(codes, invalid_code) result(valid)
         character(len=*), intent(in) :: codes(:)
+        character(len=:), allocatable, intent(out), optional :: invalid_code
         logical :: valid
         
         integer :: i
         
         valid = .true.
+        if (present(invalid_code)) invalid_code = ""
         
         do i = 1, size(codes)
             ! Check if code starts with valid category
@@ -453,11 +463,101 @@ contains
             case default
                 if (codes(i) /= "ALL") then
                     valid = .false.
+                    if (present(invalid_code)) then
+                        invalid_code = codes(i)
+                    end if
                     return
                 end if
             end select
         end do
         
     end function validate_rule_codes
+    
+    ! Load configuration profile
+    function load_config_profile(profile_name) result(config)
+        character(len=*), intent(in) :: profile_name
+        type(fluff_config_t) :: config
+        
+        ! Start with defaults
+        config = create_default_config()
+        
+        ! Apply profile settings
+        select case (profile_name)
+        case ("strict")
+            ! Strict profile - more restrictive settings
+            config%line_length = 80
+            config%target_version = "2023"
+            ! Enable all rules
+            if (allocated(config%rules%select)) deallocate(config%rules%select)
+            allocate(character(len=3) :: config%rules%select(1))
+            config%rules%select(1) = "ALL"
+            
+        case ("performance")
+            ! Performance profile - focus on performance rules
+            if (allocated(config%rules%select)) deallocate(config%rules%select)
+            allocate(character(len=1) :: config%rules%select(2))
+            config%rules%select(1) = "P"  ! Performance rules
+            config%rules%select(2) = "C"  ! Correctness rules
+            
+        case ("legacy")
+            ! Legacy profile - more permissive for old code
+            config%line_length = 132
+            config%target_version = "2008"
+            ! Disable some style rules
+            if (allocated(config%rules%ignore)) deallocate(config%rules%ignore)
+            allocate(character(len=1) :: config%rules%ignore(1))
+            config%rules%ignore(1) = "F"  ! Ignore style rules
+            
+        case default
+            ! Unknown profile - use defaults
+        end select
+        
+    end function load_config_profile
+    
+    ! Get configuration schema documentation
+    function get_config_schema_doc() result(doc)
+        character(len=:), allocatable :: doc
+        
+        doc = "# fluff Configuration Schema" // new_line('a') // &
+              new_line('a') // &
+              "Configuration can be specified in `fluff.toml` or `pyproject.toml`:" // new_line('a') // &
+              new_line('a') // &
+              "```toml" // new_line('a') // &
+              "[tool.fluff]" // new_line('a') // &
+              "# Enable automatic fixing of violations" // new_line('a') // &
+              "fix = false" // new_line('a') // &
+              new_line('a') // &
+              "# Show suggested fixes" // new_line('a') // &
+              "show-fixes = false" // new_line('a') // &
+              new_line('a') // &
+              "# Maximum line length (40-200)" // new_line('a') // &
+              "line-length = 88" // new_line('a') // &
+              new_line('a') // &
+              "# Target Fortran version: 2008, 2018, 2023" // new_line('a') // &
+              'target-version = "2018"' // new_line('a') // &
+              new_line('a') // &
+              "# Output format: text, json, sarif" // new_line('a') // &
+              'output-format = "text"' // new_line('a') // &
+              new_line('a') // &
+              "# Rule selection" // new_line('a') // &
+              'select = ["F", "W"]  # Enable F and W rules' // new_line('a') // &
+              'ignore = ["F001"]    # Disable specific rules' // new_line('a') // &
+              'extend-select = ["C"] # Add more rules' // new_line('a') // &
+              new_line('a') // &
+              "# Per-file ignores" // new_line('a') // &
+              "[tool.fluff.per-file-ignores]" // new_line('a') // &
+              '"test/*.f90" = ["F001", "W002"]' // new_line('a') // &
+              '"legacy/*.f90" = ["F", "W"]' // new_line('a') // &
+              "```" // new_line('a') // &
+              new_line('a') // &
+              "## Rule Categories" // new_line('a') // &
+              "- F: Style and formatting" // new_line('a') // &
+              "- W: Warnings" // new_line('a') // &
+              "- C: Correctness" // new_line('a') // &
+              "- P: Performance" // new_line('a') // &
+              "- S: Security" // new_line('a') // &
+              "- ALL: All rules" // new_line('a')
+        
+    end function get_config_schema_doc
     
 end module fluff_config
