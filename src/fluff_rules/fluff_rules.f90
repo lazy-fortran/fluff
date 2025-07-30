@@ -203,7 +203,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement implicit none check
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
         allocate(violations(0))
         
     end subroutine check_f001_implicit_none
@@ -214,7 +215,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement indentation check
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
         allocate(violations(0))
         
     end subroutine check_f002_indentation
@@ -225,7 +227,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement line length check
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
         allocate(violations(0))
         
     end subroutine check_f003_line_length
