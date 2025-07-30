@@ -142,10 +142,34 @@ contains
         rule%check => check_f008_missing_intent
         ! Registration handled by caller
         
+        ! F009: Inconsistent intent usage
+        rule%code = "F009"
+        rule%name = "inconsistent-intent"
+        rule%description = "Inconsistent intent usage"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "best-practices"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_ERROR
+        rule%check => check_f009_inconsistent_intent
+        ! Registration handled by caller
+        
+        ! F010: Obsolete language features
+        rule%code = "F010"
+        rule%name = "obsolete-features"
+        rule%description = "Obsolete language features (GOTO, computed GOTO)"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "modernization"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f010_obsolete_features
+        ! Registration handled by caller
+        
         ! TODO: Add more style rules
         
         ! Allocate result
-        rule_count = 8  ! Number of style rules defined above
+        rule_count = 10  ! Number of style rules defined above
         allocate(rules(rule_count))
         
         ! F001
@@ -235,6 +259,28 @@ contains
         rules(8)%fixable = .true.
         rules(8)%severity = SEVERITY_WARNING
         rules(8)%check => check_f008_missing_intent
+        
+        ! F009
+        rules(9)%code = "F009"
+        rules(9)%name = "inconsistent-intent"
+        rules(9)%description = "Inconsistent intent usage"
+        rules(9)%category = CATEGORY_STYLE
+        rules(9)%subcategory = "best-practices"
+        rules(9)%default_enabled = .true.
+        rules(9)%fixable = .false.
+        rules(9)%severity = SEVERITY_ERROR
+        rules(9)%check => check_f009_inconsistent_intent
+        
+        ! F010
+        rules(10)%code = "F010"
+        rules(10)%name = "obsolete-features"
+        rules(10)%description = "Obsolete language features (GOTO, computed GOTO)"
+        rules(10)%category = CATEGORY_STYLE
+        rules(10)%subcategory = "modernization"
+        rules(10)%default_enabled = .true.
+        rules(10)%fixable = .false.
+        rules(10)%severity = SEVERITY_WARNING
+        rules(10)%check => check_f010_obsolete_features
         
     end function get_style_rules
     
@@ -409,6 +455,30 @@ contains
         allocate(violations(0))
         
     end subroutine check_f008_missing_intent
+    
+    ! F009: Check inconsistent intent usage
+    subroutine check_f009_inconsistent_intent(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f009_inconsistent_intent
+    
+    ! F010: Check obsolete language features
+    subroutine check_f010_obsolete_features(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f010_obsolete_features
     
     ! P001: Check array access patterns
     subroutine check_p001_array_access(ctx, node_index, violations)

@@ -215,8 +215,8 @@ This document provides a detailed, tactical implementation plan for developing `
      - F006: Unused variable declaration ✅ (stub implementation)
      - F007: Undefined variable usage ✅ (stub implementation)
      - F008: Missing intent declarations ✅ (stub implementation)
-     - F009: Inconsistent intent usage
-     - F010: Obsolete language features (GOTO, computed GOTO)
+     - F009: Inconsistent intent usage ✅ (stub implementation)
+     - F010: Obsolete language features (GOTO, computed GOTO) ✅ (stub implementation)
      - F011: Missing end statement labels
      - F012: Inconsistent naming conventions
      - F013: Multiple statements per line
