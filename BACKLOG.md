@@ -235,8 +235,8 @@ This document provides a detailed, tactical implementation plan for developing `
      - P003: Unnecessary array temporaries ✅ (stub implementation)
      - P004: Missing `pure`/`elemental` declarations ✅ (stub implementation)
      - P005: Inefficient string operations ✅ (stub implementation)
-     - P006: Unnecessary allocations in loops
-     - P007: Mixed precision arithmetic
+     - P006: Unnecessary allocations in loops ✅ (stub implementation)
+     - P007: Mixed precision arithmetic ✅ (stub implementation)
      - P008: Inefficient I/O in loops
      - P009: Missing vectorization opportunities
      - P010: Suboptimal array constructors

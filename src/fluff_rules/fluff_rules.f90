@@ -465,10 +465,34 @@ contains
         rule%check => check_p005_string_operations
         ! Registration handled by caller
         
+        ! P006: Unnecessary allocations in loops
+        rule%code = "P006"
+        rule%name = "unnecessary-allocations-in-loops"
+        rule%description = "Unnecessary allocations in loops"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "memory"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_p006_loop_allocations
+        ! Registration handled by caller
+        
+        ! P007: Mixed precision arithmetic
+        rule%code = "P007"
+        rule%name = "mixed-precision-arithmetic"
+        rule%description = "Mixed precision arithmetic"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "precision"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_p007_mixed_precision
+        ! Registration handled by caller
+        
         ! TODO: Add more performance rules
         
         ! Allocate result
-        rule_count = 5  ! Number of performance rules defined above
+        rule_count = 7  ! Number of performance rules defined above
         allocate(rules(rule_count))
         
         ! P001
@@ -525,6 +549,28 @@ contains
         rules(5)%fixable = .false.
         rules(5)%severity = SEVERITY_WARNING
         rules(5)%check => check_p005_string_operations
+        
+        ! P006
+        rules(6)%code = "P006"
+        rules(6)%name = "unnecessary-allocations-in-loops"
+        rules(6)%description = "Unnecessary allocations in loops"
+        rules(6)%category = CATEGORY_PERFORMANCE
+        rules(6)%subcategory = "memory"
+        rules(6)%default_enabled = .true.
+        rules(6)%fixable = .false.
+        rules(6)%severity = SEVERITY_WARNING
+        rules(6)%check => check_p006_loop_allocations
+        
+        ! P007
+        rules(7)%code = "P007"
+        rules(7)%name = "mixed-precision-arithmetic"
+        rules(7)%description = "Mixed precision arithmetic"
+        rules(7)%category = CATEGORY_PERFORMANCE
+        rules(7)%subcategory = "precision"
+        rules(7)%default_enabled = .true.
+        rules(7)%fixable = .false.
+        rules(7)%severity = SEVERITY_INFO
+        rules(7)%check => check_p007_mixed_precision
         
     end function get_performance_rules
     
@@ -801,6 +847,28 @@ contains
         allocate(violations(0))
         
     end subroutine check_p005_string_operations
+    
+    ! P006: Check loop allocations
+    subroutine check_p006_loop_allocations(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement loop allocations check
+        allocate(violations(0))
+        
+    end subroutine check_p006_loop_allocations
+    
+    ! P007: Check mixed precision arithmetic
+    subroutine check_p007_mixed_precision(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement mixed precision arithmetic check
+        allocate(violations(0))
+        
+    end subroutine check_p007_mixed_precision
     
     ! C001: Check for undefined variables
     subroutine check_c001_undefined_var(ctx, node_index, violations)
