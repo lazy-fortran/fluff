@@ -4,6 +4,8 @@ module fluff_linter
     use fluff_ast
     use fluff_diagnostics
     use fluff_rule_types
+    use fluff_metrics, only: metrics_collector_t, timer_t, create_metrics_collector
+    use fluff_cache, only: ast_cache_t, create_ast_cache
     implicit none
     private
     
@@ -12,6 +14,7 @@ module fluff_linter
         integer :: rule_count = 0
         type(rule_info_t), allocatable :: rules(:)
         integer :: capacity = 0
+        type(metrics_collector_t) :: metrics
     contains
         procedure :: register_rule => registry_register_rule
         procedure :: get_enabled_rules => registry_get_enabled_rules
@@ -21,6 +24,8 @@ module fluff_linter
         procedure :: get_rules_by_priority => registry_get_rules_by_priority
         procedure :: execute_rules => registry_execute_rules
         procedure :: execute_rules_parallel => registry_execute_rules_parallel
+        procedure :: get_metrics_report => registry_get_metrics_report
+        procedure :: reset_metrics => registry_reset_metrics
     end type rule_registry_t
     
     ! Re-export rule_info_t from fluff_rule_types
@@ -43,6 +48,7 @@ module fluff_linter
     type, public :: linter_engine_t
         logical :: is_initialized = .false.
         type(rule_registry_t) :: rule_registry
+        type(ast_cache_t) :: ast_cache
     contains
         procedure :: initialize => linter_initialize
         procedure :: lint_file => linter_lint_file
@@ -52,6 +58,8 @@ module fluff_linter
     ! Public procedures
     public :: create_linter_engine
     public :: create_rule_context
+    public :: registry_get_metrics_report
+    public :: registry_reset_metrics
     
 contains
     
@@ -67,6 +75,8 @@ contains
         
         this%is_initialized = .true.
         this%rule_registry%rule_count = 0
+        this%rule_registry%metrics = create_metrics_collector()
+        this%ast_cache = create_ast_cache(max_size=50, ttl=600.0)  ! 10 minute TTL
         
         ! Register built-in rules
         call this%rule_registry%discover_builtin_rules()
@@ -76,7 +86,7 @@ contains
     ! Lint a file
     subroutine linter_lint_file(this, filename, diagnostics, error_msg)
         use iso_fortran_env, only: iostat_end
-        class(linter_engine_t), intent(in) :: this
+        class(linter_engine_t), intent(inout) :: this
         character(len=*), intent(in) :: filename
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
         character(len=:), allocatable, intent(out) :: error_msg
@@ -84,7 +94,7 @@ contains
         type(fluff_ast_context_t) :: ast_ctx
         character(len=:), allocatable :: source_code
         character(len=1000) :: line
-        integer :: unit, iostat
+        integer :: unit, iostat, cache_index
         
         ! Read file contents
         open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
@@ -113,12 +123,23 @@ contains
         end do
         close(unit)
         
-        ! Parse AST
-        call ast_ctx%from_source(source_code, error_msg)
+        ! Check cache first
+        cache_index = this%ast_cache%get(filename, source_code)
         
-        if (allocated(error_msg) .and. len(error_msg) > 0) then
-            allocate(diagnostics(0))
-            return
+        if (cache_index > 0) then
+            ! Use cached AST
+            ast_ctx = this%ast_cache%get_ast(cache_index)
+        else
+            ! Parse AST
+            call ast_ctx%from_source(source_code, error_msg)
+            
+            if (allocated(error_msg) .and. len(error_msg) > 0) then
+                allocate(diagnostics(0))
+                return
+            end if
+            
+            ! Cache the parsed AST
+            call this%ast_cache%put(filename, source_code, ast_ctx)
         end if
         
         ! Lint the AST
@@ -130,7 +151,7 @@ contains
     
     ! Lint an AST
     subroutine linter_lint_ast(this, ast_ctx, diagnostics)
-        class(linter_engine_t), intent(in) :: this
+        class(linter_engine_t), intent(inout) :: this
         type(fluff_ast_context_t), intent(in) :: ast_ctx
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
         
@@ -287,7 +308,7 @@ contains
     ! Execute all enabled rules
     subroutine registry_execute_rules(this, ast_ctx, selection, diagnostics)
         use fluff_config, only: rule_selection_t
-        class(rule_registry_t), intent(in) :: this
+        class(rule_registry_t), intent(inout) :: this
         type(fluff_ast_context_t), intent(in) :: ast_ctx
         type(rule_selection_t), intent(in), optional :: selection
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
@@ -307,13 +328,24 @@ contains
         ! Execute each rule
         do i = 1, size(enabled_rules)
             if (associated(enabled_rules(i)%check)) then
+                block
+                    type(timer_t) :: rule_timer
+                    ! Start timing
+                    call this%metrics%start_rule(enabled_rules(i)%code, rule_timer)
+                
+                ! Execute rule
                 call enabled_rules(i)%check(ast_ctx, 1, rule_violations)
                 
-                if (allocated(rule_violations)) then
-                    ! Append violations
-                    all_violations = [all_violations, rule_violations]
-                    total_violations = total_violations + size(rule_violations)
-                end if
+                    ! End timing
+                    if (allocated(rule_violations)) then
+                        call this%metrics%end_rule(enabled_rules(i)%code, rule_timer, size(rule_violations))
+                        ! Append violations
+                        all_violations = [all_violations, rule_violations]
+                        total_violations = total_violations + size(rule_violations)
+                    else
+                        call this%metrics%end_rule(enabled_rules(i)%code, rule_timer, 0)
+                    end if
+                end block
             end if
         end do
         
@@ -408,7 +440,7 @@ contains
     subroutine registry_execute_rules_parallel(this, ast_ctx, selection, diagnostics)
         use fluff_config, only: rule_selection_t
         !$ use omp_lib
-        class(rule_registry_t), intent(in) :: this
+        class(rule_registry_t), intent(inout) :: this
         type(fluff_ast_context_t), intent(in) :: ast_ctx
         type(rule_selection_t), intent(in), optional :: selection
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
@@ -459,5 +491,22 @@ contains
         diagnostics = all_violations
         
     end subroutine registry_execute_rules_parallel
+    
+    ! Get metrics report
+    function registry_get_metrics_report(this) result(report)
+        class(rule_registry_t), intent(in) :: this
+        character(len=:), allocatable :: report
+        
+        report = this%metrics%report()
+        
+    end function registry_get_metrics_report
+    
+    ! Reset metrics
+    subroutine registry_reset_metrics(this)
+        class(rule_registry_t), intent(inout) :: this
+        
+        call this%metrics%reset()
+        
+    end subroutine registry_reset_metrics
     
 end module fluff_linter
