@@ -75,3 +75,8 @@ name = "test_rule_registry"
 source-dir = "test"
 main = "test_rule_registry.f90"
 
+[[test]]
+name = "test_parallel_rule_execution"
+source-dir = "test"
+main = "test_parallel_rule_execution.f90"
+

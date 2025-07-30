@@ -20,6 +20,7 @@ module fluff_linter
         procedure :: find_by_code => registry_find_by_code
         procedure :: get_rules_by_priority => registry_get_rules_by_priority
         procedure :: execute_rules => registry_execute_rules
+        procedure :: execute_rules_parallel => registry_execute_rules_parallel
     end type rule_registry_t
     
     ! Re-export rule_info_t from fluff_rule_types
@@ -67,19 +68,62 @@ contains
         this%is_initialized = .true.
         this%rule_registry%rule_count = 0
         
-        ! TODO: Register built-in rules
+        ! Register built-in rules
+        call this%rule_registry%discover_builtin_rules()
         
     end subroutine linter_initialize
     
     ! Lint a file
     subroutine linter_lint_file(this, filename, diagnostics, error_msg)
+        use iso_fortran_env, only: iostat_end
         class(linter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: filename
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
         character(len=:), allocatable, intent(out) :: error_msg
         
-        ! TODO: Read file and lint
-        allocate(diagnostics(0))
+        type(fluff_ast_context_t) :: ast_ctx
+        character(len=:), allocatable :: source_code
+        character(len=1000) :: line
+        integer :: unit, iostat
+        
+        ! Read file contents
+        open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        if (iostat /= 0) then
+            error_msg = "Failed to open file: " // filename
+            allocate(diagnostics(0))
+            return
+        end if
+        
+        source_code = ""
+        do
+            read(unit, '(A)', iostat=iostat) line
+            if (iostat == iostat_end) exit
+            if (iostat /= 0) then
+                close(unit)
+                error_msg = "Failed to read file: " // filename
+                allocate(diagnostics(0))
+                return
+            end if
+            
+            if (len(source_code) > 0) then
+                source_code = source_code // new_line('a') // trim(line)
+            else
+                source_code = trim(line)
+            end if
+        end do
+        close(unit)
+        
+        ! Parse AST
+        call ast_ctx%from_source(source_code, error_msg)
+        
+        if (allocated(error_msg) .and. len(error_msg) > 0) then
+            allocate(diagnostics(0))
+            return
+        end if
+        
+        ! Lint the AST
+        call this%lint_ast(ast_ctx, diagnostics)
+        
         error_msg = ""
         
     end subroutine linter_lint_file
@@ -90,8 +134,8 @@ contains
         type(fluff_ast_context_t), intent(in) :: ast_ctx
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
         
-        ! TODO: Run enabled rules on AST
-        allocate(diagnostics(0))
+        ! Run enabled rules on AST
+        call this%rule_registry%execute_rules(ast_ctx, diagnostics=diagnostics)
         
     end subroutine linter_lint_ast
     
@@ -359,5 +403,61 @@ contains
         count = size(this%lines)
         
     end function context_get_total_lines
+    
+    ! Execute all enabled rules in parallel
+    subroutine registry_execute_rules_parallel(this, ast_ctx, selection, diagnostics)
+        use fluff_config, only: rule_selection_t
+        !$ use omp_lib
+        class(rule_registry_t), intent(in) :: this
+        type(fluff_ast_context_t), intent(in) :: ast_ctx
+        type(rule_selection_t), intent(in), optional :: selection
+        type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
+        
+        type(rule_info_t), allocatable :: enabled_rules(:)
+        type(diagnostic_t), allocatable :: rule_violations(:)
+        type(diagnostic_t), allocatable :: all_violations(:)
+        integer :: i, total_violations
+        integer :: num_threads
+        
+        ! Get enabled rules
+        enabled_rules = this%get_enabled_rules(selection)
+        
+        if (size(enabled_rules) == 0) then
+            allocate(diagnostics(0))
+            return
+        end if
+        
+        ! Determine number of threads
+        num_threads = 1
+        !$ num_threads = omp_get_max_threads()
+        
+        ! Fall back to serial execution for small rule sets or no OpenMP
+        if (size(enabled_rules) < 3 .or. num_threads == 1) then
+            call this%execute_rules(ast_ctx, selection, diagnostics)
+            return
+        end if
+        
+        ! Initialize results
+        allocate(all_violations(0))
+        
+        ! Execute rules in parallel with critical section for results
+        !$omp parallel do private(i, rule_violations) shared(all_violations, enabled_rules, ast_ctx)
+        do i = 1, size(enabled_rules)
+            if (associated(enabled_rules(i)%check)) then
+                call enabled_rules(i)%check(ast_ctx, 1, rule_violations)
+                
+                if (allocated(rule_violations)) then
+                    !$omp critical
+                    all_violations = [all_violations, rule_violations]
+                    !$omp end critical
+                end if
+            end if
+        end do
+        !$omp end parallel do
+        
+        ! Return all violations
+        diagnostics = all_violations
+        
+    end subroutine registry_execute_rules_parallel
     
 end module fluff_linter
