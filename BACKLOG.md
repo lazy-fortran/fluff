@@ -96,7 +96,7 @@ This document provides a detailed, tactical implementation plan for developing `
   5. Document performance characteristics
 
 ### Epic 1.3: Configuration System
-#### Task 1.3.1: RED - TOML Configuration
+#### Task 1.3.1: RED - TOML Configuration ✅ COMPLETED
 - **Objective**: Implement ruff-style configuration system
 - **TDD Steps**:
   1. Write tests for TOML file parsing
@@ -120,7 +120,7 @@ This document provides a detailed, tactical implementation plan for developing `
   5. Support `fluff.toml` and `pyproject.toml` files
   6. Implement configuration hierarchy (file → CLI overrides)
 
-#### Task 1.3.2: GREEN - Rule Selection
+#### Task 1.3.2: GREEN - Rule Selection ✅ COMPLETED
 - **Objective**: Implement rule enable/disable system like ruff's select/ignore
 - **TDD Steps**:
   1. Write tests for rule code parsing (F001, W002, etc.)

@@ -45,3 +45,18 @@ name = "test_clean_architecture"
 source-dir = "test"
 main = "test_clean_architecture.f90"
 
+[[test]]
+name = "test_toml_parsing"
+source-dir = "test"
+main = "test_toml_parsing.f90"
+
+[[test]]
+name = "test_config_validation"
+source-dir = "test"
+main = "test_config_validation.f90"
+
+[[test]]
+name = "test_cli_override"
+source-dir = "test"
+main = "test_cli_override.f90"
+
