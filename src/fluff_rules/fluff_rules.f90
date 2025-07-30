@@ -166,10 +166,70 @@ contains
         rule%check => check_f010_obsolete_features
         ! Registration handled by caller
         
+        ! F011: Missing end statement labels
+        rule%code = "F011"
+        rule%name = "missing-end-labels"
+        rule%description = "Missing end statement labels"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "clarity"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_f011_missing_end_labels
+        ! Registration handled by caller
+        
+        ! F012: Inconsistent naming conventions
+        rule%code = "F012"
+        rule%name = "inconsistent-naming"
+        rule%description = "Inconsistent naming conventions"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "consistency"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f012_naming_conventions
+        ! Registration handled by caller
+        
+        ! F013: Multiple statements per line
+        rule%code = "F013"
+        rule%name = "multiple-statements"
+        rule%description = "Multiple statements per line"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "formatting"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f013_multiple_statements
+        ! Registration handled by caller
+        
+        ! F014: Unnecessary parentheses
+        rule%code = "F014"
+        rule%name = "unnecessary-parentheses"
+        rule%description = "Unnecessary parentheses"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "simplification"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_f014_unnecessary_parentheses
+        ! Registration handled by caller
+        
+        ! F015: Redundant continue statements
+        rule%code = "F015"
+        rule%name = "redundant-continue"
+        rule%description = "Redundant continue statements"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "simplification"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_f015_redundant_continue
+        ! Registration handled by caller
+        
         ! TODO: Add more style rules
         
         ! Allocate result
-        rule_count = 10  ! Number of style rules defined above
+        rule_count = 15  ! Number of style rules defined above
         allocate(rules(rule_count))
         
         ! F001
@@ -281,6 +341,61 @@ contains
         rules(10)%fixable = .false.
         rules(10)%severity = SEVERITY_WARNING
         rules(10)%check => check_f010_obsolete_features
+        
+        ! F011
+        rules(11)%code = "F011"
+        rules(11)%name = "missing-end-labels"
+        rules(11)%description = "Missing end statement labels"
+        rules(11)%category = CATEGORY_STYLE
+        rules(11)%subcategory = "clarity"
+        rules(11)%default_enabled = .true.
+        rules(11)%fixable = .true.
+        rules(11)%severity = SEVERITY_INFO
+        rules(11)%check => check_f011_missing_end_labels
+        
+        ! F012
+        rules(12)%code = "F012"
+        rules(12)%name = "inconsistent-naming"
+        rules(12)%description = "Inconsistent naming conventions"
+        rules(12)%category = CATEGORY_STYLE
+        rules(12)%subcategory = "consistency"
+        rules(12)%default_enabled = .true.
+        rules(12)%fixable = .false.
+        rules(12)%severity = SEVERITY_WARNING
+        rules(12)%check => check_f012_naming_conventions
+        
+        ! F013
+        rules(13)%code = "F013"
+        rules(13)%name = "multiple-statements"
+        rules(13)%description = "Multiple statements per line"
+        rules(13)%category = CATEGORY_STYLE
+        rules(13)%subcategory = "formatting"
+        rules(13)%default_enabled = .true.
+        rules(13)%fixable = .true.
+        rules(13)%severity = SEVERITY_WARNING
+        rules(13)%check => check_f013_multiple_statements
+        
+        ! F014
+        rules(14)%code = "F014"
+        rules(14)%name = "unnecessary-parentheses"
+        rules(14)%description = "Unnecessary parentheses"
+        rules(14)%category = CATEGORY_STYLE
+        rules(14)%subcategory = "simplification"
+        rules(14)%default_enabled = .true.
+        rules(14)%fixable = .true.
+        rules(14)%severity = SEVERITY_INFO
+        rules(14)%check => check_f014_unnecessary_parentheses
+        
+        ! F015
+        rules(15)%code = "F015"
+        rules(15)%name = "redundant-continue"
+        rules(15)%description = "Redundant continue statements"
+        rules(15)%category = CATEGORY_STYLE
+        rules(15)%subcategory = "simplification"
+        rules(15)%default_enabled = .true.
+        rules(15)%fixable = .true.
+        rules(15)%severity = SEVERITY_INFO
+        rules(15)%check => check_f015_redundant_continue
         
     end function get_style_rules
     
@@ -479,6 +594,66 @@ contains
         allocate(violations(0))
         
     end subroutine check_f010_obsolete_features
+    
+    ! F011: Check missing end statement labels
+    subroutine check_f011_missing_end_labels(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f011_missing_end_labels
+    
+    ! F012: Check naming conventions
+    subroutine check_f012_naming_conventions(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f012_naming_conventions
+    
+    ! F013: Check multiple statements per line
+    subroutine check_f013_multiple_statements(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f013_multiple_statements
+    
+    ! F014: Check unnecessary parentheses
+    subroutine check_f014_unnecessary_parentheses(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f014_unnecessary_parentheses
+    
+    ! F015: Check redundant continue statements
+    subroutine check_f015_redundant_continue(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f015_redundant_continue
     
     ! P001: Check array access patterns
     subroutine check_p001_array_access(ctx, node_index, violations)

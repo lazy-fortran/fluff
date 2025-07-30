@@ -217,11 +217,11 @@ This document provides a detailed, tactical implementation plan for developing `
      - F008: Missing intent declarations ✅ (stub implementation)
      - F009: Inconsistent intent usage ✅ (stub implementation)
      - F010: Obsolete language features (GOTO, computed GOTO) ✅ (stub implementation)
-     - F011: Missing end statement labels
-     - F012: Inconsistent naming conventions
-     - F013: Multiple statements per line
-     - F014: Unnecessary parentheses
-     - F015: Redundant continue statements
+     - F011: Missing end statement labels ✅ (stub implementation)
+     - F012: Inconsistent naming conventions ✅ (stub implementation)
+     - F013: Multiple statements per line ✅ (stub implementation)
+     - F014: Unnecessary parentheses ✅ (stub implementation)
+     - F015: Redundant continue statements ✅ (stub implementation)
 
 #### Task 2.2.2: GREEN - Performance Rules (P001-P025)
 - **Objective**: Implement Fortran-specific performance rules
