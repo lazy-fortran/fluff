@@ -65,3 +65,13 @@ name = "test_config_schema"
 source-dir = "test"
 main = "test_config_schema.f90"
 
+[[test]]
+name = "test_rule_interface"
+source-dir = "test"
+main = "test_rule_interface.f90"
+
+[[test]]
+name = "test_rule_registry"
+source-dir = "test"
+main = "test_rule_registry.f90"
+

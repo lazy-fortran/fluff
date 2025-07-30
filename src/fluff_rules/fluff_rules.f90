@@ -2,8 +2,8 @@ module fluff_rules
     ! Built-in rule implementations
     use fluff_core
     use fluff_ast
-    use fluff_linter
     use fluff_diagnostics
+    use fluff_rule_types
     implicit none
     private
     
@@ -13,90 +13,187 @@ module fluff_rules
     character(len=*), parameter :: CATEGORY_CORRECTNESS = "correctness"
     
     ! Public procedures for rule registration
-    public :: register_all_rules
-    public :: register_style_rules
-    public :: register_performance_rules
-    public :: register_correctness_rules
+    public :: get_all_builtin_rules
+    public :: get_style_rules
+    public :: get_performance_rules
+    public :: get_correctness_rules
     
 contains
     
-    ! Register all built-in rules
-    subroutine register_all_rules(registry)
-        type(rule_registry_t), intent(inout) :: registry
+    ! Get all built-in rules
+    function get_all_builtin_rules() result(rules)
+        type(rule_info_t), allocatable :: rules(:)
+        type(rule_info_t), allocatable :: style_rules(:)
+        type(rule_info_t), allocatable :: perf_rules(:)
+        type(rule_info_t), allocatable :: correct_rules(:)
         
-        call register_style_rules(registry)
-        call register_performance_rules(registry)
-        call register_correctness_rules(registry)
+        style_rules = get_style_rules()
+        perf_rules = get_performance_rules()
+        correct_rules = get_correctness_rules()
         
-    end subroutine register_all_rules
+        allocate(rules(size(style_rules) + size(perf_rules) + size(correct_rules)))
+        rules(1:size(style_rules)) = style_rules
+        rules(size(style_rules)+1:size(style_rules)+size(perf_rules)) = perf_rules
+        rules(size(style_rules)+size(perf_rules)+1:) = correct_rules
+        
+    end function get_all_builtin_rules
     
-    ! Register style rules (F001-F050)
-    subroutine register_style_rules(registry)
-        type(rule_registry_t), intent(inout) :: registry
+    ! Get style rules (F001-F050)
+    function get_style_rules() result(rules)
+        type(rule_info_t), allocatable :: rules(:)
         type(rule_info_t) :: rule
+        integer :: rule_count
         
         ! F001: Missing implicit none
         rule%code = "F001"
         rule%name = "missing-implicit-none"
         rule%description = "Missing 'implicit none' statement"
         rule%category = CATEGORY_STYLE
-        ! rule%check => check_f001_implicit_none
-        ! TODO: Set check procedure when type is fixed
-        ! call registry%register_rule(rule)
+        rule%subcategory = "best-practices"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f001_implicit_none
+        ! Registration handled by caller
         
         ! F002: Inconsistent indentation
         rule%code = "F002"
         rule%name = "inconsistent-indentation"
         rule%description = "Inconsistent indentation detected"
         rule%category = CATEGORY_STYLE
-        ! rule%check => check_f002_indentation
-        ! call registry%register_rule(rule)
+        rule%subcategory = "formatting"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f002_indentation
+        ! Registration handled by caller
         
         ! F003: Line too long
         rule%code = "F003"
         rule%name = "line-too-long"
         rule%description = "Line exceeds maximum length"
         rule%category = CATEGORY_STYLE
-        ! rule%check => check_f003_line_length
-        ! call registry%register_rule(rule)
+        rule%subcategory = "formatting"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_f003_line_length
+        ! Registration handled by caller
         
         ! TODO: Add more style rules
         
-    end subroutine register_style_rules
+        ! Allocate result
+        rule_count = 3  ! Number of style rules defined above
+        allocate(rules(rule_count))
+        
+        ! F001
+        rules(1)%code = "F001"
+        rules(1)%name = "missing-implicit-none"
+        rules(1)%description = "Missing 'implicit none' statement"
+        rules(1)%category = CATEGORY_STYLE
+        rules(1)%subcategory = "best-practices"
+        rules(1)%default_enabled = .true.
+        rules(1)%fixable = .true.
+        rules(1)%severity = SEVERITY_WARNING
+        rules(1)%check => check_f001_implicit_none
+        
+        ! F002
+        rules(2)%code = "F002"
+        rules(2)%name = "inconsistent-indentation"
+        rules(2)%description = "Inconsistent indentation detected"
+        rules(2)%category = CATEGORY_STYLE
+        rules(2)%subcategory = "formatting"
+        rules(2)%default_enabled = .true.
+        rules(2)%fixable = .true.
+        rules(2)%severity = SEVERITY_WARNING
+        rules(2)%check => check_f002_indentation
+        
+        ! F003
+        rules(3)%code = "F003"
+        rules(3)%name = "line-too-long"
+        rules(3)%description = "Line exceeds maximum length"
+        rules(3)%category = CATEGORY_STYLE
+        rules(3)%subcategory = "formatting"
+        rules(3)%default_enabled = .true.
+        rules(3)%fixable = .false.
+        rules(3)%severity = SEVERITY_INFO
+        rules(3)%check => check_f003_line_length
+        
+    end function get_style_rules
     
-    ! Register performance rules (P001-P025)
-    subroutine register_performance_rules(registry)
-        type(rule_registry_t), intent(inout) :: registry
+    ! Get performance rules (P001-P025)
+    function get_performance_rules() result(rules)
+        type(rule_info_t), allocatable :: rules(:)
         type(rule_info_t) :: rule
+        integer :: rule_count
         
         ! P001: Non-contiguous array access
         rule%code = "P001"
         rule%name = "non-contiguous-array-access"
         rule%description = "Non-contiguous array access pattern detected"
         rule%category = CATEGORY_PERFORMANCE
-        ! rule%check => check_p001_array_access
-        ! call registry%register_rule(rule)
+        rule%subcategory = "memory"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_p001_array_access
+        ! Registration handled by caller
         
         ! TODO: Add more performance rules
         
-    end subroutine register_performance_rules
+        ! Allocate result
+        rule_count = 1  ! Number of performance rules defined above
+        allocate(rules(rule_count))
+        
+        ! P001
+        rules(1)%code = "P001"
+        rules(1)%name = "non-contiguous-array-access"
+        rules(1)%description = "Non-contiguous array access pattern detected"
+        rules(1)%category = CATEGORY_PERFORMANCE
+        rules(1)%subcategory = "memory"
+        rules(1)%default_enabled = .true.
+        rules(1)%fixable = .false.
+        rules(1)%severity = SEVERITY_WARNING
+        rules(1)%check => check_p001_array_access
+        
+    end function get_performance_rules
     
-    ! Register correctness rules
-    subroutine register_correctness_rules(registry)
-        type(rule_registry_t), intent(inout) :: registry
+    ! Get correctness rules
+    function get_correctness_rules() result(rules)
+        type(rule_info_t), allocatable :: rules(:)
         type(rule_info_t) :: rule
+        integer :: rule_count
         
         ! C001: Undefined variable
         rule%code = "C001"
         rule%name = "undefined-variable"
         rule%description = "Use of undefined variable"
         rule%category = CATEGORY_CORRECTNESS
-        ! rule%check => check_c001_undefined_var
-        ! call registry%register_rule(rule)
+        rule%subcategory = "semantic"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_ERROR
+        rule%check => check_c001_undefined_var
+        ! Registration handled by caller
         
         ! TODO: Add more correctness rules
         
-    end subroutine register_correctness_rules
+        ! Allocate result
+        rule_count = 1  ! Number of correctness rules defined above
+        allocate(rules(rule_count))
+        
+        ! C001
+        rules(1)%code = "C001"
+        rules(1)%name = "undefined-variable"
+        rules(1)%description = "Use of undefined variable"
+        rules(1)%category = CATEGORY_CORRECTNESS
+        rules(1)%subcategory = "semantic"
+        rules(1)%default_enabled = .true.
+        rules(1)%fixable = .false.
+        rules(1)%severity = SEVERITY_ERROR
+        rules(1)%check => check_c001_undefined_var
+        
+    end function get_correctness_rules
     
     ! Rule implementations
     
