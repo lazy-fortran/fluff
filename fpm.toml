@@ -30,3 +30,13 @@ name = "test_module_dependencies"
 source-dir = "test"
 main = "test_module_dependencies.f90"
 
+[[test]]
+name = "test_cli_argument_parsing"
+source-dir = "test"
+main = "test_cli_argument_parsing.f90"
+
+[[test]]
+name = "test_cli_subcommands"
+source-dir = "test"
+main = "test_cli_subcommands.f90"
+

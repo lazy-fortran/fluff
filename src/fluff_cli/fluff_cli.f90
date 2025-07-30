@@ -4,6 +4,7 @@ module fluff_cli
     use fluff_linter
     use fluff_formatter
     use fluff_config
+    use fluff_diagnostics
     implicit none
     private
     
@@ -16,8 +17,14 @@ module fluff_cli
         logical :: watch = .false.
         logical :: version = .false.
         logical :: help = .false.
+        logical :: help_requested = .false.         ! Alias for help
+        logical :: version_requested = .false.       ! Alias for version
+        logical :: show_fixes = .false.
+        logical :: quiet = .false.
+        logical :: verbose = .false.
         character(len=:), allocatable :: config_file
         character(len=:), allocatable :: output_format  ! "text", "json", "sarif"
+        character(len=:), allocatable :: error_msg    ! Parse error message
     contains
         procedure :: parse => args_parse
         procedure :: validate => args_validate
@@ -52,21 +59,17 @@ contains
     subroutine args_parse(this, argc, argv)
         class(cli_args_t), intent(inout) :: this
         integer, intent(in) :: argc
-        character(len=*), intent(in) :: argv(argc)
+        character(len=*), intent(in) :: argv(:)
         
         integer :: i
         logical :: expecting_value
         character(len=:), allocatable :: current_flag
         
-        ! Default values
-        this%command = "check"
-        this%output_format = "text"
-        
-        if (argc == 0) return
-        
-        ! Parse arguments
-        i = 1
+        ! Initialize
+        this%command = "check"  ! Default command
+        this%error_msg = ""
         expecting_value = .false.
+        i = 1
         
         do while (i <= argc)
             if (expecting_value) then
@@ -79,7 +82,7 @@ contains
                 end select
                 expecting_value = .false.
                 
-            else if (argv(i)(1:2) == "--") then
+            else if (len_trim(argv(i)) >= 2 .and. argv(i)(1:2) == "--") then
                 ! Long flags
                 select case (trim(argv(i)))
                 case ("--fix")
@@ -90,8 +93,16 @@ contains
                     this%watch = .true.
                 case ("--version")
                     this%version = .true.
+                    this%version_requested = .true.
                 case ("--help")
                     this%help = .true.
+                    this%help_requested = .true.
+                case ("--show-fixes")
+                    this%show_fixes = .true.
+                case ("--quiet")
+                    this%quiet = .true.
+                case ("--verbose")
+                    this%verbose = .true.
                 case ("--config")
                     current_flag = "--config"
                     expecting_value = .true.
@@ -100,13 +111,17 @@ contains
                     expecting_value = .true.
                 end select
                 
-            else if (argv(i)(1:1) == "-") then
+            else if (len_trim(argv(i)) >= 1 .and. argv(i)(1:1) == "-") then
                 ! Short flags
                 select case (trim(argv(i)))
                 case ("-h")
                     this%help = .true.
+                    this%help_requested = .true.
                 case ("-v")
                     this%version = .true.
+                    this%version_requested = .true.
+                case ("-q")
+                    this%quiet = .true.
                 end select
                 
             else if (i == 1) then
@@ -116,20 +131,39 @@ contains
                     this%command = trim(argv(i))
                 case default
                     ! If not a valid command, treat as file
-                    if (.not. allocated(this%files)) allocate(character(len=0) :: this%files(0))
-                    this%files = [this%files, trim(argv(i))]
+                    call add_file_to_list(this%files, trim(argv(i)))
                 end select
                 
             else
                 ! File arguments
-                if (.not. allocated(this%files)) allocate(character(len=0) :: this%files(0))
-                this%files = [this%files, trim(argv(i))]
+                call add_file_to_list(this%files, trim(argv(i)))
             end if
             
             i = i + 1
         end do
         
     end subroutine args_parse
+    
+    ! Helper to add file to list
+    subroutine add_file_to_list(files, new_file)
+        character(len=:), allocatable, intent(inout) :: files(:)
+        character(len=*), intent(in) :: new_file
+        
+        character(len=:), allocatable :: temp(:)
+        integer :: n
+        
+        if (.not. allocated(files)) then
+            allocate(character(len=len(new_file)) :: files(1))
+            files(1) = new_file
+        else
+            n = size(files)
+            allocate(character(len=max(len(files), len(new_file))) :: temp(n+1))
+            temp(1:n) = files
+            temp(n+1) = new_file
+            call move_alloc(temp, files)
+        end if
+        
+    end subroutine add_file_to_list
     
     ! Validate arguments
     function args_validate(this) result(valid)
@@ -138,21 +172,15 @@ contains
         
         valid = .true.
         
-        ! Validate command
-        select case (this%command)
-        case ("check", "format", "server")
-            ! Valid commands
-        case default
-            valid = .false.
-        end select
-        
-        ! Validate output format
-        select case (this%output_format)
-        case ("text", "json", "sarif")
-            ! Valid formats
-        case default
-            valid = .false.
-        end select
+        ! Check if command is valid
+        if (allocated(this%command)) then
+            select case (this%command)
+            case ("check", "format", "server")
+                ! Valid commands
+            case default
+                valid = .false.
+            end select
+        end if
         
     end function args_validate
     
@@ -163,26 +191,35 @@ contains
         
         exit_code = 0
         
-        ! Handle version flag
-        if (this%args%version) then
+        ! Handle help and version requests
+        if (this%args%help .or. this%args%help_requested) then
+            call this%print_help()
+            return
+        end if
+        
+        if (this%args%version .or. this%args%version_requested) then
             call this%print_version()
             return
         end if
         
-        ! Handle help flag
-        if (this%args%help) then
-            call this%print_help()
+        ! Validate arguments
+        if (.not. this%args%validate()) then
+            print *, "Error: Invalid arguments"
+            exit_code = 1
             return
         end if
         
         ! Execute command
         select case (this%args%command)
         case ("check")
-            call execute_check(this, exit_code)
+            call run_check_command(this, exit_code)
         case ("format")
-            call execute_format(this, exit_code)
+            call run_format_command(this, exit_code)
         case ("server")
-            call execute_server(this, exit_code)
+            call run_server_command(this, exit_code)
+        case default
+            print *, "Error: Unknown command '", this%args%command, "'"
+            exit_code = 1
         end select
         
     end subroutine app_run
@@ -196,59 +233,147 @@ contains
         print *, "Usage: fluff [COMMAND] [OPTIONS] [FILES...]"
         print *, ""
         print *, "Commands:"
-        print *, "  check     Run linting checks (default)"
-        print *, "  format    Format source files"
-        print *, "  server    Run LSP server"
+        print *, "  check    Check code for issues (default)"
+        print *, "  format   Format code"
+        print *, "  server   Run LSP server"
         print *, ""
         print *, "Options:"
-        print *, "  --fix             Apply fixes automatically"
-        print *, "  --diff            Show diff instead of applying changes"
-        print *, "  --watch           Watch files for changes"
-        print *, "  --config FILE     Use configuration file"
-        print *, "  --output-format   Output format: text, json, sarif"
-        print *, "  -h, --help        Show this help message"
-        print *, "  -v, --version     Show version information"
+        print *, "  -h, --help         Show this help message"
+        print *, "  -v, --version      Show version"
+        print *, "  --fix              Apply fixes automatically"
+        print *, "  --diff             Show diffs instead of rewriting files"
+        print *, "  --watch            Watch files for changes"
+        print *, "  --config FILE      Use configuration file"
+        print *, "  --output-format    Output format (text, json, sarif)"
         
     end subroutine app_print_help
     
-    ! Print version information
+    ! Print version
     subroutine app_print_version(this)
         class(cli_app_t), intent(in) :: this
         type(fluff_version_t) :: version
         
         version = get_fluff_version()
-        print *, "fluff ", version%to_string()
+        print '(a,i0,".",i0,".",i0)', "fluff ", version%major, version%minor, version%patch
         
     end subroutine app_print_version
     
-    ! Execute check command
-    subroutine execute_check(app, exit_code)
+    ! Run check command
+    subroutine run_check_command(app, exit_code)
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
         
-        ! TODO: Implement linting
+        type(fluff_config_t) :: config
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        integer :: i
+        
         exit_code = 0
         
-    end subroutine execute_check
+        ! Load configuration
+        if (allocated(app%args%config_file)) then
+            call config%from_file(app%args%config_file)
+        else
+            config = create_default_config()
+        end if
+        
+        ! Initialize linter
+        call app%linter%initialize()
+        
+        ! Process files
+        if (allocated(app%args%files)) then
+            do i = 1, size(app%args%files)
+                call app%linter%lint_file(app%args%files(i), diagnostics, error_msg)
+                
+                if (error_msg /= "") then
+                    print *, "Error linting file: ", error_msg
+                    exit_code = 1
+                else if (allocated(diagnostics)) then
+                    if (size(diagnostics) > 0) exit_code = 1
+                    call print_diagnostics(diagnostics, app%args%output_format)
+                end if
+            end do
+        else
+            print *, "No files specified"
+            exit_code = 1
+        end if
+        
+    end subroutine run_check_command
     
-    ! Execute format command
-    subroutine execute_format(app, exit_code)
+    ! Run format command
+    subroutine run_format_command(app, exit_code)
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
         
-        ! TODO: Implement formatting
+        character(len=:), allocatable :: formatted_code
+        character(len=:), allocatable :: error_msg
+        integer :: i
+        
         exit_code = 0
         
-    end subroutine execute_format
+        ! Initialize formatter
+        call app%formatter%initialize()
+        
+        ! Process files
+        if (allocated(app%args%files)) then
+            do i = 1, size(app%args%files)
+                call app%formatter%format_file(app%args%files(i), formatted_code, error_msg)
+                
+                if (error_msg /= "") then
+                    print *, "Error formatting file: ", error_msg
+                    exit_code = 1
+                else if (app%args%diff) then
+                    ! TODO: Show diff
+                    print *, "Diff not yet implemented"
+                else
+                    ! TODO: Write formatted code back to file
+                    print *, "Writing formatted code not yet implemented"
+                end if
+            end do
+        else
+            print *, "No files specified"
+            exit_code = 1
+        end if
+        
+    end subroutine run_format_command
     
-    ! Execute server command
-    subroutine execute_server(app, exit_code)
+    ! Run server command
+    subroutine run_server_command(app, exit_code)
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
+        
+        exit_code = 0
         
         print *, "LSP server not yet implemented"
         exit_code = 1
         
-    end subroutine execute_server
+    end subroutine run_server_command
+    
+    ! Print diagnostics
+    subroutine print_diagnostics(diagnostics, format)
+        type(diagnostic_t), intent(in) :: diagnostics(:)
+        character(len=*), intent(in), optional :: format
+        
+        character(len=:), allocatable :: output_format
+        integer :: i
+        
+        if (present(format)) then
+            output_format = format
+        else
+            output_format = "text"
+        end if
+        
+        select case (output_format)
+        case ("text")
+            do i = 1, size(diagnostics)
+                call diagnostics(i)%print()
+            end do
+        case ("json")
+            print *, "JSON output not yet implemented"
+        case ("sarif")
+            print *, "SARIF output not yet implemented"
+        end select
+        
+    end subroutine print_diagnostics
     
 end module fluff_cli

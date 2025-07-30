@@ -7,7 +7,7 @@ This document provides a detailed, tactical implementation plan for developing `
 ## Phase 1: Foundation (Weeks 1-4)
 
 ### Epic 1.1: Project Infrastructure
-#### Task 1.1.1: RED - Core Module Structure
+#### Task 1.1.1: RED - Core Module Structure ✅ COMPLETED
 - **Objective**: Establish basic module hierarchy following ruff's crate structure
 - **TDD Steps**:
   1. Write test for `fluff_core` module compilation
@@ -28,7 +28,7 @@ This document provides a detailed, tactical implementation plan for developing `
   4. Create `fpm.toml` with proper dependencies
   5. Ensure all modules compile and link correctly
 
-#### Task 1.1.2: GREEN - Basic CLI Framework
+#### Task 1.1.2: GREEN - Basic CLI Framework ✅ COMPLETED
 - **Objective**: Create working CLI that accepts files and options
 - **TDD Steps**:
   1. Write test for CLI argument parsing

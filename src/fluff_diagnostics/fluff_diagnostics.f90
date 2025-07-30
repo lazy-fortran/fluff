@@ -23,6 +23,7 @@ module fluff_diagnostics
     contains
         procedure :: to_string => diagnostic_to_string
         procedure :: to_json => diagnostic_to_json
+        procedure :: print => diagnostic_print
     end type diagnostic_t
     
     ! Fix suggestion
@@ -157,6 +158,35 @@ contains
         json = trim(buffer)
         
     end function diagnostic_to_json
+    
+    ! Print diagnostic to stdout
+    subroutine diagnostic_print(this)
+        class(diagnostic_t), intent(in) :: this
+        
+        character(len=:), allocatable :: severity_str
+        
+        select case (this%severity)
+        case (SEVERITY_ERROR)
+            severity_str = "ERROR"
+        case (SEVERITY_WARNING)
+            severity_str = "WARNING"
+        case (SEVERITY_INFO)
+            severity_str = "INFO"
+        case (SEVERITY_HINT)
+            severity_str = "HINT"
+        end select
+        
+        if (allocated(this%code)) then
+            print '(a,":",i0,":",i0," [",a,"] ",a," (",a,")")', &
+                "file", this%location%start%line, this%location%start%column, &
+                severity_str, this%message, this%code
+        else
+            print '(a,":",i0,":",i0," [",a,"] ",a)', &
+                "file", this%location%start%line, this%location%start%column, &
+                severity_str, this%message
+        end if
+        
+    end subroutine diagnostic_print
     
     ! Apply fix to source code
     subroutine fix_apply(this, source_code, fixed_code)
