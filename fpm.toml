@@ -20,3 +20,13 @@ implicit-typing = false
 implicit-external = false
 source-form = "free"
 
+[[test]]
+name = "test_module_compilation"
+source-dir = "test"
+main = "test_module_compilation.f90"
+
+[[test]]
+name = "test_module_dependencies"
+source-dir = "test"
+main = "test_module_dependencies.f90"
+
