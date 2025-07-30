@@ -417,10 +417,34 @@ contains
         rule%check => check_p001_array_access
         ! Registration handled by caller
         
+        ! P002: Inefficient loop ordering
+        rule%code = "P002"
+        rule%name = "inefficient-loop-ordering"
+        rule%description = "Inefficient loop ordering"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "memory"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_p002_loop_ordering
+        ! Registration handled by caller
+        
+        ! P003: Unnecessary array temporaries
+        rule%code = "P003"
+        rule%name = "unnecessary-array-temporaries"
+        rule%description = "Unnecessary array temporaries"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "memory"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_p003_array_temporaries
+        ! Registration handled by caller
+        
         ! TODO: Add more performance rules
         
         ! Allocate result
-        rule_count = 1  ! Number of performance rules defined above
+        rule_count = 3  ! Number of performance rules defined above
         allocate(rules(rule_count))
         
         ! P001
@@ -433,6 +457,28 @@ contains
         rules(1)%fixable = .false.
         rules(1)%severity = SEVERITY_WARNING
         rules(1)%check => check_p001_array_access
+        
+        ! P002
+        rules(2)%code = "P002"
+        rules(2)%name = "inefficient-loop-ordering"
+        rules(2)%description = "Inefficient loop ordering"
+        rules(2)%category = CATEGORY_PERFORMANCE
+        rules(2)%subcategory = "memory"
+        rules(2)%default_enabled = .true.
+        rules(2)%fixable = .false.
+        rules(2)%severity = SEVERITY_WARNING
+        rules(2)%check => check_p002_loop_ordering
+        
+        ! P003
+        rules(3)%code = "P003"
+        rules(3)%name = "unnecessary-array-temporaries"
+        rules(3)%description = "Unnecessary array temporaries"
+        rules(3)%category = CATEGORY_PERFORMANCE
+        rules(3)%subcategory = "memory"
+        rules(3)%default_enabled = .true.
+        rules(3)%fixable = .false.
+        rules(3)%severity = SEVERITY_WARNING
+        rules(3)%check => check_p003_array_temporaries
         
     end function get_performance_rules
     
@@ -665,6 +711,28 @@ contains
         allocate(violations(0))
         
     end subroutine check_p001_array_access
+    
+    ! P002: Check loop ordering efficiency
+    subroutine check_p002_loop_ordering(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement loop ordering efficiency check
+        allocate(violations(0))
+        
+    end subroutine check_p002_loop_ordering
+    
+    ! P003: Check array temporaries
+    subroutine check_p003_array_temporaries(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement array temporaries check
+        allocate(violations(0))
+        
+    end subroutine check_p003_array_temporaries
     
     ! C001: Check for undefined variables
     subroutine check_c001_undefined_var(ctx, node_index, violations)
