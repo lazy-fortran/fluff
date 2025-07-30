@@ -441,10 +441,34 @@ contains
         rule%check => check_p003_array_temporaries
         ! Registration handled by caller
         
+        ! P004: Missing pure/elemental declarations
+        rule%code = "P004"
+        rule%name = "missing-pure-elemental"
+        rule%description = "Missing `pure`/`elemental` declarations"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "optimization"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_INFO
+        rule%check => check_p004_pure_elemental
+        ! Registration handled by caller
+        
+        ! P005: Inefficient string operations
+        rule%code = "P005"
+        rule%name = "inefficient-string-operations"
+        rule%description = "Inefficient string operations"
+        rule%category = CATEGORY_PERFORMANCE
+        rule%subcategory = "memory"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_p005_string_operations
+        ! Registration handled by caller
+        
         ! TODO: Add more performance rules
         
         ! Allocate result
-        rule_count = 3  ! Number of performance rules defined above
+        rule_count = 5  ! Number of performance rules defined above
         allocate(rules(rule_count))
         
         ! P001
@@ -479,6 +503,28 @@ contains
         rules(3)%fixable = .false.
         rules(3)%severity = SEVERITY_WARNING
         rules(3)%check => check_p003_array_temporaries
+        
+        ! P004
+        rules(4)%code = "P004"
+        rules(4)%name = "missing-pure-elemental"
+        rules(4)%description = "Missing `pure`/`elemental` declarations"
+        rules(4)%category = CATEGORY_PERFORMANCE
+        rules(4)%subcategory = "optimization"
+        rules(4)%default_enabled = .true.
+        rules(4)%fixable = .true.
+        rules(4)%severity = SEVERITY_INFO
+        rules(4)%check => check_p004_pure_elemental
+        
+        ! P005
+        rules(5)%code = "P005"
+        rules(5)%name = "inefficient-string-operations"
+        rules(5)%description = "Inefficient string operations"
+        rules(5)%category = CATEGORY_PERFORMANCE
+        rules(5)%subcategory = "memory"
+        rules(5)%default_enabled = .true.
+        rules(5)%fixable = .false.
+        rules(5)%severity = SEVERITY_WARNING
+        rules(5)%check => check_p005_string_operations
         
     end function get_performance_rules
     
@@ -733,6 +779,28 @@ contains
         allocate(violations(0))
         
     end subroutine check_p003_array_temporaries
+    
+    ! P004: Check pure/elemental declarations
+    subroutine check_p004_pure_elemental(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement pure/elemental declaration check
+        allocate(violations(0))
+        
+    end subroutine check_p004_pure_elemental
+    
+    ! P005: Check string operations efficiency
+    subroutine check_p005_string_operations(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement string operations efficiency check
+        allocate(violations(0))
+        
+    end subroutine check_p005_string_operations
     
     ! C001: Check for undefined variables
     subroutine check_c001_undefined_var(ctx, node_index, violations)

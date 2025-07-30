@@ -233,8 +233,8 @@ This document provides a detailed, tactical implementation plan for developing `
      - P001: Non-contiguous array access ✅ (stub implementation)
      - P002: Inefficient loop ordering ✅ (stub implementation) 
      - P003: Unnecessary array temporaries ✅ (stub implementation)
-     - P004: Missing `pure`/`elemental` declarations
-     - P005: Inefficient string operations
+     - P004: Missing `pure`/`elemental` declarations ✅ (stub implementation)
+     - P005: Inefficient string operations ✅ (stub implementation)
      - P006: Unnecessary allocations in loops
      - P007: Mixed precision arithmetic
      - P008: Inefficient I/O in loops
