@@ -12,6 +12,9 @@ module fluff_diagnostics
         enumerator :: SEVERITY_HINT = 4
     end enum
     
+    ! Export severity levels
+    public :: SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO, SEVERITY_HINT
+    
     ! Diagnostic type
     type, public :: diagnostic_t
         character(len=:), allocatable :: code        ! e.g., "F001"

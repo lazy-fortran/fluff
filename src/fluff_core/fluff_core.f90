@@ -38,9 +38,17 @@ module fluff_core
         procedure :: is_valid => range_is_valid
     end type source_range_t
     
+    ! Result type for error handling
+    type, public :: fluff_result_t
+        logical :: is_success = .true.
+        character(len=:), allocatable :: error_msg
+    end type fluff_result_t
+    
     ! Public procedures
     public :: get_fluff_version
     public :: create_fluff_context
+    public :: create_success_result
+    public :: create_error_result
     
 contains
     
@@ -100,5 +108,19 @@ contains
         end if
         
     end function range_is_valid
+    
+    ! Create success result
+    function create_success_result() result(res)
+        type(fluff_result_t) :: res
+        res%is_success = .true.
+    end function create_success_result
+    
+    ! Create error result
+    function create_error_result(error_msg) result(res)
+        character(len=*), intent(in) :: error_msg
+        type(fluff_result_t) :: res
+        res%is_success = .false.
+        res%error_msg = error_msg
+    end function create_error_result
     
 end module fluff_core

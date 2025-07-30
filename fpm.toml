@@ -40,3 +40,8 @@ name = "test_cli_subcommands"
 source-dir = "test"
 main = "test_cli_subcommands.f90"
 
+[[test]]
+name = "test_clean_architecture"
+source-dir = "test"
+main = "test_clean_architecture.f90"
+
