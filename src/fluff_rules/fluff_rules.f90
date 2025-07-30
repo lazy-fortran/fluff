@@ -82,8 +82,70 @@ contains
         
         ! TODO: Add more style rules
         
+        ! F004: Trailing whitespace
+        rule%code = "F004"
+        rule%name = "trailing-whitespace"
+        rule%description = "Trailing whitespace detected"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "formatting"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f004_trailing_whitespace
+        ! Registration handled by caller
+        
+        ! F005: Mixed tabs and spaces
+        rule%code = "F005"
+        rule%name = "mixed-tabs-spaces"
+        rule%description = "Mixed tabs and spaces in indentation"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "formatting"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f005_mixed_tabs_spaces
+        ! Registration handled by caller
+        
+        ! F006: Unused variable declaration
+        rule%code = "F006"
+        rule%name = "unused-variable"
+        rule%description = "Unused variable declaration"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "best-practices"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f006_unused_variable
+        ! Registration handled by caller
+        
+        ! F007: Undefined variable usage
+        rule%code = "F007"
+        rule%name = "undefined-variable"
+        rule%description = "Undefined variable usage"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "best-practices"
+        rule%default_enabled = .true.
+        rule%fixable = .false.
+        rule%severity = SEVERITY_ERROR
+        rule%check => check_f007_undefined_variable
+        ! Registration handled by caller
+        
+        ! F008: Missing intent declarations
+        rule%code = "F008"
+        rule%name = "missing-intent"
+        rule%description = "Missing intent declarations"
+        rule%category = CATEGORY_STYLE
+        rule%subcategory = "best-practices"
+        rule%default_enabled = .true.
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
+        rule%check => check_f008_missing_intent
+        ! Registration handled by caller
+        
+        ! TODO: Add more style rules
+        
         ! Allocate result
-        rule_count = 3  ! Number of style rules defined above
+        rule_count = 8  ! Number of style rules defined above
         allocate(rules(rule_count))
         
         ! F001
@@ -118,6 +180,61 @@ contains
         rules(3)%fixable = .false.
         rules(3)%severity = SEVERITY_INFO
         rules(3)%check => check_f003_line_length
+        
+        ! F004
+        rules(4)%code = "F004"
+        rules(4)%name = "trailing-whitespace"
+        rules(4)%description = "Trailing whitespace detected"
+        rules(4)%category = CATEGORY_STYLE
+        rules(4)%subcategory = "formatting"
+        rules(4)%default_enabled = .true.
+        rules(4)%fixable = .true.
+        rules(4)%severity = SEVERITY_WARNING
+        rules(4)%check => check_f004_trailing_whitespace
+        
+        ! F005
+        rules(5)%code = "F005"
+        rules(5)%name = "mixed-tabs-spaces"
+        rules(5)%description = "Mixed tabs and spaces in indentation"
+        rules(5)%category = CATEGORY_STYLE
+        rules(5)%subcategory = "formatting"
+        rules(5)%default_enabled = .true.
+        rules(5)%fixable = .true.
+        rules(5)%severity = SEVERITY_WARNING
+        rules(5)%check => check_f005_mixed_tabs_spaces
+        
+        ! F006
+        rules(6)%code = "F006"
+        rules(6)%name = "unused-variable"
+        rules(6)%description = "Unused variable declaration"
+        rules(6)%category = CATEGORY_STYLE
+        rules(6)%subcategory = "best-practices"
+        rules(6)%default_enabled = .true.
+        rules(6)%fixable = .false.
+        rules(6)%severity = SEVERITY_WARNING
+        rules(6)%check => check_f006_unused_variable
+        
+        ! F007
+        rules(7)%code = "F007"
+        rules(7)%name = "undefined-variable"
+        rules(7)%description = "Undefined variable usage"
+        rules(7)%category = CATEGORY_STYLE
+        rules(7)%subcategory = "best-practices"
+        rules(7)%default_enabled = .true.
+        rules(7)%fixable = .false.
+        rules(7)%severity = SEVERITY_ERROR
+        rules(7)%check => check_f007_undefined_variable
+        
+        ! F008
+        rules(8)%code = "F008"
+        rules(8)%name = "missing-intent"
+        rules(8)%description = "Missing intent declarations"
+        rules(8)%category = CATEGORY_STYLE
+        rules(8)%subcategory = "best-practices"
+        rules(8)%default_enabled = .true.
+        rules(8)%fixable = .true.
+        rules(8)%severity = SEVERITY_WARNING
+        rules(8)%check => check_f008_missing_intent
         
     end function get_style_rules
     
@@ -232,6 +349,66 @@ contains
         allocate(violations(0))
         
     end subroutine check_f003_line_length
+    
+    ! F004: Check trailing whitespace
+    subroutine check_f004_trailing_whitespace(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f004_trailing_whitespace
+    
+    ! F005: Check mixed tabs and spaces
+    subroutine check_f005_mixed_tabs_spaces(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f005_mixed_tabs_spaces
+    
+    ! F006: Check unused variable declarations
+    subroutine check_f006_unused_variable(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f006_unused_variable
+    
+    ! F007: Check undefined variable usage
+    subroutine check_f007_undefined_variable(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f007_undefined_variable
+    
+    ! F008: Check missing intent declarations
+    subroutine check_f008_missing_intent(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! TODO: Implement when fortfront AST API is available
+        ! For now, just return empty violations
+        allocate(violations(0))
+        
+    end subroutine check_f008_missing_intent
     
     ! P001: Check array access patterns
     subroutine check_p001_array_access(ctx, node_index, violations)
