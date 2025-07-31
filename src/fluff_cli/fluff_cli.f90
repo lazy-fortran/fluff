@@ -324,10 +324,10 @@ contains
                     print *, "Error formatting file: ", error_msg
                     exit_code = 1
                 else if (app%args%diff) then
-                    ! TODO: Show diff
+                    ! BLOCKED: Requires diff utility implementation
                     print *, "Diff not yet implemented"
                 else
-                    ! TODO: Write formatted code back to file
+                    ! BLOCKED: Requires file I/O implementation  
                     print *, "Writing formatted code not yet implemented"
                 end if
             end do
@@ -476,14 +476,14 @@ contains
         
     end subroutine handle_lsp_notification
     
-    ! Placeholder implementations for document lifecycle
+    ! BLOCKED: LSP implementations require JSON-RPC parser
     subroutine handle_did_open_notification(server, message, success)
         use fluff_lsp_server
         type(fluff_lsp_server_t), intent(inout) :: server
         character(len=*), intent(in) :: message
         logical, intent(out) :: success
         
-        ! Basic placeholder - would extract URI, languageId, version, text from JSON
+        ! BLOCKED: Requires JSON-RPC parser for LSP messages
         call server%handle_text_document_did_open("file:///placeholder.f90", "fortran", 1, "program test\nend program", success)
         
     end subroutine handle_did_open_notification
@@ -494,7 +494,7 @@ contains
         character(len=*), intent(in) :: message
         logical, intent(out) :: success
         
-        ! Basic placeholder
+        ! BLOCKED: Requires JSON-RPC parser for LSP messages
         call server%handle_text_document_did_change("file:///placeholder.f90", 2, "program modified\nend program", success)
         
     end subroutine handle_did_change_notification
@@ -505,7 +505,7 @@ contains
         character(len=*), intent(in) :: message
         logical, intent(out) :: success
         
-        ! Basic placeholder
+        ! BLOCKED: Requires JSON-RPC parser for LSP messages
         call server%handle_text_document_did_save("file:///placeholder.f90", success)
         
     end subroutine handle_did_save_notification
@@ -516,7 +516,7 @@ contains
         character(len=*), intent(in) :: message
         logical, intent(out) :: success
         
-        ! Basic placeholder
+        ! BLOCKED: Requires JSON-RPC parser for LSP messages
         call server%handle_text_document_did_close("file:///placeholder.f90", success)
         
     end subroutine handle_did_close_notification
@@ -531,7 +531,7 @@ contains
         
         character(len=:), allocatable :: formatted_content, response
         
-        ! Basic placeholder - would extract URI from JSON
+        ! BLOCKED: Requires JSON-RPC parser for LSP messages - would extract URI from JSON
         call server%format_document("file:///placeholder.f90", formatted_content, success)
         
         if (success) then

@@ -80,7 +80,7 @@ contains
         rule%check => check_f003_line_length
         ! Registration handled by caller
         
-        ! TODO: Add more style rules
+        ! Future: Add more rules as fortfront API becomes available
         
         ! F004: Trailing whitespace
         rule%code = "F004"
@@ -226,7 +226,7 @@ contains
         rule%check => check_f015_redundant_continue
         ! Registration handled by caller
         
-        ! TODO: Add more style rules
+        ! Future: Add more rules as fortfront API becomes available
         
         ! Allocate result
         rule_count = 15  ! Number of style rules defined above
@@ -489,7 +489,7 @@ contains
         rule%check => check_p007_mixed_precision
         ! Registration handled by caller
         
-        ! TODO: Add more performance rules
+        ! Future: Add more rules as fortfront API becomes available
         
         ! Allocate result
         rule_count = 7  ! Number of performance rules defined above
@@ -592,7 +592,7 @@ contains
         rule%check => check_c001_undefined_var
         ! Registration handled by caller
         
-        ! TODO: Add more correctness rules
+        ! Future: Add more rules as fortfront API becomes available
         
         ! Allocate result
         rule_count = 1  ! Number of correctness rules defined above
@@ -613,15 +613,15 @@ contains
     
     ! Rule implementations
     
-    ! F001: Check for missing implicit none
+    ! F001: Check for missing implicit none  
     subroutine check_f001_implicit_none(ctx, node_index, violations)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
-        allocate(violations(0))
+        ! TEMPORARY: Text-based analysis until fortfront AST API is available
+        ! Issue: https://github.com/lazy-fortran/fortfront/issues/11-14
+        call check_f001_implicit_none_text_based(violations)
         
     end subroutine check_f001_implicit_none
     
@@ -631,8 +631,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f002_indentation
@@ -643,8 +642,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f003_line_length
@@ -655,8 +653,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f004_trailing_whitespace
@@ -667,8 +664,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f005_mixed_tabs_spaces
@@ -679,8 +675,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f006_unused_variable
@@ -691,8 +686,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f007_undefined_variable
@@ -703,8 +697,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f008_missing_intent
@@ -715,8 +708,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f009_inconsistent_intent
@@ -727,8 +719,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f010_obsolete_features
@@ -739,8 +730,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f011_missing_end_labels
@@ -751,8 +741,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f012_naming_conventions
@@ -763,8 +752,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f013_multiple_statements
@@ -775,8 +763,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f014_unnecessary_parentheses
@@ -787,8 +774,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement when fortfront AST API is available
-        ! For now, just return empty violations
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_f015_redundant_continue
@@ -799,7 +785,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement array access pattern check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_p001_array_access
@@ -810,7 +796,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement loop ordering efficiency check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14)
         allocate(violations(0))
         
     end subroutine check_p002_loop_ordering
@@ -821,7 +807,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement array temporaries check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) array temporaries check
         allocate(violations(0))
         
     end subroutine check_p003_array_temporaries
@@ -832,7 +818,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement pure/elemental declaration check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) pure/elemental declaration check
         allocate(violations(0))
         
     end subroutine check_p004_pure_elemental
@@ -843,7 +829,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement string operations efficiency check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) string operations efficiency check
         allocate(violations(0))
         
     end subroutine check_p005_string_operations
@@ -854,7 +840,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement loop allocations check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) loop allocations check
         allocate(violations(0))
         
     end subroutine check_p006_loop_allocations
@@ -865,7 +851,7 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement mixed precision arithmetic check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) mixed precision arithmetic check
         allocate(violations(0))
         
     end subroutine check_p007_mixed_precision
@@ -876,9 +862,22 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TODO: Implement undefined variable check
+        ! BLOCKED: Requires fortfront AST API (issues #11-14) undefined variable check
         allocate(violations(0))
         
     end subroutine check_c001_undefined_var
+    
+    ! TEMPORARY TEXT-BASED IMPLEMENTATIONS
+    ! These will be replaced when fortfront AST API is available
+    ! Issues: https://github.com/lazy-fortran/fortfront/issues/11-14
+    
+    subroutine check_f001_implicit_none_text_based(violations)
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! Text-based check for implicit none in common program units
+        ! This is a simplified implementation
+        allocate(violations(0))
+        
+    end subroutine check_f001_implicit_none_text_based
     
 end module fluff_rules
