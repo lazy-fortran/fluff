@@ -1,9 +1,8 @@
 program test_formatter_advanced
-    use fluff_core
     use fluff_formatter
     use fluff_ast
     use fortfront, only: lex_source, parse_tokens, analyze_semantics, create_ast_arena, &
-                        emit_fortran
+                        emit_fortran, format_options_t
     implicit none
     
     type(formatter_engine_t) :: formatter
@@ -366,7 +365,8 @@ contains
         
         ! Test with tabs
         options%indent_size = 4
-        options%use_spaces = .false.
+        options%use_tabs = .true.
+        options%indent_char = char(9)  ! Tab character
         expected = "program test" // new_line('a') // &
                   char(9) // "implicit none" // new_line('a') // &
                   char(9) // "if (x > 0) then" // new_line('a') // &

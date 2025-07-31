@@ -1,6 +1,5 @@
 module fluff_formatter_visitor
     ! AST visitor for custom formatting
-    use fluff_core
     use fortfront
     implicit none
     private
@@ -283,13 +282,13 @@ contains
         integer :: total_spaces
         
         total_spaces = this%indent_level * this%options%indent_size
-        if (this%options%use_spaces) then
+        if (.not. this%options%use_tabs) then
             allocate(character(len=total_spaces) :: indent)
             indent = repeat(' ', total_spaces)
         else
-            ! Use tabs
+            ! Use tabs or configured indent char
             allocate(character(len=this%indent_level) :: indent)
-            indent = repeat(char(9), this%indent_level)
+            indent = repeat(this%options%indent_char, this%indent_level)
         end if
         
     end function visitor_get_indent_string

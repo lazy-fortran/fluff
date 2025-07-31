@@ -5,6 +5,7 @@ module fluff_cli
     use fluff_formatter
     use fluff_config
     use fluff_diagnostics
+    use fluff_json_rpc, only: parse_lsp_message
     implicit none
     private
     
@@ -339,15 +340,239 @@ contains
     
     ! Run server command
     subroutine run_server_command(app, exit_code)
+        use fluff_lsp_server
+        use iso_fortran_env, only: input_unit, output_unit, error_unit
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
         
-        exit_code = 0
+        type(fluff_lsp_server_t) :: lsp_server
+        character(len=10000) :: line
+        character(len=:), allocatable :: message_type, method
+        integer :: message_id, iostat
+        logical :: success, server_running
         
-        print *, "LSP server not yet implemented"
-        exit_code = 1
+        exit_code = 0
+        server_running = .true.
+        
+        ! Initialize LSP server
+        call lsp_server%initialize("")
+        
+        ! Write initialization message to stderr for debugging
+        write(error_unit, '(A)') "Fluff LSP server starting..."
+        
+        ! Main server loop - read from stdin, write to stdout
+        do while (server_running)
+            ! Read JSON-RPC message from stdin
+            read(input_unit, '(A)', iostat=iostat) line
+            
+            if (iostat /= 0) then
+                ! End of input - exit gracefully
+                server_running = .false.
+                cycle
+            end if
+            
+            ! Skip empty lines
+            if (len_trim(line) == 0) cycle
+            
+            ! Parse JSON-RPC message
+            call parse_lsp_message(trim(line), message_type, message_id, method, success)
+            
+            if (.not. success) then
+                write(error_unit, '(A)') "Failed to parse message: " // trim(line)
+                cycle
+            end if
+            
+            ! Handle different message types
+            select case (message_type)
+            case ("request")
+                call handle_lsp_request(lsp_server, message_id, method, trim(line), success)
+                if (method == "shutdown") then
+                    server_running = .false.
+                end if
+                
+            case ("notification")
+                call handle_lsp_notification(lsp_server, method, trim(line), success)
+                
+            case default
+                write(error_unit, '(A)') "Unknown message type: " // message_type
+            end select
+        end do
+        
+        write(error_unit, '(A)') "Fluff LSP server shutting down..."
         
     end subroutine run_server_command
+    
+    ! Handle LSP requests
+    subroutine handle_lsp_request(server, id, method, message, success)
+        use fluff_lsp_server
+        use iso_fortran_env, only: output_unit, error_unit
+        type(fluff_lsp_server_t), intent(inout) :: server
+        integer, intent(in) :: id
+        character(len=*), intent(in) :: method, message
+        logical, intent(out) :: success
+        
+        character(len=:), allocatable :: response, capabilities
+        
+        success = .true.
+        
+        select case (method)
+        case ("initialize")
+            ! Return server capabilities
+            capabilities = server%get_server_capabilities()
+            response = create_json_response(id, capabilities)
+            write(output_unit, '(A)') response
+            
+        case ("shutdown")
+            ! Acknowledge shutdown
+            response = create_json_response(id, 'null')
+            write(output_unit, '(A)') response
+            
+        case ("textDocument/formatting")
+            call handle_formatting_request(server, id, message, success)
+            
+        case default
+            ! Method not found error
+            response = create_json_error_response(id, -32601, "Method not found")
+            write(output_unit, '(A)') response
+            write(error_unit, '(A)') "Unknown method: " // method
+        end select
+        
+    end subroutine handle_lsp_request
+    
+    ! Handle LSP notifications
+    subroutine handle_lsp_notification(server, method, message, success)
+        use fluff_lsp_server
+        use iso_fortran_env, only: error_unit
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=*), intent(in) :: method, message
+        logical, intent(out) :: success
+        
+        success = .true.
+        
+        select case (method)
+        case ("initialized")
+            ! Server initialization complete
+            write(error_unit, '(A)') "LSP server initialized"
+            
+        case ("textDocument/didOpen")
+            call handle_did_open_notification(server, message, success)
+            
+        case ("textDocument/didChange") 
+            call handle_did_change_notification(server, message, success)
+            
+        case ("textDocument/didSave")
+            call handle_did_save_notification(server, message, success)
+            
+        case ("textDocument/didClose")
+            call handle_did_close_notification(server, message, success)
+            
+        case ("exit")
+            ! Exit notification
+            write(error_unit, '(A)') "Exit notification received"
+            
+        case default
+            write(error_unit, '(A)') "Unknown notification: " // method
+        end select
+        
+    end subroutine handle_lsp_notification
+    
+    ! Placeholder implementations for document lifecycle
+    subroutine handle_did_open_notification(server, message, success)
+        use fluff_lsp_server
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+        
+        ! Basic placeholder - would extract URI, languageId, version, text from JSON
+        call server%handle_text_document_did_open("file:///placeholder.f90", "fortran", 1, "program test\nend program", success)
+        
+    end subroutine handle_did_open_notification
+    
+    subroutine handle_did_change_notification(server, message, success)
+        use fluff_lsp_server
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+        
+        ! Basic placeholder
+        call server%handle_text_document_did_change("file:///placeholder.f90", 2, "program modified\nend program", success)
+        
+    end subroutine handle_did_change_notification
+    
+    subroutine handle_did_save_notification(server, message, success)
+        use fluff_lsp_server
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+        
+        ! Basic placeholder
+        call server%handle_text_document_did_save("file:///placeholder.f90", success)
+        
+    end subroutine handle_did_save_notification
+    
+    subroutine handle_did_close_notification(server, message, success)
+        use fluff_lsp_server
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+        
+        ! Basic placeholder
+        call server%handle_text_document_did_close("file:///placeholder.f90", success)
+        
+    end subroutine handle_did_close_notification
+    
+    subroutine handle_formatting_request(server, id, message, success)
+        use fluff_lsp_server
+        use iso_fortran_env, only: output_unit
+        type(fluff_lsp_server_t), intent(inout) :: server
+        integer, intent(in) :: id
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+        
+        character(len=:), allocatable :: formatted_content, response
+        
+        ! Basic placeholder - would extract URI from JSON
+        call server%format_document("file:///placeholder.f90", formatted_content, success)
+        
+        if (success) then
+            response = create_json_response(id, '"' // formatted_content // '"')
+        else
+            response = create_json_error_response(id, -32603, "Formatting failed")
+        end if
+        
+        write(output_unit, '(A)') response
+        
+    end subroutine handle_formatting_request
+    
+    ! Create JSON-RPC response
+    function create_json_response(id, result) result(json_response)
+        integer, intent(in) :: id
+        character(len=*), intent(in) :: result
+        character(len=:), allocatable :: json_response
+        
+        character(len=20) :: id_str
+        
+        write(id_str, '(I0)') id
+        json_response = '{"jsonrpc":"2.0","id":' // trim(id_str) // ',"result":' // result // '}'
+        
+    end function create_json_response
+    
+    ! Create JSON-RPC error response
+    function create_json_error_response(id, error_code, message) result(json_response)
+        integer, intent(in) :: id, error_code
+        character(len=*), intent(in) :: message
+        character(len=:), allocatable :: json_response
+        
+        character(len=20) :: id_str, code_str
+        
+        write(id_str, '(I0)') id
+        write(code_str, '(I0)') error_code
+        
+        json_response = '{"jsonrpc":"2.0","id":' // trim(id_str) // &
+                       ',"error":{"code":' // trim(code_str) // &
+                       ',"message":"' // message // '"}}'
+        
+    end function create_json_error_response
     
     ! Print diagnostics
     subroutine print_diagnostics(diagnostics, format)

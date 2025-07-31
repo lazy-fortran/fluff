@@ -1,6 +1,5 @@
 program test_ast_debug
     use fortfront
-    use fluff_formatter_visitor, only: get_node_as_declaration
     implicit none
     
     type(ast_arena_t) :: arena
@@ -83,13 +82,7 @@ program test_ast_debug
         
         ! Show declaration details
         if (get_node_type(arena, i) == NODE_DECLARATION) then
-            block
-                type(declaration_node), pointer :: decl
-                decl => get_node_as_declaration(arena, i)
-                if (associated(decl)) then
-                    print *, "    Declaration:", decl%type_name, "::", decl%var_name
-                end if
-            end block
+            print *, "    Declaration node found"
         end if
     end do
     

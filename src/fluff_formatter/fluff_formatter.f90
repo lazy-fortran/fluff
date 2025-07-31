@@ -1,6 +1,8 @@
 module fluff_formatter
     ! Code formatting engine
     use fluff_ast
+    use fluff_format_quality
+    use fluff_user_feedback
     use fortfront, only: format_options_t
     implicit none
     private
@@ -10,6 +12,8 @@ module fluff_formatter
         logical :: is_initialized = .false.
         type(format_options_t) :: options
         character(len=:), allocatable :: current_style_guide
+        type(aesthetic_settings_t) :: aesthetic_settings
+        logical :: enable_quality_improvements = .true.
     contains
         procedure :: initialize => formatter_initialize
         procedure :: format_file => formatter_format_file
@@ -19,6 +23,14 @@ module fluff_formatter
         procedure :: set_style_guide => formatter_set_style_guide
         procedure :: configure_style => formatter_configure_style
         procedure :: detect_style_guide => formatter_detect_style_guide
+        procedure :: validate_format => formatter_validate_format
+        procedure :: compare_semantics => formatter_compare_semantics
+        procedure :: analyze_format_diff => formatter_analyze_format_diff
+        procedure :: assess_quality => formatter_assess_quality
+        procedure :: format_with_quality => formatter_format_with_quality
+        procedure :: set_aesthetic_settings => formatter_set_aesthetic_settings
+        procedure :: collect_user_feedback => formatter_collect_user_feedback
+        procedure :: format_with_feedback => formatter_format_with_feedback
     end type formatter_engine_t
     
     ! Public procedures
@@ -41,6 +53,10 @@ contains
         ! Set default style guide and options
         this%current_style_guide = "clean"
         call configure_clean_style(this)
+        
+        ! Initialize aesthetic settings
+        this%aesthetic_settings = create_aesthetic_settings()
+        this%enable_quality_improvements = .true.
         
     end subroutine formatter_initialize
     
@@ -81,8 +97,22 @@ contains
         character(len=:), allocatable, intent(out) :: formatted_code
         character(len=:), allocatable, intent(out) :: error_msg
         
+        character(len=:), allocatable :: temp_code
+        
         ! Use fortfront's new formatting API with options
-        call transform_lazy_fortran_string_with_format(source_code, formatted_code, error_msg, this%options)
+        call transform_lazy_fortran_string_with_format(source_code, temp_code, error_msg, this%options)
+        
+        if (error_msg /= "") then
+            formatted_code = ""
+            return
+        end if
+        
+        ! Apply aesthetic improvements if enabled
+        if (this%enable_quality_improvements) then
+            call apply_aesthetic_improvements(temp_code, formatted_code, this%aesthetic_settings)
+        else
+            formatted_code = temp_code
+        end if
         
     end subroutine formatter_format_source
     
@@ -278,5 +308,256 @@ contains
         formatter%options%standardize_types = .false.
         
     end subroutine configure_custom_style
+    
+    ! Format validation procedures
+    subroutine formatter_validate_format(this, original_code, formatted_code, is_valid)
+        use fortfront, only: transform_lazy_fortran_string_with_format
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: original_code, formatted_code
+        logical, intent(out) :: is_valid
+        
+        character(len=:), allocatable :: original_normalized, formatted_normalized
+        character(len=:), allocatable :: error_msg1, error_msg2
+        
+        ! Normalize both codes by formatting them identically
+        call transform_lazy_fortran_string_with_format(original_code, original_normalized, error_msg1, this%options)
+        call transform_lazy_fortran_string_with_format(formatted_code, formatted_normalized, error_msg2, this%options)
+        
+        ! If either normalization failed, validation fails
+        if (error_msg1 /= "" .or. error_msg2 /= "") then
+            is_valid = .false.
+            return
+        end if
+        
+        ! Compare normalized versions (should be identical for semantic preservation)
+        is_valid = (original_normalized == formatted_normalized)
+        
+    end subroutine formatter_validate_format
+    
+    subroutine formatter_compare_semantics(this, code1, code2, are_equivalent)
+        use fortfront, only: transform_lazy_fortran_string_with_format
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: code1, code2
+        logical, intent(out) :: are_equivalent
+        
+        character(len=:), allocatable :: normalized1, normalized2
+        character(len=:), allocatable :: error_msg1, error_msg2
+        
+        ! Normalize both codes by formatting them identically
+        call transform_lazy_fortran_string_with_format(code1, normalized1, error_msg1, this%options)
+        call transform_lazy_fortran_string_with_format(code2, normalized2, error_msg2, this%options)
+        
+        ! If either normalization failed, they're not equivalent
+        if (error_msg1 /= "" .or. error_msg2 /= "") then
+            are_equivalent = .false.
+            return
+        end if
+        
+        ! Remove all whitespace and compare structure
+        are_equivalent = (remove_whitespace(normalized1) == remove_whitespace(normalized2))
+        
+    end subroutine formatter_compare_semantics
+    
+    subroutine formatter_analyze_format_diff(this, original, formatted, diff_type)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: original, formatted
+        character(len=:), allocatable, intent(out) :: diff_type
+        
+        character(len=:), allocatable :: orig_no_ws, form_no_ws
+        logical :: same_structure, same_indentation, same_spacing
+        
+        ! Remove all whitespace to check structural changes
+        orig_no_ws = remove_whitespace(original)
+        form_no_ws = remove_whitespace(formatted)
+        same_structure = (orig_no_ws == form_no_ws)
+        
+        ! Check indentation patterns
+        same_indentation = check_indentation_similarity(original, formatted)
+        
+        ! Check spacing patterns
+        same_spacing = check_spacing_similarity(original, formatted)
+        
+        ! Classify the type of differences
+        if (same_structure) then
+            if (.not. same_indentation) then
+                diff_type = "indentation"
+            else if (.not. same_spacing) then
+                diff_type = "whitespace"
+            else
+                diff_type = "none"
+            end if
+        else
+            diff_type = "structure"
+        end if
+        
+    end subroutine formatter_analyze_format_diff
+    
+    ! Helper function to remove all whitespace from code
+    function remove_whitespace(code) result(cleaned)
+        character(len=*), intent(in) :: code
+        character(len=:), allocatable :: cleaned
+        integer :: i, j
+        
+        allocate(character(len=len(code)) :: cleaned)
+        j = 0
+        
+        do i = 1, len(code)
+            if (code(i:i) /= ' ' .and. code(i:i) /= char(9) .and. &
+                code(i:i) /= char(10) .and. code(i:i) /= char(13)) then
+                j = j + 1
+                cleaned(j:j) = code(i:i)
+            end if
+        end do
+        
+        cleaned = cleaned(1:j)
+        
+    end function remove_whitespace
+    
+    ! Helper function to check indentation similarity
+    function check_indentation_similarity(code1, code2) result(similar)
+        character(len=*), intent(in) :: code1, code2
+        logical :: similar
+        
+        ! Simplified check: count leading spaces in both codes
+        integer :: lines1, lines2, indent1, indent2
+        integer :: pos1, pos2, line_start1, line_start2
+        
+        lines1 = count_lines(code1)
+        lines2 = count_lines(code2)
+        
+        if (lines1 /= lines2) then
+            similar = .false.
+            return
+        end if
+        
+        ! For now, assume similar if same number of lines
+        similar = .true.
+        
+    end function check_indentation_similarity
+    
+    ! Helper function to check spacing similarity
+    function check_spacing_similarity(code1, code2) result(similar)
+        character(len=*), intent(in) :: code1, code2
+        logical :: similar
+        
+        ! Simplified: check if operators have consistent spacing
+        integer :: equals1, equals2, plus1, plus2
+        
+        equals1 = count_char_occurrences(code1, '=')
+        equals2 = count_char_occurrences(code2, '=')
+        plus1 = count_char_occurrences(code1, '+')
+        plus2 = count_char_occurrences(code2, '+')
+        
+        similar = (equals1 == equals2) .and. (plus1 == plus2)
+        
+    end function check_spacing_similarity
+    
+    ! Helper function to count lines
+    function count_lines(code) result(count)
+        character(len=*), intent(in) :: code
+        integer :: count, i
+        
+        count = 1
+        do i = 1, len(code)
+            if (code(i:i) == new_line('a')) then
+                count = count + 1
+            end if
+        end do
+        
+    end function count_lines
+    
+    ! Helper function to count character occurrences
+    function count_char_occurrences(code, char) result(count)
+        character(len=*), intent(in) :: code
+        character, intent(in) :: char
+        integer :: count, i
+        
+        count = 0
+        do i = 1, len(code)
+            if (code(i:i) == char) then
+                count = count + 1
+            end if
+        end do
+        
+    end function count_char_occurrences
+    
+    ! Quality assessment procedures
+    subroutine formatter_assess_quality(this, source_code, quality)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: source_code
+        type(format_quality_t), intent(out) :: quality
+        
+        call assess_format_quality(source_code, quality)
+        
+    end subroutine formatter_assess_quality
+    
+    subroutine formatter_format_with_quality(this, source_code, formatted_code, error_msg, quality)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: source_code
+        character(len=:), allocatable, intent(out) :: formatted_code, error_msg
+        type(format_quality_t), intent(out) :: quality
+        
+        ! Format the code
+        call this%format_source(source_code, formatted_code, error_msg)
+        
+        if (error_msg /= "") then
+            quality = create_quality_metrics()
+            return
+        end if
+        
+        ! Assess quality of formatted result
+        call assess_format_quality(formatted_code, quality)
+        
+    end subroutine formatter_format_with_quality
+    
+    subroutine formatter_set_aesthetic_settings(this, settings)
+        class(formatter_engine_t), intent(inout) :: this
+        type(aesthetic_settings_t), intent(in) :: settings
+        
+        this%aesthetic_settings = settings
+        
+    end subroutine formatter_set_aesthetic_settings
+    
+    ! User feedback procedures
+    subroutine formatter_collect_user_feedback(this, original_code, formatted_code, quality, feedback)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: original_code, formatted_code
+        type(format_quality_t), intent(in) :: quality
+        type(user_feedback_t), intent(out) :: feedback
+        
+        call collect_interactive_feedback(original_code, formatted_code, quality, feedback)
+        
+    end subroutine formatter_collect_user_feedback
+    
+    subroutine formatter_format_with_feedback(this, source_code, formatted_code, error_msg, &
+                                             quality, feedback, collect_feedback)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: source_code
+        character(len=:), allocatable, intent(out) :: formatted_code, error_msg
+        type(format_quality_t), intent(out) :: quality
+        type(user_feedback_t), intent(out) :: feedback
+        logical, intent(in), optional :: collect_feedback
+        
+        logical :: should_collect
+        
+        should_collect = .false.
+        if (present(collect_feedback)) should_collect = collect_feedback
+        
+        ! Format with quality assessment
+        call this%format_with_quality(source_code, formatted_code, error_msg, quality)
+        
+        if (error_msg /= "") then
+            feedback = create_user_feedback()
+            return
+        end if
+        
+        ! Collect user feedback if requested
+        if (should_collect) then
+            call this%collect_user_feedback(source_code, formatted_code, quality, feedback)
+        else
+            feedback = create_user_feedback()
+        end if
+        
+    end subroutine formatter_format_with_feedback
     
 end module fluff_formatter
