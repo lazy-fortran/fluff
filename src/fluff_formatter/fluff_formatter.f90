@@ -184,6 +184,18 @@ contains
     subroutine configure_clean_style(formatter)
         type(formatter_engine_t), intent(inout) :: formatter
         
+        ! Core Clean Code + Fortran-specific principles:
+        ! - 4 spaces indentation (no tabs)
+        ! - 88 character line limit 
+        ! - typename_t convention for derived types
+        ! - No polymorphic arrays (use wrapper types)
+        ! - Max 3 levels of nesting
+        ! - Extend arrays with arr = [arr, new_element] syntax
+        ! - Assignment operator (=) MUST be overloaded for derived types 
+        !   with allocatable members (prevents gfortran double-free errors)
+        ! - Intent MUST always be declared in standard Fortran
+        !   (lazy Fortran defaults to intent(in) but standard requires explicit)
+        ! - Prefer simple and elegant solutions
         formatter%options%indent_size = 4
         formatter%options%use_tabs = .false.
         formatter%options%indent_char = ' '
