@@ -9,12 +9,16 @@ module fluff_formatter
     type, public :: formatter_engine_t
         logical :: is_initialized = .false.
         type(format_options_t) :: options
+        character(len=:), allocatable :: current_style_guide
     contains
         procedure :: initialize => formatter_initialize
         procedure :: format_file => formatter_format_file
         procedure :: format_ast => formatter_format_ast
         procedure :: format_source => formatter_format_source
         procedure :: format_range => formatter_format_range
+        procedure :: set_style_guide => formatter_set_style_guide
+        procedure :: configure_style => formatter_configure_style
+        procedure :: detect_style_guide => formatter_detect_style_guide
     end type formatter_engine_t
     
     ! Public procedures
@@ -34,11 +38,9 @@ contains
         
         this%is_initialized = .true.
         
-        ! Set default options (using fortfront's format_options_t)
-        this%options%indent_size = 4
-        this%options%use_tabs = .false.
-        this%options%indent_char = ' '
-        this%options%standardize_types = .false.
+        ! Set default style guide and options
+        this%current_style_guide = "clean"
+        call configure_clean_style(this)
         
     end subroutine formatter_initialize
     
@@ -101,5 +103,133 @@ contains
         end if
         
     end subroutine formatter_format_range
+    
+    ! Set the active style guide
+    subroutine formatter_set_style_guide(this, style_name)
+        class(formatter_engine_t), intent(inout) :: this
+        character(len=*), intent(in) :: style_name
+        
+        this%current_style_guide = style_name
+        
+        ! Configure options based on style guide
+        select case (trim(style_name))
+        case ("clean")
+            call configure_clean_style(this)
+        case ("standard")
+            call configure_standard_style(this)
+        case ("modern")
+            call configure_modern_style(this)
+        case ("hpc")
+            call configure_hpc_style(this)
+        case ("custom")
+            call configure_custom_style(this)
+        case default
+            call configure_clean_style(this)  ! Default to clean style
+        end select
+        
+    end subroutine formatter_set_style_guide
+    
+    ! Configure specific style options
+    subroutine formatter_configure_style(this, option_name, option_value)
+        class(formatter_engine_t), intent(inout) :: this
+        character(len=*), intent(in) :: option_name, option_value
+        
+        select case (trim(option_name))
+        case ("indent_size")
+            read(option_value, *) this%options%indent_size
+        case ("line_length")
+            ! Note: format_options_t may not have line_length field
+            ! This is a placeholder for future enhancement
+        case ("use_tabs")
+            if (trim(option_value) == "true") then
+                this%options%use_tabs = .true.
+            else
+                this%options%use_tabs = .false.
+            end if
+        case ("standardize_types")
+            if (trim(option_value) == "true") then
+                this%options%standardize_types = .true.
+            else
+                this%options%standardize_types = .false.
+            end if
+        case default
+            ! Ignore unknown options for now
+        end select
+        
+    end subroutine formatter_configure_style
+    
+    ! Detect style guide from source code patterns
+    subroutine formatter_detect_style_guide(this, source_code, detected_style)
+        class(formatter_engine_t), intent(in) :: this
+        character(len=*), intent(in) :: source_code
+        character(len=:), allocatable, intent(out) :: detected_style
+        
+        ! Simple detection based on patterns
+        if (index(source_code, "PROGRAM") > 0 .and. index(source_code, "program") == 0) then
+            detected_style = "fortran77"
+        else if (index(source_code, "class(") > 0 .or. index(source_code, "only:") > 0) then
+            detected_style = "modern"
+        else if (index(source_code, "use mpi") > 0 .or. index(source_code, "use omp_lib") > 0 .or. &
+                index(source_code, "!$omp") > 0) then
+            detected_style = "hpc"
+        else if (index(source_code, "use iso_fortran_env") > 0) then
+            detected_style = "clean"
+        else
+            detected_style = "standard"
+        end if
+        
+    end subroutine formatter_detect_style_guide
+    
+    ! Style configuration helpers
+    subroutine configure_clean_style(formatter)
+        type(formatter_engine_t), intent(inout) :: formatter
+        
+        formatter%options%indent_size = 4
+        formatter%options%use_tabs = .false.
+        formatter%options%indent_char = ' '
+        formatter%options%standardize_types = .false.
+        
+    end subroutine configure_clean_style
+    
+    subroutine configure_standard_style(formatter)
+        type(formatter_engine_t), intent(inout) :: formatter
+        
+        formatter%options%indent_size = 4
+        formatter%options%use_tabs = .false.
+        formatter%options%indent_char = ' '
+        formatter%options%standardize_types = .true.
+        
+    end subroutine configure_standard_style
+    
+    subroutine configure_modern_style(formatter)
+        type(formatter_engine_t), intent(inout) :: formatter
+        
+        formatter%options%indent_size = 4
+        formatter%options%use_tabs = .false.
+        formatter%options%indent_char = ' '
+        formatter%options%standardize_types = .false.
+        
+    end subroutine configure_modern_style
+    
+    subroutine configure_hpc_style(formatter)
+        type(formatter_engine_t), intent(inout) :: formatter
+        
+        formatter%options%indent_size = 2  ! Compact for HPC
+        formatter%options%use_tabs = .false.
+        formatter%options%indent_char = ' '
+        formatter%options%standardize_types = .true.  ! Explicit precision
+        
+    end subroutine configure_hpc_style
+    
+    subroutine configure_custom_style(formatter)
+        type(formatter_engine_t), intent(inout) :: formatter
+        
+        ! Start with clean style defaults, allow customization
+        formatter%options%indent_size = 4
+        formatter%options%use_tabs = .false.
+        formatter%options%indent_char = ' '
+        formatter%options%standardize_types = .false.
+        
+    end subroutine configure_custom_style
     
 end module fluff_formatter
