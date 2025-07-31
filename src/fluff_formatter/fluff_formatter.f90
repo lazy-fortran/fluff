@@ -184,18 +184,53 @@ contains
     subroutine configure_clean_style(formatter)
         type(formatter_engine_t), intent(inout) :: formatter
         
-        ! Core Clean Code + Fortran-specific principles:
+        ! Core Clean Code + PEP 8 + Black + Fortran-specific principles:
+        
+        ! === LAYOUT & FORMATTING (from PEP 8 + Black) ===
         ! - 4 spaces indentation (no tabs)
-        ! - 88 character line limit 
+        ! - 88 character line limit (Black standard)
+        ! - 2 blank lines before top-level procedures
+        ! - 1 blank line between methods within modules
+        ! - Blank lines to separate logical sections (sparingly)
+        
+        ! === WHITESPACE (from PEP 8) ===
+        ! - No trailing whitespace anywhere
+        ! - No whitespace inside parentheses: func(a, b) not func( a, b )
+        ! - No whitespace before commas: a, b, c not a , b , c
+        ! - Single space after commas: a, b, c not a,b,c
+        ! - Spaces around binary operators: a + b not a+b
+        ! - Trailing commas in multiline constructs (from Black)
+        
+        ! === NAMING (snake_case only, no CamelCase) ===
         ! - typename_t convention for derived types
-        ! - No polymorphic arrays (use wrapper types)
-        ! - Max 3 levels of nesting
-        ! - Extend arrays with arr = [arr, new_element] syntax
+        ! - snake_case for variables, procedures, modules
+        ! - SCREAMING_SNAKE_CASE for constants
+        ! - No single character names except loop counters (i, j, k)
+        
+        ! === STRINGS & COMMENTS ===
+        ! - Consistent quote style (prefer double quotes like Black)
+        ! - Comments are complete sentences with proper capitalization
+        ! - Use inline comments sparingly
+        
+        ! === FORTRAN-SPECIFIC CRITICAL RULES ===
         ! - Assignment operator (=) MUST be overloaded for derived types 
         !   with allocatable members (prevents gfortran double-free errors)
         ! - Intent MUST always be declared in standard Fortran
         !   (lazy Fortran defaults to intent(in) but standard requires explicit)
-        ! - Prefer simple and elegant solutions
+        ! - No polymorphic arrays (use wrapper types)
+        ! - Max 3 levels of nesting for readability
+        ! - Extend arrays with arr = [arr, new_element] syntax
+        
+        ! === MODERN FORTRAN BEST PRACTICES ===
+        ! - Always use 'only:' clause in use statements
+        ! - Group imports: intrinsic modules, external libraries, local modules
+        ! - Prefer 'pure' and 'elemental' procedures when possible
+        ! - Prefer 'allocatable' over 'pointer'
+        ! - Use 'associate' constructs for complex expressions
+        ! - Always use 'stat=' and 'errmsg=' for error handling
+        ! - Always deallocate what you allocate
+        ! - Use dummy argument associate blocks to avoid warnings
+        
         formatter%options%indent_size = 4
         formatter%options%use_tabs = .false.
         formatter%options%indent_char = ' '
