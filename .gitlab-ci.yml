@@ -1,0 +1,37 @@
+stages:
+  - build
+  - test
+  - lint
+
+variables:
+  FPM_VERSION: "0.8.2"
+
+before_script:
+  - apt-get update -qq && apt-get install -y -qq gfortran wget
+  - wget https://github.com/fortran-lang/fpm/releases/download/v${FPM_VERSION}/fpm-${FPM_VERSION}-linux-x86_64
+  - chmod +x fpm-${FPM_VERSION}-linux-x86_64
+  - mv fpm-${FPM_VERSION}-linux-x86_64 /usr/local/bin/fpm
+
+build:
+  stage: build
+  script:
+    - fpm build
+  artifacts:
+    paths:
+      - build/
+    expire_in: 1 hour
+
+test:
+  stage: test
+  dependencies:
+    - build
+  script:
+    - fpm test
+
+lint:
+  stage: lint
+  dependencies:
+    - build
+  script:
+    - ./build/gfortran_*/app/fluff check src/
+  allow_failure: true

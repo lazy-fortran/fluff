@@ -249,8 +249,39 @@ contains
         character(len=*), intent(in) :: content
         logical :: is_valid
         
-        ! Simplified UTF-8 validation
-        is_valid = this%utf8_support .and. len(content) > 0
+        integer :: i, byte_val
+        
+        is_valid = .true.
+        
+        if (.not. this%utf8_support) then
+            is_valid = .false.
+            return
+        end if
+        
+        if (len(content) == 0) then
+            is_valid = .false.
+            return
+        end if
+        
+        ! Basic UTF-8 validation - check for invalid byte sequences
+        do i = 1, len(content)
+            byte_val = iachar(content(i:i))
+            
+            ! Check for invalid UTF-8 sequences (simplified)
+            if (byte_val == 255 .or. byte_val == 254) then
+                is_valid = .false.
+                return
+            end if
+            
+            ! Additional invalid patterns for malformed UTF-8
+            if (byte_val >= 240 .and. byte_val <= 244) then
+                ! 4-byte UTF-8 sequence - check if we have enough bytes
+                if (i + 3 > len(content)) then
+                    is_valid = .false.
+                    return
+                end if
+            end if
+        end do
         
     end function stdin_validate_utf8
     
@@ -330,9 +361,32 @@ contains
         class(config_discovery_t), intent(inout) :: this
         logical :: found
         
-        ! Simplified - would traverse parent directories
-        found = .true.  ! Placeholder
-        if (found) this%found_config_path = "../fluff.toml"
+        logical :: file_exists
+        character(len=512) :: test_path
+        integer :: levels, i
+        
+        found = .false.
+        levels = 5  ! Check up to 5 parent directories
+        
+        do i = 1, levels
+            select case (i)
+            case (1)
+                test_path = "../fluff.toml"
+            case (2)
+                test_path = "../../fluff.toml"
+            case (3)
+                test_path = "../../../fluff.toml"
+            case default
+                test_path = "../../../../fluff.toml"
+            end select
+            
+            inquire(file=trim(test_path), exist=file_exists)
+            if (file_exists) then
+                found = .true.
+                this%found_config_path = trim(test_path)
+                return
+            end if
+        end do
         
     end function config_find_in_parent_dirs
     
@@ -391,40 +445,95 @@ contains
     subroutine env_get_fluff_config(this)
         class(environment_handler_t), intent(inout) :: this
         
-        ! Simplified - would get FLUFF_CONFIG environment variable
-        this%config_path = "fluff.toml"
+        character(len=256) :: env_value
+        integer :: status
+        
+        ! Get FLUFF_CONFIG environment variable
+        call get_environment_variable("FLUFF_CONFIG", env_value, status=status)
+        
+        if (status == 0 .and. len_trim(env_value) > 0) then
+            this%config_path = trim(env_value)
+        else
+            ! Default fallback
+            this%config_path = "fluff.toml"
+        end if
         
     end subroutine env_get_fluff_config
     
     subroutine env_get_cache_dir(this)
         class(environment_handler_t), intent(inout) :: this
         
-        ! Simplified - would get FLUFF_CACHE_DIR environment variable
-        this%cache_dir = ".fluff_cache"
+        character(len=256) :: env_value
+        integer :: status
+        
+        ! Get FLUFF_CACHE_DIR environment variable
+        call get_environment_variable("FLUFF_CACHE_DIR", env_value, status=status)
+        
+        if (status == 0 .and. len_trim(env_value) > 0) then
+            this%cache_dir = trim(env_value)
+        else
+            ! Default fallback
+            this%cache_dir = ".fluff_cache"
+        end if
         
     end subroutine env_get_cache_dir
     
     subroutine env_get_log_level(this)
         class(environment_handler_t), intent(inout) :: this
         
-        ! Simplified - would get FLUFF_LOG_LEVEL environment variable
-        this%log_level = "INFO"
+        character(len=256) :: env_value
+        integer :: status
+        
+        ! Get FLUFF_LOG_LEVEL environment variable
+        call get_environment_variable("FLUFF_LOG_LEVEL", env_value, status=status)
+        
+        if (status == 0 .and. len_trim(env_value) > 0) then
+            ! Validate log level
+            select case (trim(env_value))
+            case ("DEBUG", "INFO", "WARNING", "ERROR")
+                this%log_level = trim(env_value)
+            case default
+                this%log_level = "INFO"  ! Invalid level, use default
+            end select
+        else
+            this%log_level = "INFO"
+        end if
         
     end subroutine env_get_log_level
     
     subroutine env_check_no_color(this)
         class(environment_handler_t), intent(inout) :: this
         
-        ! Simplified - would check NO_COLOR environment variable
-        this%no_color = .false.
+        character(len=256) :: env_value
+        integer :: status
+        
+        call get_environment_variable("NO_COLOR", env_value, status=status)
+        
+        ! NO_COLOR is set to any value (even empty) to disable colors
+        this%no_color = (status == 0)
         
     end subroutine env_check_no_color
     
     subroutine env_detect_ci_environment(this)
         class(environment_handler_t), intent(inout) :: this
         
-        ! Simplified - would check CI, GITHUB_ACTIONS, etc.
+        character(len=256) :: env_value
+        integer :: status
+        
         this%ci_detected = .false.
+        
+        ! Check for common CI environment variables
+        call get_environment_variable("CI", env_value, status=status)
+        if (status == 0) this%ci_detected = .true.
+        
+        call get_environment_variable("GITHUB_ACTIONS", env_value, status=status)
+        if (status == 0) this%ci_detected = .true.
+        
+        call get_environment_variable("GITLAB_CI", env_value, status=status)
+        if (status == 0) this%ci_detected = .true.
+        
+        call get_environment_variable("JENKINS_URL", env_value, status=status)
+        if (status == 0) this%ci_detected = .true.
         
     end subroutine env_detect_ci_environment
     

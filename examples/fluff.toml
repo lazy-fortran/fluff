@@ -1,0 +1,54 @@
+# Example fluff configuration file
+# Place this file in your project root as 'fluff.toml'
+
+[tool.fluff]
+# Target directories to analyze
+target-dirs = ["src", "test", "examples"]
+
+# File patterns to include/exclude
+include = ["*.f90", "*.F90", "*.f95", "*.F95", "*.f03", "*.F03", "*.f08", "*.F08"]
+exclude = ["build/**", "*.tmp", "backup_*"]
+
+# Maximum line length (default: 88)
+line-length = 88
+
+# Rule configuration
+[tool.fluff.rules]
+# Format rules
+select = [
+    "F001",  # implicit-none
+    "F002",  # indentation
+    "F003",  # line-length
+    "F004",  # trailing-whitespace
+    "F005",  # mixed-tabs-spaces
+]
+
+# Performance rules
+extend-select = [
+    "P001",  # redundant-computation
+    "P002",  # loop-ordering
+    "P003",  # array-temporaries
+]
+
+# Rules to ignore
+ignore = [
+    "F006",  # unused-variable (might be intentional)
+]
+
+# Per-file ignores
+[tool.fluff.per-file-ignores]
+"test_*.f90" = ["F012"]  # Allow non-standard naming in tests
+"legacy/*.f90" = ["F010"]  # Allow obsolete features in legacy code
+
+# Formatter settings
+[tool.fluff.format]
+indent-width = 4
+max-line-length = 88
+quote-style = "double"
+trailing-comma = "always"
+
+# LSP server settings
+[tool.fluff.lsp]
+enable = true
+port = 8080
+log-level = "INFO"
