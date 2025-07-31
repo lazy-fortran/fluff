@@ -1,7 +1,7 @@
 module fluff_formatter
     ! Code formatting engine
-    use fluff_core
     use fluff_ast
+    use fortfront, only: format_options_t
     implicit none
     private
     
@@ -34,11 +34,11 @@ contains
         
         this%is_initialized = .true.
         
-        ! Set default options
+        ! Set default options (using fortfront's format_options_t)
         this%options%indent_size = 4
-        this%options%line_length = 88
-        this%options%use_spaces = .true.
-        this%options%style_guide = "standard"
+        this%options%use_tabs = .false.
+        this%options%indent_char = ' '
+        this%options%standardize_types = .false.
         
     end subroutine formatter_initialize
     
@@ -73,20 +73,14 @@ contains
     
     ! Format source code
     subroutine formatter_format_source(this, source_code, formatted_code, error_msg)
+        use fortfront, only: transform_lazy_fortran_string_with_format
         class(formatter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: formatted_code
         character(len=:), allocatable, intent(out) :: error_msg
         
-        type(fluff_ast_context_t) :: ast_ctx
-        
-        ! Parse source to AST using fortfront
-        ast_ctx = create_ast_context()
-        call ast_ctx%from_source(source_code, error_msg)
-        if (error_msg /= "") return
-        
-        ! Format the AST using fortfront's code generation
-        call this%format_ast(ast_ctx, formatted_code)
+        ! Use fortfront's new formatting API with options
+        call transform_lazy_fortran_string_with_format(source_code, formatted_code, error_msg, this%options)
         
     end subroutine formatter_format_source
     
