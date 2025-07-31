@@ -44,6 +44,14 @@ module fluff_core
         character(len=:), allocatable :: error_msg
     end type fluff_result_t
     
+    ! Formatting options (moved from fluff_formatter to avoid circular deps)
+    type, public :: format_options_t
+        integer :: indent_size = 4
+        integer :: line_length = 88
+        logical :: use_spaces = .true.
+        character(len=:), allocatable :: style_guide  ! "standard", "modern"
+    end type format_options_t
+    
     ! Public procedures
     public :: get_fluff_version
     public :: create_fluff_context

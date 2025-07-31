@@ -1,26 +1,9 @@
 module fluff_ast
     ! AST manipulation and traversal (fortfront wrapper)
     use fluff_core
-    ! TODO: Uncomment when fortfront provides the public API
-    ! use fortfront, only: ast_arena_t, ast_node, semantic_context_t
+    use fortfront, only: ast_arena_t, semantic_context_t, token_t
     implicit none
     private
-    
-    ! Temporary stub types until fortfront provides them
-    type :: ast_arena_t
-        integer :: dummy
-    end type ast_arena_t
-    
-    type :: semantic_context_t
-        integer :: dummy
-    end type semantic_context_t
-    
-    type :: token_t
-        integer :: kind
-        character(len=:), allocatable :: text
-        integer :: line
-        integer :: column
-    end type token_t
     
     ! AST context wrapper for fluff
     type, public :: fluff_ast_context_t
@@ -64,34 +47,35 @@ contains
     
     ! Parse source code into AST
     subroutine ast_from_source(this, source_code, error_msg)
-        ! TODO: Uncomment when fortfront provides the public API
-        ! use fortfront, only: lex_source, parse_tokens, analyze_semantics, &
-        !                     token_t, create_ast_arena, create_semantic_context
+        use fortfront, only: lex_source, parse_tokens, analyze_semantics, &
+                            token_t, ast_arena_t, semantic_context_t, &
+                            create_ast_arena, create_semantic_context
         class(fluff_ast_context_t), intent(inout) :: this
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: error_msg
         
-        ! type(token_t), allocatable :: tokens(:)
+        type(token_t), allocatable :: tokens(:)
         
         ! Initialize
         error_msg = ""
         this%is_initialized = .false.
         
-        ! TODO: Implement when fortfront API is available
-        ! ! Lexical analysis
-        ! call lex_source(source_code, tokens, error_msg)
-        ! if (error_msg /= "") return
+        ! Lexical analysis
+        call lex_source(source_code, tokens, error_msg)
+        if (error_msg /= "") return
         
-        ! ! Parsing
-        ! this%arena = create_ast_arena()
-        ! call parse_tokens(tokens, this%arena, this%root_index, error_msg)
-        ! if (error_msg /= "") return
+        ! Create AST arena
+        this%arena = create_ast_arena()
         
-        ! ! Semantic analysis
-        ! this%semantic_ctx = create_semantic_context()
-        ! call analyze_semantics(this%arena, this%root_index)
+        ! Parsing
+        call parse_tokens(tokens, this%arena, this%root_index, error_msg)
+        if (error_msg /= "") return
         
-        ! For now, just mark as initialized
+        ! Semantic analysis
+        this%semantic_ctx = create_semantic_context()
+        call analyze_semantics(this%arena, this%root_index)
+        
+        ! Mark as initialized
         this%is_initialized = .true.
         
     end subroutine ast_from_source

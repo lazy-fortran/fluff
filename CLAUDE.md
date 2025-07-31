@@ -7,3 +7,8 @@ The purpose of this project is to provide a tool like "ruff" for Python in the f
 - Build with `fpm build`
 - Test with `fpm test`
 - Run tests early and often
+
+## API Guidelines
+
+- Only use public API functions from the fortfront module
+- Expose what you need from fortfront by making changes in ../fortfront

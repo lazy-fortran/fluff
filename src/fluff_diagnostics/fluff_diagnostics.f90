@@ -12,8 +12,19 @@ module fluff_diagnostics
         enumerator :: SEVERITY_HINT = 4
     end enum
     
+    ! Output format constants
+    enum, bind(c)
+        enumerator :: OUTPUT_FORMAT_TEXT = 1
+        enumerator :: OUTPUT_FORMAT_JSON = 2
+        enumerator :: OUTPUT_FORMAT_SARIF = 3
+        enumerator :: OUTPUT_FORMAT_XML = 4
+    end enum
+    
     ! Export severity levels
     public :: SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO, SEVERITY_HINT
+    
+    ! Export output format constants
+    public :: OUTPUT_FORMAT_TEXT, OUTPUT_FORMAT_JSON, OUTPUT_FORMAT_SARIF, OUTPUT_FORMAT_XML
     
     ! Diagnostic type
     type, public :: diagnostic_t
@@ -44,22 +55,42 @@ module fluff_diagnostics
         character(len=:), allocatable :: new_text
     end type text_edit_t
     
+    ! Diagnostic statistics
+    type, public :: diagnostic_stats_t
+        integer :: total_created = 0
+        integer :: total_formatted = 0
+        real :: total_creation_time = 0.0
+        real :: total_formatting_time = 0.0
+        integer :: cache_hits = 0
+        integer :: cache_misses = 0
+    contains
+        procedure :: record_creation => stats_record_creation
+        procedure :: record_formatting => stats_record_formatting
+        procedure :: record_cache_hit => stats_record_cache_hit
+        procedure :: record_cache_miss => stats_record_cache_miss
+        procedure :: get_summary => stats_get_summary
+    end type diagnostic_stats_t
+    
     ! Diagnostic collection
     type, public :: diagnostic_collection_t
         type(diagnostic_t), allocatable :: diagnostics(:)
         integer :: count = 0
+        type(diagnostic_stats_t) :: stats
     contains
         procedure :: add => collection_add
         procedure :: clear => collection_clear
         procedure :: sort => collection_sort
         procedure :: to_json => collection_to_json
         procedure :: to_sarif => collection_to_sarif
+        procedure :: get_stats => collection_get_stats
     end type diagnostic_collection_t
     
     ! Public procedures
     public :: create_diagnostic
     public :: create_fix_suggestion
     public :: severity_to_string
+    public :: format_diagnostic
+    public :: format_diagnostic_with_source
     
 contains
     
@@ -151,14 +182,24 @@ contains
     function diagnostic_to_json(this) result(json)
         class(diagnostic_t), intent(in) :: this
         character(len=:), allocatable :: json
-        character(len=1000) :: buffer
+        character(len=20) :: line_str, col_str, end_line_str, end_col_str
         
-        write(buffer, '("{",/"  ""code"": """,A,""",",/"  ""message"": """,A,""",",/"  ""severity"": """,A,""",",/"  ""category"": """,A,""",",/"  ""location"": {",/"    ""start"": {""line"": ",I0,", ""column"": ",I0,"},",/"    ""end"": {""line"": ",I0,", ""column"": ",I0,"}",/"  }",/"}")') &
-            this%code, this%message, severity_to_string(this%severity), this%category, &
-            this%location%start%line, this%location%start%column, &
-            this%location%end%line, this%location%end%column
-            
-        json = trim(buffer)
+        ! Convert integers to strings to avoid format issues
+        write(line_str, '(I0)') this%location%start%line
+        write(col_str, '(I0)') this%location%start%column
+        write(end_line_str, '(I0)') this%location%end%line
+        write(end_col_str, '(I0)') this%location%end%column
+        
+        json = '{' // new_line('a') // &
+               '  "code": "' // this%code // '",' // new_line('a') // &
+               '  "message": "' // this%message // '",' // new_line('a') // &
+               '  "severity": "' // severity_to_string(this%severity) // '",' // new_line('a') // &
+               '  "category": "' // this%category // '",' // new_line('a') // &
+               '  "location": {' // new_line('a') // &
+               '    "start": {"line": ' // trim(line_str) // ', "column": ' // trim(col_str) // '},' // new_line('a') // &
+               '    "end": {"line": ' // trim(end_line_str) // ', "column": ' // trim(end_col_str) // '}' // new_line('a') // &
+               '  }' // new_line('a') // &
+               '}'
         
     end function diagnostic_to_json
     
@@ -197,8 +238,21 @@ contains
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: fixed_code
         
-        ! TODO: Implement fix application
-        fixed_code = source_code
+        character(len=:), allocatable :: temp_code, result_code
+        integer :: i
+        type(text_edit_t) :: edit
+        
+        ! Start with original source
+        temp_code = source_code
+        
+        ! Apply each edit in forward order
+        do i = 1, size(this%edits)
+            edit = this%edits(i)
+            call apply_single_edit(temp_code, edit, result_code)
+            temp_code = result_code
+        end do
+        
+        fixed_code = temp_code
         
     end subroutine fix_apply
     
@@ -266,5 +320,430 @@ contains
         sarif = '{"version": "2.1.0", "runs": []}'
         
     end function collection_to_sarif
+    
+    ! Format diagnostic based on output format
+    function format_diagnostic(diagnostic, output_format) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        integer, intent(in) :: output_format
+        character(len=:), allocatable :: formatted
+        
+        select case (output_format)
+        case (OUTPUT_FORMAT_TEXT)
+            formatted = format_diagnostic_text(diagnostic)
+        case (OUTPUT_FORMAT_JSON)
+            formatted = diagnostic%to_json()
+        case (OUTPUT_FORMAT_SARIF)
+            formatted = format_diagnostic_sarif(diagnostic)
+        case (OUTPUT_FORMAT_XML)
+            formatted = format_diagnostic_xml(diagnostic)
+        case default
+            formatted = diagnostic%to_string()
+        end select
+        
+    end function format_diagnostic
+    
+    ! Format diagnostic with source context
+    function format_diagnostic_with_source(diagnostic, source_lines, output_format) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=*), intent(in) :: source_lines
+        integer, intent(in) :: output_format
+        character(len=:), allocatable :: formatted
+        
+        select case (output_format)
+        case (OUTPUT_FORMAT_TEXT)
+            formatted = format_diagnostic_text_with_source(diagnostic, source_lines)
+        case (OUTPUT_FORMAT_JSON)
+            formatted = format_diagnostic_json_with_source(diagnostic, source_lines)
+        case (OUTPUT_FORMAT_SARIF)
+            formatted = format_diagnostic_sarif_with_source(diagnostic, source_lines)
+        case default
+            formatted = format_diagnostic_text_with_source(diagnostic, source_lines)
+        end select
+        
+    end function format_diagnostic_with_source
+    
+    ! Format diagnostic as text
+    function format_diagnostic_text(diagnostic) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=:), allocatable :: formatted
+        character(len=1000) :: buffer
+        character(len=:), allocatable :: severity_str
+        
+        severity_str = severity_to_string(diagnostic%severity)
+        
+        write(buffer, '("file:",I0,":",I0,": ",A," [",A,"] ",A)') &
+            diagnostic%location%start%line, diagnostic%location%start%column, &
+            severity_str, diagnostic%code, diagnostic%message
+        
+        formatted = trim(buffer)
+        
+        ! Add fix suggestions if present  
+        if (allocated(diagnostic%fixes)) then
+            if (size(diagnostic%fixes) > 0) then
+                formatted = formatted // new_line('a') // &
+                          "  Fix: " // diagnostic%fixes(1)%description
+            end if
+        end if
+        
+    end function format_diagnostic_text
+    
+    ! Format diagnostic as text with source context
+    function format_diagnostic_text_with_source(diagnostic, source_lines) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=*), intent(in) :: source_lines
+        character(len=:), allocatable :: formatted
+        character(len=:), allocatable :: lines(:)
+        character(len=1000) :: buffer
+        integer :: target_line
+        
+        ! Split source into lines
+        call split_lines(source_lines, lines)
+        
+        target_line = diagnostic%location%start%line
+        
+        ! Format basic diagnostic
+        formatted = format_diagnostic_text(diagnostic)
+        
+        ! Add source context
+        if (target_line > 0 .and. target_line <= size(lines)) then
+            formatted = formatted // new_line('a')
+            
+            ! Show context lines (before)
+            if (target_line > 1) then
+                write(buffer, '(I4," | ",A)') target_line - 1, lines(target_line - 1)
+                formatted = formatted // trim(buffer) // new_line('a')
+            end if
+            
+            ! Show the problematic line
+            write(buffer, '(I4," | ",A)') target_line, lines(target_line)
+            formatted = formatted // trim(buffer) // new_line('a')
+            
+            ! Show context lines (after)
+            if (target_line < size(lines)) then
+                write(buffer, '(I4," | ",A)') target_line + 1, lines(target_line + 1)
+                formatted = formatted // trim(buffer) // new_line('a')
+            end if
+        end if
+        
+    end function format_diagnostic_text_with_source
+    
+    ! Format diagnostic as SARIF
+    function format_diagnostic_sarif(diagnostic) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=:), allocatable :: formatted
+        character(len=20) :: start_line_str, start_col_str, end_line_str, end_col_str
+        
+        ! Convert integers to strings
+        write(start_line_str, '(I0)') diagnostic%location%start%line
+        write(start_col_str, '(I0)') diagnostic%location%start%column
+        write(end_line_str, '(I0)') diagnostic%location%end%line
+        write(end_col_str, '(I0)') diagnostic%location%end%column
+        
+        formatted = '{' // new_line('a') // &
+                   '  "ruleId": "' // diagnostic%code // '",' // new_line('a') // &
+                   '  "message": {"text": "' // diagnostic%message // '"},' // new_line('a') // &
+                   '  "level": "' // severity_to_sarif_level(diagnostic%severity) // '",' // new_line('a') // &
+                   '  "locations": [{' // new_line('a') // &
+                   '    "physicalLocation": {' // new_line('a') // &
+                   '      "artifactLocation": {"uri": "file"},' // new_line('a') // &
+                   '      "region": {"startLine": ' // trim(start_line_str) // &
+                   ', "startColumn": ' // trim(start_col_str) // &
+                   ', "endLine": ' // trim(end_line_str) // &
+                   ', "endColumn": ' // trim(end_col_str) // '}' // new_line('a') // &
+                   '    }' // new_line('a') // &
+                   '  }]' // new_line('a') // &
+                   '}'
+        
+    end function format_diagnostic_sarif
+    
+    ! Format diagnostic as SARIF with source
+    function format_diagnostic_sarif_with_source(diagnostic, source_lines) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=*), intent(in) :: source_lines
+        character(len=:), allocatable :: formatted
+        
+        ! For now, just return basic SARIF - could be enhanced with source snippets
+        formatted = format_diagnostic_sarif(diagnostic)
+        
+    end function format_diagnostic_sarif_with_source
+    
+    ! Format diagnostic as JSON with source
+    function format_diagnostic_json_with_source(diagnostic, source_lines) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=*), intent(in) :: source_lines
+        character(len=:), allocatable :: formatted
+        
+        ! For now, just return basic JSON - could be enhanced with source snippets
+        formatted = diagnostic%to_json()
+        
+    end function format_diagnostic_json_with_source
+    
+    ! Format diagnostic as XML
+    function format_diagnostic_xml(diagnostic) result(formatted)
+        type(diagnostic_t), intent(in) :: diagnostic
+        character(len=:), allocatable :: formatted
+        character(len=1000) :: buffer
+        
+        write(buffer, '("<diagnostic code=""",A,""" severity=""",A,""" category=""",A,""">",/"  <message>",A,"</message>",/"  <location line=""",I0,""" column=""",I0,"""/>",/"</diagnostic>")') &
+            diagnostic%code, severity_to_string(diagnostic%severity), diagnostic%category, &
+            diagnostic%message, diagnostic%location%start%line, diagnostic%location%start%column
+        
+        formatted = trim(buffer)
+        
+    end function format_diagnostic_xml
+    
+    ! Convert severity to SARIF level
+    function severity_to_sarif_level(severity) result(level)
+        integer, intent(in) :: severity
+        character(len=:), allocatable :: level
+        
+        select case (severity)
+        case (SEVERITY_ERROR)
+            level = "error"
+        case (SEVERITY_WARNING)
+            level = "warning"
+        case (SEVERITY_INFO)
+            level = "note"
+        case (SEVERITY_HINT)
+            level = "note"
+        case default
+            level = "note"
+        end select
+        
+    end function severity_to_sarif_level
+    
+    ! Split source text into lines
+    subroutine split_lines(source_text, lines)
+        character(len=*), intent(in) :: source_text
+        character(len=:), allocatable, intent(out) :: lines(:)
+        
+        integer :: i, line_count, start_pos, end_pos, max_line_len
+        character(len=:), allocatable :: temp_lines(:)
+        
+        if (len(source_text) == 0) then
+            allocate(character(len=0) :: lines(1))
+            lines(1) = ""
+            return
+        end if
+        
+        ! Count lines
+        line_count = 1
+        do i = 1, len(source_text)
+            if (source_text(i:i) == new_line('a')) then
+                line_count = line_count + 1
+            end if
+        end do
+        
+        ! Find maximum line length to allocate properly
+        max_line_len = len(source_text)  ! Conservative upper bound
+        
+        ! Allocate with enough space
+        allocate(character(len=max_line_len) :: temp_lines(line_count))
+        
+        ! Split into lines
+        line_count = 0
+        start_pos = 1
+        
+        do i = 1, len(source_text)
+            if (source_text(i:i) == new_line('a') .or. i == len(source_text)) then
+                line_count = line_count + 1
+                if (source_text(i:i) == new_line('a')) then
+                    end_pos = i - 1
+                else
+                    end_pos = i
+                end if
+                
+                if (end_pos >= start_pos) then
+                    temp_lines(line_count) = source_text(start_pos:end_pos)
+                else
+                    temp_lines(line_count) = ""
+                end if
+                
+                start_pos = i + 1
+            end if
+        end do
+        
+        ! Copy to result with proper length
+        allocate(character(len=max_line_len) :: lines(line_count))
+        lines(1:line_count) = temp_lines(1:line_count)
+        
+    end subroutine split_lines
+    
+    ! Apply a single text edit to source code
+    subroutine apply_single_edit(source_text, edit, result_text)
+        character(len=*), intent(in) :: source_text
+        type(text_edit_t), intent(in) :: edit
+        character(len=:), allocatable, intent(out) :: result_text
+        
+        character(len=:), allocatable :: lines(:)
+        character(len=:), allocatable :: line_text
+        integer :: target_line, start_col, end_col
+        
+        ! Split source into lines
+        call split_lines(source_text, lines)
+        
+        target_line = edit%range%start%line
+        start_col = edit%range%start%column
+        end_col = edit%range%end%column
+        
+        ! Apply edit to the target line
+        if (target_line > 0 .and. target_line <= size(lines)) then
+            line_text = lines(target_line)
+            
+            ! Handle insertion (start_col == end_col)
+            if (start_col == end_col) then
+                if (start_col == 1) then
+                    ! Insert at beginning of line
+                    lines(target_line) = edit%new_text // line_text
+                else if (start_col > len(line_text)) then
+                    ! Insert at end of line
+                    lines(target_line) = line_text // edit%new_text
+                else
+                    ! Insert in middle of line
+                    lines(target_line) = line_text(1:start_col-1) // edit%new_text // line_text(start_col:)
+                end if
+            else
+                ! Handle replacement (start_col != end_col)
+                if (start_col == 1 .and. end_col > len(line_text)) then
+                    ! Replace entire line
+                    lines(target_line) = edit%new_text
+                else if (start_col == 1) then
+                    ! Replace from beginning
+                    if (end_col <= len(line_text)) then
+                        lines(target_line) = edit%new_text // line_text(end_col+1:)
+                    else
+                        lines(target_line) = edit%new_text
+                    end if
+                else if (end_col > len(line_text)) then
+                    ! Replace to end
+                    lines(target_line) = line_text(1:start_col-1) // edit%new_text
+                else
+                    ! Replace middle section
+                    lines(target_line) = line_text(1:start_col-1) // edit%new_text // line_text(end_col+1:)
+                end if
+            end if
+        end if
+        
+        ! Reconstruct source text from lines
+        call reconstruct_from_lines(lines, result_text)
+        
+    end subroutine apply_single_edit
+    
+    ! Reconstruct source text from lines array
+    subroutine reconstruct_from_lines(lines, result_text)
+        character(len=:), allocatable, intent(in) :: lines(:)
+        character(len=:), allocatable, intent(out) :: result_text
+        
+        integer :: i, total_len
+        
+        ! Calculate total length needed
+        total_len = 0
+        do i = 1, size(lines)
+            total_len = total_len + len(lines(i))
+            if (i < size(lines)) total_len = total_len + 1  ! For newlines
+        end do
+        
+        ! Allocate result
+        allocate(character(len=total_len) :: result_text)
+        
+        ! Build result
+        result_text = ""
+        do i = 1, size(lines)
+            result_text = result_text // lines(i)
+            if (i < size(lines)) then
+                result_text = result_text // new_line('a')
+            end if
+        end do
+        
+    end subroutine reconstruct_from_lines
+    
+    ! Statistics tracking procedures
+    subroutine stats_record_creation(this, creation_time)
+        class(diagnostic_stats_t), intent(inout) :: this
+        real, intent(in) :: creation_time
+        
+        this%total_created = this%total_created + 1
+        this%total_creation_time = this%total_creation_time + creation_time
+        
+    end subroutine stats_record_creation
+    
+    subroutine stats_record_formatting(this, formatting_time)
+        class(diagnostic_stats_t), intent(inout) :: this
+        real, intent(in) :: formatting_time
+        
+        this%total_formatted = this%total_formatted + 1
+        this%total_formatting_time = this%total_formatting_time + formatting_time
+        
+    end subroutine stats_record_formatting
+    
+    subroutine stats_record_cache_hit(this)
+        class(diagnostic_stats_t), intent(inout) :: this
+        this%cache_hits = this%cache_hits + 1
+    end subroutine stats_record_cache_hit
+    
+    subroutine stats_record_cache_miss(this)
+        class(diagnostic_stats_t), intent(inout) :: this  
+        this%cache_misses = this%cache_misses + 1
+    end subroutine stats_record_cache_miss
+    
+    function stats_get_summary(this) result(summary)
+        class(diagnostic_stats_t), intent(in) :: this
+        character(len=:), allocatable :: summary
+        character(len=500) :: buffer
+        real :: avg_creation_time, avg_formatting_time, cache_hit_rate
+        
+        if (this%total_created > 0) then
+            avg_creation_time = this%total_creation_time / this%total_created
+        else
+            avg_creation_time = 0.0
+        end if
+        
+        if (this%total_formatted > 0) then
+            avg_formatting_time = this%total_formatting_time / this%total_formatted
+        else
+            avg_formatting_time = 0.0
+        end if
+        
+        if (this%cache_hits + this%cache_misses > 0) then
+            cache_hit_rate = real(this%cache_hits) / (this%cache_hits + this%cache_misses) * 100.0
+        else
+            cache_hit_rate = 0.0
+        end if
+        
+        ! Build summary using concatenation to avoid format issues
+        summary = "Diagnostic Stats:" // new_line('a') // &
+                 "  Created: " // trim(adjustl(int_to_string(this%total_created))) // &
+                 " (" // trim(adjustl(real_to_string(avg_creation_time))) // "s avg)" // new_line('a') // &
+                 "  Formatted: " // trim(adjustl(int_to_string(this%total_formatted))) // &
+                 " (" // trim(adjustl(real_to_string(avg_formatting_time))) // "s avg)" // new_line('a') // &
+                 "  Cache hits: " // trim(adjustl(int_to_string(this%cache_hits))) // &
+                 " (" // trim(adjustl(real_to_string(cache_hit_rate))) // "%)"
+            
+        ! summary already set above
+        
+    end function stats_get_summary
+    
+    function collection_get_stats(this) result(stats)
+        class(diagnostic_collection_t), intent(in) :: this
+        type(diagnostic_stats_t) :: stats
+        stats = this%stats
+    end function collection_get_stats
+    
+    ! Helper functions for string conversion
+    function int_to_string(val) result(str)
+        integer, intent(in) :: val
+        character(len=:), allocatable :: str
+        character(len=20) :: buffer
+        write(buffer, '(I0)') val
+        str = trim(buffer)
+    end function int_to_string
+    
+    function real_to_string(val) result(str)
+        real, intent(in) :: val
+        character(len=:), allocatable :: str
+        character(len=20) :: buffer
+        write(buffer, '(F0.6)') val
+        str = trim(buffer)
+    end function real_to_string
     
 end module fluff_diagnostics
