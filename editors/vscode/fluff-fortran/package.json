@@ -1,0 +1,246 @@
+{
+  "name": "fluff-fortran",
+  "displayName": "Fluff - Fortran Linter & Formatter",
+  "description": "Fortran linting and formatting with fluff - the ruff-inspired tool for Fortran",
+  "version": "0.1.0",
+  "publisher": "fluff-fortran",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fortran-lang/fluff"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Linters",
+    "Formatters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "fortran",
+    "linter",
+    "formatter",
+    "static-analysis",
+    "code-quality"
+  ],
+  "activationEvents": [
+    "onLanguage:fortran",
+    "onLanguage:fortran90",
+    "onLanguage:fortran-modern"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "fortran",
+        "aliases": ["Fortran", "fortran"],
+        "extensions": [".f", ".f90", ".f95", ".f03", ".f08", ".F", ".F90", ".F95", ".F03", ".F08"]
+      }
+    ],
+    "commands": [
+      {
+        "command": "fluff.check",
+        "title": "Fluff: Check Current File",
+        "icon": "$(search)"
+      },
+      {
+        "command": "fluff.checkWorkspace",
+        "title": "Fluff: Check Workspace",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "fluff.format",
+        "title": "Fluff: Format Current File",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "fluff.formatWorkspace",
+        "title": "Fluff: Format Workspace",
+        "icon": "$(symbol-color)"
+      },
+      {
+        "command": "fluff.fix",
+        "title": "Fluff: Fix Current File",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "fluff.restart",
+        "title": "Fluff: Restart Language Server",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "fluff.check",
+          "when": "resourceExtname in fluff.fortranExtensions",
+          "group": "fluff"
+        },
+        {
+          "command": "fluff.format",
+          "when": "resourceExtname in fluff.fortranExtensions",
+          "group": "fluff"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "fluff.check",
+          "when": "resourceExtname in fluff.fortranExtensions",
+          "group": "fluff"
+        },
+        {
+          "command": "fluff.format",
+          "when": "resourceExtname in fluff.fortranExtensions",
+          "group": "fluff"
+        },
+        {
+          "command": "fluff.fix",
+          "when": "resourceExtname in fluff.fortranExtensions",
+          "group": "fluff"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "fluff.check",
+          "when": "resourceExtname in fluff.fortranExtensions"
+        },
+        {
+          "command": "fluff.checkWorkspace"
+        },
+        {
+          "command": "fluff.format",
+          "when": "resourceExtname in fluff.fortranExtensions"
+        },
+        {
+          "command": "fluff.formatWorkspace"
+        },
+        {
+          "command": "fluff.fix",
+          "when": "resourceExtname in fluff.fortranExtensions"
+        },
+        {
+          "command": "fluff.restart"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Fluff Configuration",
+      "properties": {
+        "fluff.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable fluff linting and formatting"
+        },
+        "fluff.executable": {
+          "type": "string",
+          "default": "fluff",
+          "description": "Path to the fluff executable"
+        },
+        "fluff.configFile": {
+          "type": "string",
+          "default": "",
+          "description": "Path to fluff configuration file (fluff.toml or pyproject.toml)"
+        },
+        "fluff.linting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable fluff linting"
+        },
+        "fluff.linting.onSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Run fluff linting on file save"
+        },
+        "fluff.linting.onType": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run fluff linting as you type (may impact performance)"
+        },
+        "fluff.formatting.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable fluff formatting"
+        },
+        "fluff.formatting.onSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Run fluff formatting on file save"
+        },
+        "fluff.formatting.provider": {
+          "type": "boolean",
+          "default": true,
+          "description": "Register fluff as a formatting provider"
+        },
+        "fluff.autoFix": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically fix issues when possible"
+        },
+        "fluff.showOutput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show fluff output in the output panel"
+        },
+        "fluff.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Trace communication between VS Code and the fluff language server"
+        }
+      }
+    },
+    "problemMatchers": [
+      {
+        "name": "fluff",
+        "owner": "fluff",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning|info):\\s+(.+)\\s+\\((.+)\\)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5,
+          "code": 6
+        }
+      }
+    ],
+    "taskDefinitions": [
+      {
+        "type": "fluff",
+        "required": ["command"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "enum": ["check", "format", "fix"],
+            "description": "The fluff command to run"
+          },
+          "args": {
+            "type": "array",
+            "description": "Additional arguments to pass to fluff"
+          }
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.60.0",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.31.0",
+    "@typescript-eslint/parser": "^5.31.0",
+    "eslint": "^8.20.0",
+    "typescript": "^4.7.4"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.0"
+  }
+}
