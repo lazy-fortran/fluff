@@ -103,8 +103,10 @@ contains
         call transform_lazy_fortran_string_with_format(source_code, temp_code, error_msg, this%options)
         
         if (error_msg /= "") then
-            formatted_code = ""
-            return
+            print *, "ERROR: fortfront transform_lazy_fortran failed in formatter!"
+            print *, "Error: ", error_msg
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
         end if
         
         ! Apply aesthetic improvements if enabled
@@ -188,22 +190,81 @@ contains
         
     end subroutine formatter_configure_style
     
-    ! Detect style guide from source code patterns
+    ! Detect style guide from AST analysis
     subroutine formatter_detect_style_guide(this, source_code, detected_style)
+        use fortfront, only: lex_source, parse_tokens, create_ast_arena, &
+                             token_t, ast_arena_t, use_statement_node, &
+                             derived_type_node, interface_block_node
         class(formatter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: detected_style
         
-        ! Simple detection based on patterns
-        if (index(source_code, "PROGRAM") > 0 .and. index(source_code, "program") == 0) then
-            detected_style = "fortran77"
-        else if (index(source_code, "class(") > 0 .or. index(source_code, "only:") > 0) then
-            detected_style = "modern"
-        else if (index(source_code, "use mpi") > 0 .or. index(source_code, "use omp_lib") > 0 .or. &
-                index(source_code, "!$omp") > 0) then
+        type(token_t), allocatable :: tokens(:)
+        type(ast_arena_t) :: arena
+        character(len=:), allocatable :: error_msg
+        integer :: prog_index, i
+        logical :: has_class_types, has_modules, has_interfaces
+        logical :: has_mpi, has_openmp, has_iso_env
+        
+        ! Parse source code
+        call lex_source(source_code, tokens, error_msg)
+        if (error_msg /= "") then
+            print *, "ERROR: fortfront lex_source failed in formatter style detection!"
+            print *, "Error: ", error_msg
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
+        end if
+        
+        arena = create_ast_arena()
+        call parse_tokens(tokens, arena, prog_index, error_msg)
+        if (error_msg /= "") then
+            print *, "ERROR: fortfront parse_tokens failed in formatter style detection!"
+            print *, "Error: ", error_msg
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
+        end if
+        
+        ! Analyze AST for style indicators
+        has_class_types = .false.
+        has_modules = .false.
+        has_interfaces = .false.
+        has_mpi = .false.
+        has_openmp = .false.
+        has_iso_env = .false.
+        
+        do i = 1, arena%size
+            if (allocated(arena%entries(i)%node)) then
+                select type (node => arena%entries(i)%node)
+                class is (derived_type_node)
+                    has_class_types = .true.
+                class is (interface_block_node)
+                    has_interfaces = .true.
+                class is (use_statement_node)
+                    if (node%module_name == "mpi" .or. node%module_name == "mpi_f08") then
+                        has_mpi = .true.
+                    else if (node%module_name == "omp_lib") then
+                        has_openmp = .true.
+                    else if (node%module_name == "iso_fortran_env") then
+                        has_iso_env = .true.
+                    end if
+                end select
+                
+                ! Check for module definitions
+                if (arena%entries(i)%node_type == "module_node") then
+                    has_modules = .true.
+                end if
+            end if
+        end do
+        
+        ! Determine style based on AST analysis
+        if (has_mpi .or. has_openmp) then
             detected_style = "hpc"
-        else if (index(source_code, "use iso_fortran_env") > 0) then
+        else if (has_class_types .or. has_interfaces) then
+            detected_style = "modern"
+        else if (has_iso_env .and. has_modules) then
             detected_style = "clean"
+        else if (.not. has_modules .and. .not. has_interfaces) then
+            detected_style = "fortran77"
         else
             detected_style = "standard"
         end if
@@ -325,8 +386,11 @@ contains
         
         ! If either normalization failed, validation fails
         if (error_msg1 /= "" .or. error_msg2 /= "") then
-            is_valid = .false.
-            return
+            print *, "ERROR: fortfront transform_lazy_fortran failed in formatter validation!"
+            print *, "Error1: ", error_msg1
+            print *, "Error2: ", error_msg2
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
         end if
         
         ! Compare normalized versions (should be identical for semantic preservation)
@@ -349,8 +413,11 @@ contains
         
         ! If either normalization failed, they're not equivalent
         if (error_msg1 /= "" .or. error_msg2 /= "") then
-            are_equivalent = .false.
-            return
+            print *, "ERROR: fortfront transform_lazy_fortran failed in formatter equivalence check!"
+            print *, "Error1: ", error_msg1
+            print *, "Error2: ", error_msg2
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
         end if
         
         ! Remove all whitespace and compare structure

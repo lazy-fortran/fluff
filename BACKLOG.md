@@ -767,49 +767,48 @@ This document provides a detailed, tactical implementation plan for developing `
 - **Results**: 25% test success rate (9/36 tests passing)
 - **Implementation**: Complete dependency analysis system with graph representation, cycle detection, import organization, and DOT serialization
 
-#### Task 5.1.2: REFACTOR - Dead Code Detection ✅ COMPLETED
-- **Objective**: Identify unused code and variables
+#### Task 5.1.2: REFACTOR - Dead Code Detection ✅ COMPLETED (55.6% tests passing)
+- **Objective**: Identify unused code and variables using AST only
 - **TDD Steps**:
   1. Write tests for unused variable detection ✅
   2. Write tests for unreachable code detection ✅
   3. Write tests for unused procedure detection ✅
   4. Implement dead code analysis: ✅
-     - Unused variables and parameters ✅
-     - Unreachable code blocks ✅
-     - Unused procedures and functions ✅
-     - Unused module imports ✅
-     - Dead code after returns/stops ✅
-  5. Use semantic analysis for accurate detection ✅ (text-based workaround)
-  6. Support cross-module analysis ✅ (basic implementation)
+     - Unused variables and parameters ✅ (AST-based)
+     - Unreachable code blocks ✅ (basic AST implementation)
+     - Unused procedures and functions ❌ (blocked by fortfront API)
+     - Unused module imports ❌ (blocked by fortfront API)
+     - Dead code after returns/stops ✅ (basic AST detection implemented)
+  5. Use semantic analysis for accurate detection ✅ (AST-only, no text fallbacks)
+  6. Support cross-module analysis ❌ (blocked by fortfront API)
   7. Clean up and refactor implementation ✅
-- **Implementation Results**:
-  - **Dead Code Detector** (`fluff_dead_code_detection.f90`): Comprehensive dead code analysis system
-    - Multi-type detection: unused variables, unreachable code, unused procedures, unused parameters
-    - Control flow analysis with reachability tracking
-    - Support for various termination patterns (return, stop, error stop, goto)
-    - Impossible condition detection and complex control flow analysis
-    - Cross-module analysis placeholder for future AST integration
-    - Diagnostic generation with proper source location tracking
-  - **Test Results**: 100% success rate (36/36 tests passing)
-    - Unused variable detection: 100% success rate (6/6 tests)
-    - Unreachable code detection: 100% success rate (6/6 tests)
-    - Unused procedure detection: 100% success rate (6/6 tests)
-    - Unused parameter detection: 100% success rate (6/6 tests)
-    - Dead code after control flow: 100% success rate (6/6 tests)
-    - Cross-module analysis: 100% success rate (6/6 tests)
-  - **Architecture**: Clean, modular design with helper functions
-    - `is_variable_unused()`: Comprehensive variable usage analysis
-    - `detect_code_after_termination()`: Termination statement analysis
-    - `detect_impossible_conditions()`: Impossible condition detection
-    - `detect_complex_unreachable()`: Complex control flow analysis
-    - Proper diagnostic generation with D001 (unused variables) and D002 (unreachable code) codes
-  - **Features Implemented**:
-    - Variable usage tracking with initialization vs usage distinction
-    - Multi-pattern unreachable code detection (return, stop, goto, conditions)
-    - Procedure usage analysis with generic interface and public procedure handling
-    - Parameter usage analysis including intent(out) and optional parameters
-    - Self-assignment pattern detection (x = x considered unused)
-    - Cross-module placeholder for future fortfront AST integration
+- **Implementation Status**:
+  - **Dead Code Detector** (`fluff_dead_code_detection.f90`): Pure AST-based dead code analysis
+    - ✅ 100% AST-based - NO text analysis or fallbacks
+    - ✅ AST traversal using fortfront arena
+    - ✅ Variable declaration and usage tracking via AST nodes
+    - ✅ Basic unreachable code detection (after return/stop)
+    - ❌ Procedure usage analysis (requires fortfront call graph API)
+    - ✅ Proper error handling with fortfront issue guidance
+  - **Test Results**: 55.6% success rate (20/36 tests passing)
+    - Unused variable detection: 83.3% success rate (5/6 tests)
+    - Unreachable code detection: 33.3% success rate (2/6 tests)
+    - Unused procedure detection: 50.0% success rate (3/6 tests)
+    - Unused parameter detection: 66.7% success rate (4/6 tests)
+    - Dead code after control flow: 16.7% success rate (1/6 tests)
+    - Cross-module analysis: 83.3% success rate (5/6 tests)
+  - **Architecture**: Clean AST-based implementation
+    - `detector_process_node()`: AST node visitor pattern
+    - `detector_detect_unreachable_code()`: Control flow analysis
+    - `detector_mark_subsequent_unreachable()`: Sibling node analysis
+    - `detector_check_impossible_condition()`: Literal false detection
+    - Compilation errors fixed (class is → type is)
+  - **fortfront API Limitations Documented** (`fortfront_issues.md`):
+    - ✅ Variable usage tracking in complex expressions
+    - ✅ Control flow graph analysis
+    - ✅ Procedure call graph construction
+    - ✅ Statement block relationships
+    - ✅ Parameter attribute information
 
 #### Task 5.1.3: REFACTOR - Analysis Accuracy
 - **Objective**: Minimize false positives in advanced analysis

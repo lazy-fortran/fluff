@@ -134,8 +134,11 @@ contains
             call ast_ctx%from_source(source_code, error_msg)
             
             if (allocated(error_msg) .and. len(error_msg) > 0) then
-                allocate(diagnostics(0))
-                return
+                print *, "ERROR: fortfront AST parsing failed in linter!"
+                print *, "Error: ", error_msg
+                print *, "File: ", filename
+                print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+                error stop "AST parsing required - no fallbacks!"
             end if
             
             ! Cache the parsed AST
