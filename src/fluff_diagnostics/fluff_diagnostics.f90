@@ -31,6 +31,7 @@ module fluff_diagnostics
         character(len=:), allocatable :: code        ! e.g., "F001"
         character(len=:), allocatable :: message
         character(len=:), allocatable :: category    ! style, performance, etc.
+        character(len=:), allocatable :: file_path   ! source file path
         integer :: severity = SEVERITY_WARNING
         type(source_range_t) :: location
         type(fix_suggestion_t), allocatable :: fixes(:)
@@ -95,15 +96,17 @@ module fluff_diagnostics
 contains
     
     ! Create a diagnostic
-    function create_diagnostic(code, message, location, severity) result(diag)
+    function create_diagnostic(code, message, file_path, location, severity) result(diag)
         character(len=*), intent(in) :: code
         character(len=*), intent(in) :: message
+        character(len=*), intent(in) :: file_path
         type(source_range_t), intent(in) :: location
         integer, intent(in), optional :: severity
         type(diagnostic_t) :: diag
         
         diag%code = code
         diag%message = message
+        diag%file_path = file_path
         diag%location = location
         
         if (present(severity)) then

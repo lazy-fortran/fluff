@@ -115,7 +115,7 @@ contains
         location%end%line = 10
         location%end%column = 15
         
-        diagnostic = create_diagnostic("F001", "Test diagnostic", &
+        diagnostic = create_diagnostic("F001", "Test diagnostic", "test.f90", &
                                      location, SEVERITY_WARNING)
         
         ! Add some diagnostics to trigger statistics

@@ -43,7 +43,7 @@ contains
         
         call cpu_time(start_time)
         do i = 1, iterations
-            diagnostic = create_diagnostic("F001", "Test diagnostic message", &
+            diagnostic = create_diagnostic("F001", "Test diagnostic message", "test.f90", &
                                          location, SEVERITY_WARNING)
         end do
         call cpu_time(end_time)
@@ -76,7 +76,7 @@ contains
         location%end%line = 10
         location%end%column = 15
         
-        diagnostic = create_diagnostic("F001", "Test diagnostic message", &
+        diagnostic = create_diagnostic("F001", "Test diagnostic message", "test.f90", &
                                      location, SEVERITY_WARNING)
         
         iterations = 5000
@@ -120,7 +120,7 @@ contains
         location%end%line = 10
         location%end%column = 15
         
-        diagnostic = create_diagnostic("F001", "Test diagnostic", &
+        diagnostic = create_diagnostic("F001", "Test diagnostic", "test.f90", &
                                      location, SEVERITY_WARNING)
         
         iterations = 1000
@@ -161,7 +161,7 @@ contains
         
         num_diagnostics = 100
         do i = 1, num_diagnostics
-            diagnostic = create_diagnostic("F001", "Test diagnostic", &
+            diagnostic = create_diagnostic("F001", "Test diagnostic", "test.f90", &
                                          location, SEVERITY_WARNING)
             call collection%add(diagnostic)
         end do
@@ -197,10 +197,10 @@ contains
         location%end%line = 10
         location%end%column = 15
         
-        diagnostic1 = create_diagnostic("F001", "Test diagnostic for caching", &
+        diagnostic1 = create_diagnostic("F001", "Test diagnostic for caching", "test.f90", &
                                        location, SEVERITY_WARNING)
         
-        diagnostic2 = create_diagnostic("F001", "Test diagnostic for caching", &
+        diagnostic2 = create_diagnostic("F001", "Test diagnostic for caching", "test.f90", &
                                        location, SEVERITY_WARNING)
         
         ! Time uncached formatting
