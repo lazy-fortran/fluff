@@ -13,7 +13,12 @@ module fluff_dead_code_detection
                          literal_node, print_statement_node, do_loop_node, &
                          do_while_node, select_case_node, derived_type_node, &
                          interface_block_node, module_node, use_statement_node, &
-                         include_statement_node, LITERAL_LOGICAL
+                         include_statement_node, parameter_declaration_node, &
+                         LITERAL_LOGICAL, get_symbol_info, get_symbol_references, &
+                         get_assignment_indices, get_binary_op_info, &
+                         get_identifier_name, get_call_info, get_declaration_info, &
+                         traverse_ast, node_exists, symbol_info_t, &
+                         symbol_reference_t, get_children
     use ast_arena, only: ast_entry_t
     implicit none
     private
@@ -78,6 +83,9 @@ module fluff_dead_code_detection
     contains
         procedure :: analyze_source_code => detector_analyze_source_ast
         procedure :: process_node => detector_process_node
+        procedure :: process_indices => detector_process_indices
+        procedure :: process_parameter_declarations => detector_process_parameter_declarations
+        procedure :: process_node_enhanced => detector_process_node_enhanced
         procedure :: detect_unreachable_code => detector_detect_unreachable_code
         procedure :: mark_subsequent_unreachable => detector_mark_subsequent_unreachable
         procedure :: check_impossible_condition => detector_check_impossible_condition
@@ -134,10 +142,10 @@ contains
         ! Clear visitor state
         call this%visitor%clear()
         
-        ! First pass: collect all declarations and usages
+        ! First pass: collect all declarations and usages using enhanced APIs
         do i = 1, this%arena%size
-            if (allocated(this%arena%entries(i)%node)) then
-                call this%process_node(this%arena%entries(i), i)
+            if (node_exists(this%arena, i)) then
+                call this%process_node_enhanced(i)
             end if
         end do
         
@@ -338,7 +346,17 @@ contains
         type is (assignment_node)
             ! Assignment uses variables on RHS (node%value_index)
             ! The target (node%target_index) is being assigned, not used
-            ! Need to traverse child nodes to find identifiers
+            if (node%value_index > 0 .and. node%value_index <= this%arena%size) then
+                call this%process_node(this%arena%entries(node%value_index), node%value_index)
+            end if
+        type is (binary_op_node)
+            ! Process both operands to find identifiers
+            if (node%left_index > 0 .and. node%left_index <= this%arena%size) then
+                call this%process_node(this%arena%entries(node%left_index), node%left_index)
+            end if
+            if (node%right_index > 0 .and. node%right_index <= this%arena%size) then
+                call this%process_node(this%arena%entries(node%right_index), node%right_index)
+            end if
         type is (do_loop_node)
             ! Do loops declare and use loop variables
             call this%visitor%add_declared_variable(node%var_name)
@@ -346,20 +364,37 @@ contains
         type is (call_or_subscript_node)
             ! Function calls use the function name
             call this%visitor%add_used_variable(node%name)
+            ! Process arguments
+            if (allocated(node%arg_indices)) then
+                call this%process_indices(node%arg_indices)
+            end if
         type is (subroutine_call_node)
             ! Subroutine calls use the subroutine name
             call this%visitor%add_used_variable(node%name)
+            ! Process arguments
+            if (allocated(node%arg_indices)) then
+                call this%process_indices(node%arg_indices)
+            end if
         type is (function_def_node)
             ! Function definitions declare parameters
-            ! Parameters are in node%param_indices - need arena access
+            if (allocated(node%param_indices)) then
+                call this%process_parameter_declarations(node%param_indices)
+            end if
         type is (subroutine_def_node)
             ! Subroutine definitions declare parameters
-            ! Parameters are in node%param_indices - need arena access
+            if (allocated(node%param_indices)) then
+                call this%process_parameter_declarations(node%param_indices)
+            end if
         type is (print_statement_node)
-            ! Print statements use variables in arg_indices
+            ! Print statements use variables in expression_indices
+            if (allocated(node%expression_indices)) then
+                call this%process_indices(node%expression_indices)
+            end if
         type is (if_node)
-            ! If statements have false-branch detection
-            ! Check if condition is literal .false.
+            ! Process condition to find variable usage
+            if (node%condition_index > 0 .and. node%condition_index <= this%arena%size) then
+                call this%process_node(this%arena%entries(node%condition_index), node%condition_index)
+            end if
         type is (return_node)
             ! Mark subsequent statements as potentially unreachable
             this%visitor%after_terminating_statement = .true.
@@ -371,6 +406,104 @@ contains
         end select
         
     end subroutine detector_process_node
+    
+    ! Process an array of node indices
+    subroutine detector_process_indices(this, indices)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: indices(:)
+        integer :: i
+        
+        do i = 1, size(indices)
+            if (indices(i) > 0 .and. indices(i) <= this%arena%size) then
+                if (allocated(this%arena%entries(indices(i))%node)) then
+                    call this%process_node(this%arena%entries(indices(i)), indices(i))
+                end if
+            end if
+        end do
+    end subroutine detector_process_indices
+    
+    ! Process parameter declarations
+    subroutine detector_process_parameter_declarations(this, param_indices)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: param_indices(:)
+        integer :: i
+        
+        do i = 1, size(param_indices)
+            if (param_indices(i) > 0 .and. param_indices(i) <= this%arena%size) then
+                if (allocated(this%arena%entries(param_indices(i))%node)) then
+                    select type (param_node => this%arena%entries(param_indices(i))%node)
+                    type is (parameter_declaration_node)
+                        ! Declare parameter as a variable
+                        call this%visitor%add_declared_variable(param_node%name)
+                    type is (declaration_node)
+                        ! Sometimes parameters are declaration nodes
+                        call this%visitor%add_declared_variable(param_node%var_name)
+                    end select
+                end if
+            end if
+        end do
+    end subroutine detector_process_parameter_declarations
+    
+    ! Enhanced node processing using new fortfront APIs
+    recursive subroutine detector_process_node_enhanced(this, node_index)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: node_index
+        
+        character(len=:), allocatable :: name, var_names(:), type_spec, attributes(:)
+        integer :: target_index, value_index, left_index, right_index
+        integer, allocatable :: arg_indices(:), child_indices(:)
+        character(len=:), allocatable :: operator
+        logical :: found
+        integer :: i
+        
+        ! Use new accessor functions for type-safe access
+        if (get_identifier_name(this%arena, node_index, name)) then
+            ! Variable usage
+            call this%visitor%add_used_variable(name)
+            
+        else if (get_assignment_indices(this%arena, node_index, target_index, value_index, operator)) then
+            ! Process assignment - value side for usage
+            if (value_index > 0) then
+                call this%process_node_enhanced(value_index)
+            end if
+            
+        else if (get_binary_op_info(this%arena, node_index, left_index, right_index, operator)) then
+            ! Process both operands
+            if (left_index > 0) then
+                call this%process_node_enhanced(left_index)
+            end if
+            if (right_index > 0) then
+                call this%process_node_enhanced(right_index)
+            end if
+            
+        else if (get_call_info(this%arena, node_index, name, arg_indices)) then
+            ! Function/procedure call uses the name
+            if (allocated(name) .and. name /= "") then
+                call this%visitor%add_used_variable(name)
+            end if
+            ! Process arguments
+            do i = 1, size(arg_indices)
+                if (arg_indices(i) > 0) then
+                    call this%process_node_enhanced(arg_indices(i))
+                end if
+            end do
+            
+        else if (get_declaration_info(this%arena, node_index, var_names, type_spec, attributes)) then
+            ! Variable declarations
+            do i = 1, size(var_names)
+                if (len_trim(var_names(i)) > 0) then
+                    call this%visitor%add_declared_variable(trim(var_names(i)))
+                end if
+            end do
+        end if
+        
+        ! Process child nodes using new API
+        child_indices = get_children(this%arena, node_index)
+        do i = 1, size(child_indices)
+            call this%process_node_enhanced(child_indices(i))
+        end do
+        
+    end subroutine detector_process_node_enhanced
     
     ! Helper procedures for visitor integration
     subroutine add_unused_variable_to_visitor(visitor, var_name, scope, line, col, is_param, is_dummy)
