@@ -292,7 +292,28 @@ contains
     subroutine collection_sort(this)
         class(diagnostic_collection_t), intent(inout) :: this
         
-        ! TODO: Implement sorting by file and line number
+        ! Implement sorting by file and line number using simple bubble sort
+        integer :: i, j
+        type(diagnostic_t) :: temp_diag
+        logical :: swapped
+        
+        if (this%count <= 1) return
+        
+        ! Simple bubble sort - good enough for typical diagnostic counts
+        do i = 1, this%count - 1
+            swapped = .false.
+            do j = 1, this%count - i
+                ! Compare file names first, then line numbers
+                if (should_swap_diagnostics(this%diagnostics(j), this%diagnostics(j+1))) then
+                    ! Swap diagnostics
+                    temp_diag = this%diagnostics(j)
+                    this%diagnostics(j) = this%diagnostics(j+1)
+                    this%diagnostics(j+1) = temp_diag
+                    swapped = .true.
+                end if
+            end do
+            if (.not. swapped) exit  ! Already sorted
+        end do
         
     end subroutine collection_sort
     
@@ -776,5 +797,24 @@ contains
         write(buffer, '(F0.6)') val
         str = trim(buffer)
     end function real_to_string
+    
+    ! Helper function to determine if two diagnostics should be swapped
+    function should_swap_diagnostics(diag1, diag2) result(should_swap)
+        type(diagnostic_t), intent(in) :: diag1, diag2
+        logical :: should_swap
+        
+        ! Compare file paths first
+        if (diag1%file_path /= diag2%file_path) then
+            should_swap = diag1%file_path > diag2%file_path
+        else
+            ! Same file, compare line numbers
+            if (diag1%location%start%line /= diag2%location%start%line) then
+                should_swap = diag1%location%start%line > diag2%location%start%line
+            else
+                ! Same line, compare column numbers
+                should_swap = diag1%location%start%column > diag2%location%start%column
+            end if
+        end if
+    end function should_swap_diagnostics
     
 end module fluff_diagnostics
