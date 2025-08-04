@@ -13,7 +13,8 @@ program test_fortfront_issue_complex
     source_code = "program test" // new_line('a') // &
                  "implicit none" // new_line('a') // &
                  "real :: result" // new_line('a') // &
-                 "result = very_long_function_name(arg1, arg2, arg3) + another_long_function(arg4, arg5) * complex_calculation(arg6, arg7, arg8)" // new_line('a') // &
+                 "result = very_long_function_name(arg1, arg2, arg3) + another_long_function(arg4, arg5) * " // &
+                 "complex_calculation(arg6, arg7, arg8)" // new_line('a') // &
                  "end program test"
     
     print *, "Input code:"

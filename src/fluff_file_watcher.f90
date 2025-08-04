@@ -1,6 +1,7 @@
 module fluff_file_watcher
     use fluff_core
     use fluff_lsp_performance
+    use fluff_string_utils
     use iso_fortran_env, only: int64
     implicit none
     private
@@ -331,12 +332,12 @@ contains
     ! Get watch paths
     function get_watch_paths(this) result(paths)
         class(file_watcher_t), intent(in) :: this
-        character(len=:), allocatable :: paths(:)
+        character(len=256), allocatable :: paths(:)  ! Fixed length instead of deferred
         
         if (allocated(this%watch_paths)) then
             paths = this%watch_paths
         else
-            allocate(character(len=1) :: paths(0))
+            allocate(paths(0))
         end if
         
     end function get_watch_paths
@@ -353,12 +354,12 @@ contains
     ! Get file patterns
     function get_file_patterns(this) result(patterns)
         class(file_watcher_t), intent(in) :: this
-        character(len=:), allocatable :: patterns(:)
+        character(len=256), allocatable :: patterns(:)  ! Fixed length instead of deferred
         
         if (allocated(this%config%patterns)) then
             patterns = this%config%patterns
         else
-            allocate(character(len=1) :: patterns(0))
+            allocate(patterns(0))
         end if
         
     end function get_file_patterns
@@ -541,37 +542,38 @@ contains
         
     end function get_event_count
     
-    ! Get changed files
+    ! Get changed files (returns string_array_t to avoid gfortran bug)
     function get_changed_files(this) result(files)
         class(file_watcher_t), intent(in) :: this
-        character(len=:), allocatable :: files(:)
+        type(string_array_t) :: files
         
-        integer :: i, count
-        character(len=256), allocatable :: temp_files(:)
+        integer :: i, j
+        logical :: already_added
+        character(len=256) :: current_path
         
-        ! Allocate temporary array
-        allocate(temp_files(max(this%event_count, 1)))
+        files = create_string_array()
         
-        ! Count unique changed files
-        count = 0
+        ! Add unique changed files
         do i = 1, this%event_count
             if (allocated(this%events(i)%file_path)) then
-                if (.not. any(temp_files(1:count) == this%events(i)%file_path)) then
-                    count = count + 1
-                    temp_files(count) = this%events(i)%file_path
+                current_path = this%events(i)%file_path
+                
+                ! Check if already added
+                already_added = .false.
+                do j = 1, files%count
+                    if (files%get_item(j) == current_path) then
+                        already_added = .true.
+                        exit
+                    end if
+                end do
+                
+                if (.not. already_added) then
+                    call files%append(current_path)
                 end if
             end if
         end do
         
-        ! Allocate and fill result
-        allocate(character(len=256) :: files(max(count, 1)))
-        do i = 1, count
-            files(i) = temp_files(i)
-        end do
-        
-        if (count == 0) then
-            files(1) = ""
-        end if
+        ! If no files, array will be empty (count = 0)
         
     end function get_changed_files
     
@@ -579,7 +581,7 @@ contains
     function get_dependent_files(this, file_path) result(files)
         class(file_watcher_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
-        character(len=:), allocatable :: files(:)
+        character(len=256), allocatable :: files(:)  ! Fixed length instead of deferred
         
         ! Simplified: return empty list for now
         ! In full implementation, would analyze module dependencies
@@ -613,6 +615,7 @@ contains
         
         integer :: i
         logical :: has_config_changes
+        type(string_array_t) :: changed_files
         
         ! Check if any configuration files changed
         has_config_changes = .false.
@@ -631,7 +634,17 @@ contains
             info%requires_full_analysis = .false.
         end if
         
-        info%affected_files = this%get_changed_files()
+        ! Now we can safely call get_changed_files with the string_array_t workaround
+        changed_files = this%get_changed_files()
+        
+        ! Convert to fixed array for the rebuild_info_t type
+        if (changed_files%count > 0) then
+            info%affected_files = changed_files%to_fixed_array()
+        else
+            allocate(character(len=256) :: info%affected_files(0))
+        end if
+        
+        call changed_files%cleanup()
         
     end function get_rebuild_info
     

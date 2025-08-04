@@ -254,7 +254,8 @@ contains
                "    ! F001: Missing implicit none (intentionally missing)" // new_line('a') // &
                "integer :: global_var  ! No implicit none" // new_line('a') // &
                "  real :: poorly_indented_var  ! F002: bad indentation" // new_line('a') // &
-               "    character(len=200) :: very_long_line_that_exceeds_the_recommended_maximum_line_length_limit_set_by_coding_standards = 'test'  ! F003" // new_line('a') // &
+               "    character(len=200) :: very_long_line_that_exceeds_the_recommended_maximum_line_" // &
+               "length_limit_set_by_coding_standards = 'test'  ! F003" // new_line('a') // &
                "    integer :: trailing_spaces_var     " // new_line('a') // &  ! F004: trailing spaces
                char(9) // "    integer :: mixed_tabs_var" // new_line('a') // &  ! F005: mixed indentation
                "    integer :: unused_variable  ! F006: unused" // new_line('a') // &

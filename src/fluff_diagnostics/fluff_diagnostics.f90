@@ -487,9 +487,13 @@ contains
         character(len=:), allocatable :: formatted
         character(len=1000) :: buffer
         
-        write(buffer, '("<diagnostic code=""",A,""" severity=""",A,""" category=""",A,""">",/"  <message>",A,"</message>",/"  <location line=""",I0,""" column=""",I0,"""/>",/"</diagnostic>")') &
-            diagnostic%code, severity_to_string(diagnostic%severity), diagnostic%category, &
-            diagnostic%message, diagnostic%location%start%line, diagnostic%location%start%column
+        write(buffer, '("<diagnostic code=""",A,""" severity=""",A,&
+            &""" category=""",A,""">",/"  <message>",A,"</message>",/&
+            &"  <location line=""",I0,""" column=""",I0,"""/>",/&
+            &"</diagnostic>")') &
+            diagnostic%code, severity_to_string(diagnostic%severity), &
+            diagnostic%category, diagnostic%message, &
+            diagnostic%location%start%line, diagnostic%location%start%column
         
         formatted = trim(buffer)
         
