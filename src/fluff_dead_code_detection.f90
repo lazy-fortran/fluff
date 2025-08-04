@@ -19,7 +19,6 @@ module fluff_dead_code_detection
                          get_identifier_name, get_call_info, get_declaration_info, &
                          traverse_ast, node_exists, symbol_info_t, &
                          symbol_reference_t, get_children
-    use ast_arena, only: ast_entry_t
     implicit none
     private
     
@@ -317,51 +316,48 @@ contains
     end subroutine detector_mark_if_block_unreachable
     
     ! Process AST node for dead code analysis
-    subroutine detector_process_node(this, entry, node_index)
+    subroutine detector_process_node(this, node_index)
         class(dead_code_detector_t), intent(inout) :: this
-        type(ast_entry_t), intent(in) :: entry
         integer, intent(in) :: node_index
+        
+        ! Check if node exists and get basic node information
+        character(len=50) :: node_type
+        logical :: exists
+        
+        call node_exists(this%arena, node_index, exists)
+        if (.not. exists) return
+        
+        ! Get node type for analysis
+        call get_node_type_at(this%arena, node_index, node_type)
         
         ! Check if we're after a terminating statement
         if (this%visitor%after_terminating_statement .and. &
-            entry%parent_index > 0 .and. &
-            entry%node_type /= "return_node" .and. &
-            entry%node_type /= "stop_node") then
-            ! This code is unreachable
-            select type (node => entry%node)
-            class is (ast_node)
-                call add_unreachable_code_to_visitor(this%visitor, &
-                    node%line, node%line, node%column, node%column + 10, &
-                    "after_termination", "code after terminating statement")
-            end select
+            node_type /= "return_node" .and. &
+            node_type /= "stop_node") then
+            ! This code is unreachable - add diagnostic using available location info
+            call add_unreachable_code_to_visitor(this%visitor, &
+                1, 1, 1, 10, &
+                "after_termination", "code after terminating statement")
         end if
         
-        select type (node => entry%node)
-        type is (declaration_node)
-            ! Variable declaration
-            call this%visitor%add_declared_variable(node%var_name)
-        type is (identifier_node)
-            ! Variable usage
-            call this%visitor%add_used_variable(node%name)
-        type is (assignment_node)
-            ! Assignment uses variables on RHS (node%value_index)
-            ! The target (node%target_index) is being assigned, not used
-            if (node%value_index > 0 .and. node%value_index <= this%arena%size) then
-                call this%process_node(this%arena%entries(node%value_index), node%value_index)
-            end if
-        type is (binary_op_node)
-            ! Process both operands to find identifiers
-            if (node%left_index > 0 .and. node%left_index <= this%arena%size) then
-                call this%process_node(this%arena%entries(node%left_index), node%left_index)
-            end if
-            if (node%right_index > 0 .and. node%right_index <= this%arena%size) then
-                call this%process_node(this%arena%entries(node%right_index), node%right_index)
-            end if
-        type is (do_loop_node)
-            ! Do loops declare and use loop variables
-            call this%visitor%add_declared_variable(node%var_name)
-            call this%visitor%add_used_variable(node%var_name)
-        type is (call_or_subscript_node)
+        ! Use API functions instead of direct node access
+        select case (trim(node_type))
+        case ("declaration_node")
+            ! Variable declaration - use API to get declaration info
+            call handle_declaration_node(this, node_index)
+        case ("identifier_node")
+            ! Variable usage - use API to get identifier name
+            call handle_identifier_node(this, node_index)
+        case ("assignment_node")
+            ! Assignment - use API to get assignment details
+            call handle_assignment_node(this, node_index)
+        case ("binary_op_node")
+            ! Binary operation - use API to get operand indices
+            call handle_binary_op_node(this, node_index)
+        case ("do_loop_node")
+            ! Do loops declare and use loop variables - use API to get loop info
+            call handle_do_loop_node(this, node_index)
+        case ("call_or_subscript_node")
             ! Function calls use the function name
             call this%visitor%add_used_variable(node%name)
             ! Process arguments
