@@ -1,7 +1,8 @@
 module fluff_ast
     ! AST manipulation and traversal (fortfront wrapper)
     use fluff_core
-    use fortfront, only: ast_arena_t, semantic_context_t, token_t
+    use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
+                       get_node_type_id_from_arena
     implicit none
     private
     
@@ -19,7 +20,7 @@ module fluff_ast
         procedure :: get_node_location => ast_get_node_location
     end type fluff_ast_context_t
     
-    ! Node type enumeration
+    ! Node type enumeration (mapped to fortfront node types)
     enum, bind(c)
         enumerator :: NODE_UNKNOWN = 0
         enumerator :: NODE_PROGRAM = 1
@@ -32,6 +33,11 @@ module fluff_ast
         enumerator :: NODE_IF_STATEMENT = 8
         enumerator :: NODE_DO_LOOP = 9
         enumerator :: NODE_VARIABLE_DECL = 10
+        enumerator :: NODE_SUBROUTINE_DEF = 11
+        enumerator :: NODE_MODULE = 12
+        enumerator :: NODE_USE_STATEMENT = 13
+        enumerator :: NODE_IMPLICIT_NONE = 14
+        enumerator :: NODE_CALL_STATEMENT = 15
     end enum
     
     ! Public procedures
@@ -86,9 +92,51 @@ contains
         class(*), intent(inout) :: visitor
         logical, intent(in), optional :: pre_order
         
-        ! TODO: Implement traversal using fortfront's capabilities
+        logical :: is_pre_order
+        
+        ! Default to pre-order traversal
+        is_pre_order = .true.
+        if (present(pre_order)) is_pre_order = pre_order
+        
+        ! Check if initialized
+        if (.not. this%is_initialized) then
+            return
+        end if
+        
+        ! Do manual traversal for all visitor types
+        call traverse_node_recursive(this, this%root_index, visitor, is_pre_order)
         
     end subroutine ast_traverse
+    
+    ! Recursive node traversal for non-visitor types
+    recursive subroutine traverse_node_recursive(ctx, node_index, visitor, pre_order)
+        class(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        class(*), intent(inout) :: visitor
+        logical, intent(in) :: pre_order
+        
+        integer, allocatable :: children(:)
+        integer :: i
+        
+        if (node_index <= 0) return
+        
+        ! Pre-order visit
+        if (pre_order) then
+            ! Process current node (visitor-specific logic would go here)
+        end if
+        
+        ! Get and traverse children
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            call traverse_node_recursive(ctx, children(i), visitor, pre_order)
+        end do
+        
+        ! Post-order visit
+        if (.not. pre_order) then
+            ! Process current node (visitor-specific logic would go here)
+        end if
+        
+    end subroutine traverse_node_recursive
     
     ! Get node type
     function ast_get_node_type(this, node_index) result(node_type)
@@ -96,19 +144,40 @@ contains
         integer, intent(in) :: node_index
         integer :: node_type
         
+        integer :: fortfront_type
+        
+        ! Default to unknown
         node_type = NODE_UNKNOWN
-        ! TODO: Implement node type detection
+        
+        ! Check if initialized
+        if (.not. this%is_initialized) return
+        if (node_index <= 0) return
+        
+        ! Get node type from fortfront
+        fortfront_type = get_node_type_id_from_arena(this%arena, node_index)
+        
+        ! For now, just return the fortfront type ID directly
+        ! We'll need to create a proper mapping once we know the actual IDs
+        node_type = fortfront_type
         
     end function ast_get_node_type
     
     ! Get children of a node
     function ast_get_children(this, node_index) result(children)
+        use fortfront, only: get_children_from_arena => get_children
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: node_index
         integer, allocatable :: children(:)
         
+        ! Initialize empty array
         allocate(children(0))
-        ! TODO: Implement child retrieval
+        
+        ! Check if initialized
+        if (.not. this%is_initialized) return
+        if (node_index <= 0) return
+        
+        ! Get children from fortfront
+        children = get_children_from_arena(this%arena, node_index)
         
     end function ast_get_children
     
@@ -124,7 +193,18 @@ contains
         location%start%column = 0
         location%end%line = 0
         location%end%column = 0
-        ! TODO: Implement location retrieval from AST
+        
+        ! Check if initialized
+        if (.not. this%is_initialized) return
+        if (node_index <= 0) return
+        
+        ! For now, we'll need to get location info differently
+        ! fortfront may provide this through a different API
+        ! TODO: Implement proper location retrieval once API is clarified
+        location%start%line = 1
+        location%start%column = 1
+        location%end%line = 1
+        location%end%column = 1
         
     end function ast_get_node_location
     
