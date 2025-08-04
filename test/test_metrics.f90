@@ -32,8 +32,7 @@ contains
         elapsed = timer%elapsed()
         
         if (elapsed <= 0.0) then
-            print *, "ERROR: timer should measure positive time"
-            return
+            error stop "Failed: timer should measure positive time"
         end if
         
         ! Test stop functionality
@@ -55,8 +54,7 @@ contains
         
         ! Verify statistics
         if (stats%execution_count /= 3) then
-            print *, "ERROR: execution count should be 3"
-            return
+            error stop "Failed: execution count should be 3"
         end if
         
         if (stats%violation_count /= 3) then

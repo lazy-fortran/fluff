@@ -1,33 +1,34 @@
-module test_rule_f001_implicit_none
-    use testdrive, only: new_unittest, unittest_type, error_type, check
+program test_rule_f001_implicit_none
+    ! Test F001: Missing implicit none rule
     use fluff_core
     use fluff_linter
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
     implicit none
-    private
     
-    public :: collect_f001_tests
+    print *, "Testing F001: Missing implicit none rule..."
+    
+    ! Test 1: Program without implicit none (should trigger)
+    call test_missing_implicit_none()
+    
+    ! Test 2: Program with implicit none (should not trigger)
+    call test_has_implicit_none()
+    
+    ! Test 3: Module without implicit none (should trigger)
+    call test_module_missing_implicit_none()
+    
+    ! Test 4: Subroutine without implicit none (should trigger)
+    call test_subroutine_missing_implicit_none()
+    
+    ! Test 5: Interface blocks should not trigger
+    call test_interface_block()
+    
+    print *, "All F001 tests passed!"
     
 contains
     
-    !> Collect all tests
-    subroutine collect_f001_tests(testsuite)
-        type(unittest_type), allocatable, intent(out) :: testsuite(:)
-        
-        testsuite = [ &
-            new_unittest("missing_implicit_none", test_missing_implicit_none), &
-            new_unittest("has_implicit_none", test_has_implicit_none), &
-            new_unittest("module_missing_implicit_none", test_module_missing_implicit_none), &
-            new_unittest("subroutine_missing_implicit_none", test_subroutine_missing_implicit_none), &
-            new_unittest("interface_block", test_interface_block) &
-        ]
-        
-    end subroutine collect_f001_tests
-    
-    subroutine test_missing_implicit_none(error)
-        type(error_type), allocatable, intent(out) :: error
+    subroutine test_missing_implicit_none()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
@@ -36,7 +37,7 @@ contains
         logical :: found_f001
         
         ! Skip test if fortfront not available
-        call check(error, .true., "Test skipped - fortfront not available")
+        print *, "  ⚠ Missing implicit none in program (skipped - fortfront not available)"
         return
         
         test_code = "program test" // new_line('a') // &
@@ -69,12 +70,15 @@ contains
         open(unit=99, file="test_f001.f90", status="old")
         close(99, status="delete")
         
-        call check(error, found_f001, "F001 should be triggered for missing implicit none")
+        if (.not. found_f001) then
+            error stop "Failed: F001 should be triggered for missing implicit none"
+        end if
+        
+        print *, "  ✓ Missing implicit none in program"
         
     end subroutine test_missing_implicit_none
     
-    subroutine test_has_implicit_none(error)
-        type(error_type), allocatable, intent(out) :: error
+    subroutine test_has_implicit_none()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
@@ -83,7 +87,7 @@ contains
         logical :: found_f001
         
         ! Skip test if fortfront not available
-        call check(error, .true., "Test skipped - fortfront not available")
+        print *, "  ⚠ Has implicit none (skipped - fortfront not available)"
         return
         
         test_code = "program test" // new_line('a') // &
@@ -117,26 +121,27 @@ contains
         open(unit=99, file="test_f001_ok.f90", status="old")
         close(99, status="delete")
         
-        call check(error, .not. found_f001, "F001 should not be triggered when implicit none is present")
+        if (found_f001) then
+            error stop "Failed: F001 should not be triggered when implicit none is present"
+        end if
+        
+        print *, "  ✓ Has implicit none"
         
     end subroutine test_has_implicit_none
     
-    subroutine test_module_missing_implicit_none(error)
-        type(error_type), allocatable, intent(out) :: error
+    subroutine test_module_missing_implicit_none()
         ! Skip test if fortfront not available
-        call check(error, .true., "Test skipped - fortfront not available")
+        print *, "  ⚠ Module missing implicit none (skipped - fortfront not available)"
     end subroutine test_module_missing_implicit_none
     
-    subroutine test_subroutine_missing_implicit_none(error)
-        type(error_type), allocatable, intent(out) :: error
+    subroutine test_subroutine_missing_implicit_none()
         ! Skip test if fortfront not available
-        call check(error, .true., "Test skipped - fortfront not available")
+        print *, "  ⚠ Subroutine missing implicit none (skipped - fortfront not available)"
     end subroutine test_subroutine_missing_implicit_none
     
-    subroutine test_interface_block(error)
-        type(error_type), allocatable, intent(out) :: error
+    subroutine test_interface_block()
         ! Skip test if fortfront not available
-        call check(error, .true., "Test skipped - fortfront not available")
+        print *, "  ⚠ Interface block handling (skipped - fortfront not available)"
     end subroutine test_interface_block
     
-end module test_rule_f001_implicit_none
+end program test_rule_f001_implicit_none

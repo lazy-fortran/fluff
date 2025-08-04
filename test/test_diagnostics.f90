@@ -86,7 +86,9 @@ contains
         type(diagnostic_t) :: diag1, diag2
         type(source_range_t) :: loc
         
-        collection = diagnostic_collection_t()
+        ! Initialize collection with default constructor
+        collection%count = 0
+        allocate(collection%diagnostics(10))
         
         loc%start%line = 1
         loc%start%column = 1

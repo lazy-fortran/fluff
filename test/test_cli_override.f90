@@ -39,18 +39,15 @@ contains
         call final_config%merge(file_config, cli_config)
         
         if (.not. final_config%fix) then
-            print *, "ERROR: CLI fix=true should override file fix=false"
-            return
+            error stop "Failed: CLI fix=true should override file fix=false"
         end if
         
         if (final_config%output_format /= "json") then
-            print *, "ERROR: CLI output format should override file format"
-            return
+            error stop "Failed: CLI output format should override file format"
         end if
         
         if (final_config%line_length /= 80) then
-            print *, "ERROR: line_length should remain from file when not in CLI"
-            return
+            error stop "Failed: line_length should remain from file when not in CLI"
         end if
         
         print *, "  ✓ CLI overrides file configuration"
@@ -79,33 +76,27 @@ contains
         
         ! Check merged values
         if (.not. merged%fix) then
-            print *, "ERROR: fix should be overridden to true"
-            return
+            error stop "Failed: fix should be overridden to true"
         end if
         
         if (.not. merged%show_fixes) then
-            print *, "ERROR: show_fixes should be preserved from base"
-            return
+            error stop "Failed: show_fixes should be preserved from base"
         end if
         
         if (merged%line_length /= 100) then
-            print *, "ERROR: line_length should be overridden to 100"
-            return
+            error stop "Failed: line_length should be overridden to 100"
         end if
         
         if (merged%target_version /= "2008") then
-            print *, "ERROR: target_version should be preserved from base"
-            return
+            error stop "Failed: target_version should be preserved from base"
         end if
         
         if (.not. allocated(merged%rules%select)) then
-            print *, "ERROR: select rules should be preserved"
-            return
+            error stop "Failed: select rules should be preserved"
         end if
         
         if (.not. allocated(merged%rules%ignore)) then
-            print *, "ERROR: ignore rules should be added"
-            return
+            error stop "Failed: ignore rules should be added"
         end if
         
         print *, "  ✓ Configuration merge"
@@ -129,13 +120,11 @@ contains
         call final%merge(final, cli)
         
         if (final%line_length /= 120) then
-            print *, "ERROR: CLI should have highest priority"
-            return
+            error stop "Failed: CLI should have highest priority"
         end if
         
         if (final%target_version /= "2018") then
-            print *, "ERROR: File config should override defaults"
-            return
+            error stop "Failed: File config should override defaults"
         end if
         
         print *, "  ✓ Configuration priority order"
