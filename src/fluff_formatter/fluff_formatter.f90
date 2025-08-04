@@ -67,9 +67,30 @@ contains
         character(len=:), allocatable, intent(out) :: formatted_code
         character(len=:), allocatable, intent(out) :: error_msg
         
-        ! TODO: Read file and format
-        formatted_code = ""
+        ! Read file and format using fortfront
+        integer :: unit, iostat
+        character(len=1000) :: line
+        character(len=:), allocatable :: source_code
+        
+        source_code = ""
         error_msg = ""
+        
+        ! Read the entire file
+        open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        if (iostat /= 0) then
+            error_msg = "Could not open file: " // filename
+            return
+        end if
+        
+        do
+            read(unit, '(A)', iostat=iostat) line
+            if (iostat /= 0) exit
+            source_code = source_code // trim(line) // new_line('a')
+        end do
+        close(unit)
+        
+        ! Format the source code
+        call this%format_source(source_code, formatted_code, error_msg)
         
     end subroutine formatter_format_file
     
