@@ -84,6 +84,8 @@ module fluff_diagnostics
         procedure :: to_json => collection_to_json
         procedure :: to_sarif => collection_to_sarif
         procedure :: get_stats => collection_get_stats
+        procedure :: get_count => collection_count
+        procedure :: has_errors => collection_has_errors
     end type diagnostic_collection_t
     
     ! Public procedures
@@ -735,6 +737,28 @@ contains
         type(diagnostic_stats_t) :: stats
         stats = this%stats
     end function collection_get_stats
+    
+    ! Get count of diagnostics in collection
+    function collection_count(this) result(count)
+        class(diagnostic_collection_t), intent(in) :: this
+        integer :: count
+        count = this%count
+    end function collection_count
+    
+    ! Check if collection has error-level diagnostics
+    function collection_has_errors(this) result(has_errors)
+        class(diagnostic_collection_t), intent(in) :: this
+        logical :: has_errors
+        integer :: i
+        
+        has_errors = .false.
+        do i = 1, this%count
+            if (this%diagnostics(i)%severity == SEVERITY_ERROR) then
+                has_errors = .true.
+                return
+            end if
+        end do
+    end function collection_has_errors
     
     ! Helper functions for string conversion
     function int_to_string(val) result(str)

@@ -20,6 +20,9 @@ module fluff_rules
     public :: get_performance_rules
     public :: get_correctness_rules
     
+    ! Public constants
+    public :: CATEGORY_STYLE, CATEGORY_PERFORMANCE, CATEGORY_CORRECTNESS
+    
 contains
     
     ! Get all built-in rules

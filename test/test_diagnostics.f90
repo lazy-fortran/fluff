@@ -99,7 +99,7 @@ contains
         call collection%add(diag1)
         call collection%add(diag2)
         
-        call check(error, collection%count() == 2, "Collection should have 2 diagnostics")
+        call check(error, collection%get_count() == 2, "Collection should have 2 diagnostics")
         if (allocated(error)) return
         
         call check(error, collection%has_errors(), "Collection should have errors")
@@ -109,6 +109,7 @@ contains
     subroutine test_fix_suggestion(error)
         type(error_type), allocatable, intent(out) :: error
         type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
         type(source_range_t) :: loc
         
         loc%start%line = 5
@@ -116,15 +117,21 @@ contains
         loc%end%line = 5
         loc%end%column = 20
         
+        ! Create text edit
+        edit%range = loc
+        edit%new_text = "implicit none"
+        
+        ! Create fix with proper structure
         fix%description = "Add implicit none"
-        fix%location = loc
-        fix%replacement = "implicit none"
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        fix%is_safe = .true.
         
         call check(error, fix%description == "Add implicit none", &
             "Fix description should match")
         if (allocated(error)) return
         
-        call check(error, fix%replacement == "implicit none", &
+        call check(error, fix%edits(1)%new_text == "implicit none", &
             "Fix replacement should match")
         
     end subroutine test_fix_suggestion

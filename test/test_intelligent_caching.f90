@@ -652,14 +652,14 @@ contains
     function test_cross_file_dependencies() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: affected_files(:)
+        type(string_array_t) :: affected_files
         
         cache = create_analysis_cache()
         call cache%add_dependency("file1.f90", "common.f90")
         call cache%add_dependency("file2.f90", "common.f90")
         
         affected_files = cache%get_files_depending_on("common.f90")
-        success = size(affected_files) == 2
+        success = affected_files%count == 2
         
     end function test_cross_file_dependencies
     
