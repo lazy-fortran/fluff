@@ -7,6 +7,9 @@ copyright = "Copyright 2025, Christopher Albert"
 [dependencies]
 fortfront = { path = "../fortfront" }
 stdlib = "*"
+
+[dev-dependencies]
+test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
 [build]
 auto-executables = true
 auto-tests = true

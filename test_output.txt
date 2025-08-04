@@ -1,0 +1,61 @@
+[  0%]         fluff_file_watcher.f90
+[  0%]         fluff_file_watcher.f90  done.
+[  0%] fluff_incremental_analyzer.f90
+[  0%] fluff_incremental_analyzer.f90  done.
+[  0%]          fluff_diagnostics.f90
+[  1%]          fluff_diagnostics.f90  done.
+[  1%]        fluff_user_feedback.f90
+[  1%]        fluff_user_feedback.f90  done.
+[  1%]              fluff_metrics.f90
+[  1%]              fluff_metrics.f90  done.
+[  1%]         test_config_schema.f90
+[  2%]         test_config_schema.f90  done.
+[  2%]     test_config_validation.f90
+[  2%]     test_config_validation.f90  done.
+[  2%]  test_fortfront_direct_api.f90
+[  3%]  test_fortfront_direct_api.f90  done.
+[  3%]   test_intelligent_caching.f90
+[  3%]   test_intelligent_caching.f90  done.
+[  3%]     test_lsp_document_sync.f90
+[  3%]     test_lsp_document_sync.f90  done.
+[  3%]  test_lsp_message_handling.f90
+[  4%]  test_lsp_message_handling.f90  done.
+[  4%]          test_toml_parsing.f90
+[  4%]          test_toml_parsing.f90  done.
+[  4%]               parser_state.f90
+[  5%]               parser_state.f90  done.
+[  5%]              scope_manager.f90
+[  5%]              scope_manager.f90  done.
+[  5%]               type_checker.f90
+[  5%]               type_checker.f90  done.
+[  5%]                  testdrive.F90
+[  6%]                  testdrive.F90  done.
+[  6%]               stdlib_ascii.f90
+[  6%]               stdlib_ascii.f90  done.
+[  6%]              stdlib_optval.f90
+[  7%]              stdlib_optval.f90  done.
+[  7%]            json_parameters.F90
+[  7%]            json_parameters.F90  done.
+[  7%]       fluff_config_watcher.f90
+[  7%]       fluff_config_watcher.f90  done.
+[  7%]  fluff_dependency_analysis.f90
+[  8%]  fluff_dependency_analysis.f90  done.
+[  8%]       fluff_output_formats.f90
+[  8%]       fluff_output_formats.f90  done.
+[  8%]     fluff_tool_integration.f90
+[  9%]     fluff_tool_integration.f90  done.
+[  9%] test_diagnostic_formatting.f90
+[  9%] test_diagnostic_formatting.f90  done.
+
+test/test_diagnostic_formatting.f90:86:132:
+
+   86 |                       "    result = some_very_long_function_name_that_exceeds_the_maximum_line_length_limit(i, 42)" // new_line('a') // &
+      |                                                                                                                                    1
+Error: Line truncated at (1) [-Werror=line-truncation]
+test/test_diagnostic_formatting.f90:87:24:
+
+   87 |                       "end program long_line_example"
+      |                        1
+Error: Invalid character in name at (1)
+compilation terminated due to -fmax-errors=1.
+f951: some warnings being treated as errors

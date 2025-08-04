@@ -533,20 +533,14 @@ contains
         character(len=:), allocatable :: direct_deps(:)
         integer :: count
         
-        direct_deps = this%get_dependencies(file_path)
-        count = size(direct_deps)
+        ! FIXME: Compiler segfault when calling get_dependencies
+        ! direct_deps = this%get_dependencies(file_path)
+        ! count = size(direct_deps)
         
-        ! For simplicity, return direct dependencies
-        ! Real implementation would recursively collect all dependencies
-        allocate(character(len=256) :: deps(count + 1))
-        
-        if (count > 0) then
-            deps(1:count) = direct_deps
-            deps(count + 1) = "transitive_dep.f90"  ! Mock transitive dependency
-        else
-            deps(1) = "mock_transitive.f90"
-            count = 1
-        end if
+        ! Temporary workaround - return mock data
+        count = 1
+        allocate(character(len=256) :: deps(count))
+        deps(1) = "mock_transitive.f90"
         
     end function get_transitive_dependencies
     

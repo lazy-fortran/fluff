@@ -631,7 +631,10 @@ contains
             info%requires_full_analysis = .false.
         end if
         
-        info%affected_files = this%get_changed_files()
+        ! FIXME: Compiler segfault when calling get_changed_files
+        ! info%affected_files = this%get_changed_files()
+        allocate(character(len=256) :: info%affected_files(1))
+        info%affected_files(1) = ""
         
     end function get_rebuild_info
     
