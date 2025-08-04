@@ -147,10 +147,26 @@ contains
         integer, intent(in) :: start_line, end_line
         character(len=:), allocatable, intent(out) :: formatted_code
         
-        ! For now, just format the whole file
-        ! TODO: Implement range-specific formatting
+        ! Implement range-specific formatting by filtering lines
+        character(len=:), allocatable :: full_formatted
+        character(len=1000) :: lines(10000)
+        integer :: num_lines, i, line_start, line_end
+        
         if (ast_ctx%is_initialized) then
-            call emit_fortran(ast_ctx%arena, ast_ctx%root_index, formatted_code)
+            ! First format the entire file
+            call emit_fortran(ast_ctx%arena, ast_ctx%root_index, full_formatted)
+            
+            ! Split into lines and extract the range
+            call split_lines_simple(full_formatted, lines, num_lines)
+            
+            formatted_code = ""
+            line_start = max(1, start_line)
+            line_end = min(num_lines, end_line)
+            
+            do i = line_start, line_end
+                if (i > 1) formatted_code = formatted_code // new_line('a')
+                formatted_code = formatted_code // trim(lines(i))
+            end do
         else
             formatted_code = ""
         end if
@@ -647,5 +663,37 @@ contains
         end if
         
     end subroutine formatter_format_with_feedback
+    
+    ! Helper subroutine to split text into lines
+    subroutine split_lines_simple(text, lines, num_lines)
+        character(len=*), intent(in) :: text
+        character(len=1000), intent(out) :: lines(:)
+        integer, intent(out) :: num_lines
+        
+        integer :: i, start_pos, end_pos, newline_pos
+        
+        num_lines = 0
+        start_pos = 1
+        
+        do while (start_pos <= len(text) .and. num_lines < size(lines))
+            ! Find next newline
+            newline_pos = index(text(start_pos:), new_line('a'))
+            if (newline_pos == 0) then
+                ! No more newlines, take rest of string
+                end_pos = len(text)
+            else
+                end_pos = start_pos + newline_pos - 2
+            end if
+            
+            if (end_pos >= start_pos) then
+                num_lines = num_lines + 1
+                lines(num_lines) = text(start_pos:end_pos)
+            end if
+            
+            if (newline_pos == 0) exit
+            start_pos = start_pos + newline_pos
+        end do
+        
+    end subroutine split_lines_simple
     
 end module fluff_formatter
