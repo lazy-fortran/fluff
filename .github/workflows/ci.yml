@@ -27,6 +27,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Clone fortfront dependency
+      run: |
+        cd ..
+        git clone https://github.com/lazy-fortran/fortfront.git
+    
     - name: Cache FPM binary
       id: cache-fpm
       uses: actions/cache@v4
