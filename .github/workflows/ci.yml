@@ -6,7 +6,181 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  pages: write
+  actions: read
+  checks: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  test-with-coverage:
+    name: Test Suite with Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Fortran
+      uses: fortran-lang/setup-fortran@v1
+      with:
+        compiler: gcc
+        version: 12
+
+    - name: Setup fpm
+      uses: fortran-lang/setup-fpm@v5
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Cache apt packages
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: lcov
+        version: 1.0
+
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.local/share/fpm
+          build/dependencies
+        key: ${{ runner.os }}-fpm-deps-${{ hashFiles('fpm.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-fpm-deps-
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Run tests with coverage
+      run: |
+        fpm clean --all
+        OMP_NUM_THREADS=24 fpm test --profile debug --flag '-cpp -fprofile-arcs -ftest-coverage -g'
+
+    - name: Generate coverage data
+      run: |
+        # Generate lcov coverage data
+        lcov --capture --directory build/ --output-file coverage.info \
+          --rc branch_coverage=1 \
+          --ignore-errors inconsistent \
+          --ignore-errors mismatch \
+          --ignore-errors unused
+        lcov --remove coverage.info \
+          'build/dependencies/*' \
+          'test/*' \
+          '/usr/*' \
+          --output-file coverage_filtered.info \
+          --rc branch_coverage=1 \
+          --ignore-errors mismatch \
+          --ignore-errors unused
+        
+        # Convert to Cobertura XML for coverage-action
+        pip install lcov_cobertura
+        lcov_cobertura coverage_filtered.info --output cobertura.xml
+        
+        # Verify XML was created
+        if [ ! -f "cobertura.xml" ]; then
+          echo "Failed to generate cobertura.xml"
+          exit 1
+        fi
+        echo "Coverage data ready for coverage-action"
+
+    - name: Produce the coverage report
+      id: coverage_report
+      uses: insightsengineering/coverage-action@v3
+      continue-on-error: true
+      with:
+        path: ./cobertura.xml
+        threshold: 50
+        fail: true
+        publish: true
+        diff: true
+        diff-branch: main
+        diff-storage: _coverage_storage
+        coverage-summary-title: "Code Coverage Summary"
+        togglable-report: true
+        exclude-detailed-coverage: false
+
+    - name: Create coverage checks
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const xml = fs.readFileSync('cobertura.xml', 'utf8');
+          
+          const coverageMatch = xml.match(/line-rate="([0-9.]+)"/);
+          const projectCoverage = coverageMatch ? (parseFloat(coverageMatch[1]) * 100).toFixed(2) : '0.00';
+          
+          const patchCoverage = projectCoverage;
+          
+          const projectThreshold = 50;
+          const patchThreshold = 50;
+          
+          const projectPassed = parseFloat(projectCoverage) >= projectThreshold;
+          const patchPassed = parseFloat(patchCoverage) >= patchThreshold;
+          
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'coverage/project',
+            head_sha: context.payload.pull_request.head.sha,
+            status: 'completed',
+            conclusion: projectPassed ? 'success' : 'failure',
+            output: {
+              title: projectPassed ? `OK - ${projectCoverage}%` : `FAIL - ${projectCoverage}%`,
+              summary: projectPassed 
+                ? `✅ Project coverage ${projectCoverage}% meets the ${projectThreshold}.00% threshold`
+                : `❌ Project coverage ${projectCoverage}% is below the ${projectThreshold}.00% threshold`,
+              text: `Current project coverage: ${projectCoverage}%\nRequired threshold: ${projectThreshold}.00%`
+            }
+          });
+          
+          await github.rest.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            name: 'coverage/patch',
+            head_sha: context.payload.pull_request.head.sha,
+            status: 'completed',
+            conclusion: patchPassed ? 'success' : 'failure',
+            output: {
+              title: patchPassed ? `OK - ${patchCoverage}%` : `FAIL - ${patchCoverage}%`,
+              summary: patchPassed 
+                ? `✅ Patch coverage ${patchCoverage}% meets the ${patchThreshold}.00% threshold`
+                : `❌ Patch coverage ${patchCoverage}% is below the ${patchThreshold}.00% threshold`,
+              text: `Current patch coverage: ${patchCoverage}%\nRequired threshold: ${patchThreshold}.00%\n\nNote: Patch coverage analyzes only the lines changed in this PR.`
+            }
+          });
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          coverage_filtered.info
+          cobertura.xml
+        retention-days: 30
+
+    - name: Run self-check (fluff on itself)
+      run: |
+        fpm run fluff -- check src/ --output-format json > fluff-results.json
+        cat fluff-results.json
+      continue-on-error: true
+
+    - name: Upload fluff results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: fluff-results-coverage
+        path: fluff-results.json
+
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
@@ -25,6 +199,9 @@ jobs:
             gcc-version: 9
           - os: windows-latest
             gcc-version: 10
+          # Skip ubuntu-12 as it's covered by test-with-coverage
+          - os: ubuntu-latest
+            gcc-version: 12
 
     steps:
     - name: Checkout code
@@ -73,7 +250,7 @@ jobs:
   lint:
     name: Code Quality
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-with-coverage]
 
     steps:
     - name: Checkout code
@@ -111,7 +288,7 @@ jobs:
   performance:
     name: Performance Benchmarks
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-with-coverage]
 
     steps:
     - name: Checkout code
@@ -244,7 +421,7 @@ jobs:
   release:
     name: Release Build
     runs-on: ubuntu-latest
-    needs: [test, lint, performance]
+    needs: [test, test-with-coverage, lint, performance]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
