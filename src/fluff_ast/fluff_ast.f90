@@ -40,8 +40,14 @@ module fluff_ast
         enumerator :: NODE_CALL_STATEMENT = 15
     end enum
     
-    ! Public procedures
+    ! Public procedures  
     public :: create_ast_context
+    
+    ! Public node type constants
+    public :: NODE_UNKNOWN, NODE_PROGRAM, NODE_ASSIGNMENT, NODE_BINARY_OP
+    public :: NODE_FUNCTION_DEF, NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL
+    public :: NODE_IF_STATEMENT, NODE_DO_LOOP, NODE_VARIABLE_DECL, NODE_SUBROUTINE_DEF
+    public :: NODE_MODULE, NODE_USE_STATEMENT, NODE_IMPLICIT_NONE, NODE_CALL_STATEMENT
     
 contains
     
