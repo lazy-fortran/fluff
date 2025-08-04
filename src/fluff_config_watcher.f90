@@ -284,6 +284,7 @@ contains
         result%has_rule_errors = .false.
         result%has_pattern_errors = .false.
         result%has_value_errors = .false.
+        if (allocated(result%error_message)) deallocate(result%error_message)
         result%error_message = ""
         
         ! Validate rule selections
