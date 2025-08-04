@@ -1,6 +1,8 @@
 module test_core_basics
     use testdrive, only: new_unittest, unittest_type, error_type, check
     use fluff_core
+    use fluff_rules, only: CATEGORY_CORRECTNESS, CATEGORY_STYLE, CATEGORY_PERFORMANCE
+    use fluff_diagnostics, only: SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO, SEVERITY_HINT
     implicit none
     private
     
@@ -86,5 +88,22 @@ contains
             "Correctness category name should be 'Correctness'")
         
     end subroutine test_rule_categories
+    
+    ! Helper function for testing category names
+    function get_category_name(category) result(name)
+        character(len=*), intent(in) :: category
+        character(len=:), allocatable :: name
+        
+        select case (category)
+        case (CATEGORY_STYLE)
+            name = "Style"
+        case (CATEGORY_PERFORMANCE)
+            name = "Performance"
+        case (CATEGORY_CORRECTNESS)
+            name = "Correctness"
+        case default
+            name = "Unknown"
+        end select
+    end function get_category_name
     
 end module test_core_basics

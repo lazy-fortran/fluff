@@ -3,10 +3,11 @@ program comprehensive_integration_test
     ! F001: Missing implicit none (intentionally missing)
 integer :: global_var  ! No implicit none
   real :: poorly_indented_var  ! F002: bad indentation
-    character(len=200) :: very_long_line_that_exceeds_the_recommended_maximum_line_length_limit_set_by_coding_standards = 'test'  ! F003
+    character(len=200) :: very_long_var_name_that_exceeds_line_length = 'test'  ! F003
     integer :: trailing_spaces_var     
 	    integer :: mixed_tabs_var
     integer :: unused_variable  ! F006: unused
+    integer :: undefined_var   ! Declare to avoid compilation error
     real :: matrix(1000, 1000)
     real, allocatable :: temp_array(:)
     real :: single_precision

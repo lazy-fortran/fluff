@@ -4,12 +4,12 @@ module fluff_diagnostics
     implicit none
     private
     
-    ! Diagnostic severity levels
+    ! Diagnostic severity levels (higher number = higher severity)
     enum, bind(c)
-        enumerator :: SEVERITY_ERROR = 1
-        enumerator :: SEVERITY_WARNING = 2
-        enumerator :: SEVERITY_INFO = 3
-        enumerator :: SEVERITY_HINT = 4
+        enumerator :: SEVERITY_HINT = 1
+        enumerator :: SEVERITY_INFO = 2
+        enumerator :: SEVERITY_WARNING = 3
+        enumerator :: SEVERITY_ERROR = 4
     end enum
     
     ! Output format constants
@@ -376,8 +376,8 @@ contains
         
         severity_str = severity_to_string(diagnostic%severity)
         
-        write(buffer, '("file:",I0,":",I0,": ",A," [",A,"] ",A)') &
-            diagnostic%location%start%line, diagnostic%location%start%column, &
+        write(buffer, '(A,":",I0,":",I0,": ",A," [",A,"] ",A)') &
+            diagnostic%file_path, diagnostic%location%start%line, diagnostic%location%start%column, &
             severity_str, diagnostic%code, diagnostic%message
         
         formatted = trim(buffer)

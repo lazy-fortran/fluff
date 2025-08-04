@@ -1,6 +1,7 @@
 program test_intelligent_caching
     use fluff_core
     use fluff_analysis_cache
+    use fluff_string_utils, only: string_array_t
     implicit none
     
     integer :: total_tests, passed_tests
@@ -582,27 +583,27 @@ contains
     function test_track_simple_dependencies() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
         cache = create_analysis_cache()
         call cache%add_dependency("main.f90", "module.f90")
         
         deps = cache%get_dependencies("main.f90")
-        success = size(deps) == 1 .and. deps(1) == "module.f90"
+        success = deps%count == 1 .and. deps%items(1)%get() == "module.f90"
         
     end function test_track_simple_dependencies
     
     function test_track_transitive_deps() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
         cache = create_analysis_cache()
         call cache%add_dependency("main.f90", "module1.f90")
         call cache%add_dependency("module1.f90", "module2.f90")
         
         deps = cache%get_transitive_dependencies("main.f90")
-        success = size(deps) == 2
+        success = deps%count == 2
         
     end function test_track_transitive_deps
     

@@ -69,7 +69,7 @@ contains
             file_path = "test.f90" &
         )
         
-        formatted = format_diagnostic(diag)
+        formatted = format_diagnostic(diag, OUTPUT_FORMAT_TEXT)
         
         call check(error, index(formatted, "test.f90") > 0, &
             "Formatted output should contain file path")
@@ -86,15 +86,15 @@ contains
         type(diagnostic_t) :: diag1, diag2
         type(source_range_t) :: loc
         
-        collection = create_diagnostic_collection()
+        collection = diagnostic_collection_t()
         
         loc%start%line = 1
         loc%start%column = 1
         loc%end%line = 1
         loc%end%column = 10
         
-        diag1 = create_diagnostic("F001", "Test 1", SEVERITY_ERROR, loc, "test1.f90")
-        diag2 = create_diagnostic("F002", "Test 2", SEVERITY_WARNING, loc, "test2.f90")
+        diag1 = create_diagnostic("F001", "Test 1", "test1.f90", loc, SEVERITY_ERROR)
+        diag2 = create_diagnostic("F002", "Test 2", "test2.f90", loc, SEVERITY_WARNING)
         
         call collection%add(diag1)
         call collection%add(diag2)

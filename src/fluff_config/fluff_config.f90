@@ -97,8 +97,24 @@ contains
         class(fluff_config_t), intent(inout) :: this
         character(len=*), intent(in) :: filename
         
-        ! TODO: Implement TOML parsing
-        ! For now, just keep defaults
+        ! Read file contents and parse as TOML string
+        integer :: unit, iostat
+        character(len=1000) :: line
+        character(len=:), allocatable :: toml_content, error_msg
+        
+        toml_content = ""
+        
+        open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        if (iostat /= 0) return  ! File doesn't exist or can't be read
+        
+        do
+            read(unit, '(A)', iostat=iostat) line
+            if (iostat /= 0) exit
+            toml_content = toml_content // trim(line) // new_line('a')
+        end do
+        close(unit)
+        
+        call this%from_toml_string(toml_content, error_msg)
         
     end subroutine config_from_file
     
@@ -108,33 +124,86 @@ contains
         character(len=*), intent(in) :: toml_str
         character(len=:), allocatable, intent(out) :: error_msg
         
-        ! TODO: Implement TOML parsing
-        ! For now, just parse manually for testing
+        integer :: pos, eq_pos, end_pos
+        character(len=:), allocatable :: line, key, value
+        character(len=1000) :: lines(100)
+        integer :: num_lines, i
+        
         error_msg = ""
         
-        ! Simple parsing for test purposes
-        if (index(toml_str, "fix = true") > 0) then
-            this%fix = .true.
-        end if
+        ! Split into lines
+        call split_lines(toml_str, lines, num_lines)
         
-        if (index(toml_str, "show-fixes = true") > 0) then
-            this%show_fixes = .true.
-        end if
-        
-        ! Parse line-length
-        call parse_int_value(toml_str, "line-length", this%line_length, error_msg)
-        if (error_msg /= "") return
-        
-        ! Parse target-version
-        call parse_string_value(toml_str, "target-version", this%target_version)
-        
-        ! Parse output-format
-        call parse_string_value(toml_str, "output-format", this%output_format)
-        
-        ! Parse rule selection
-        call parse_rule_selection(toml_str, this%rules, error_msg)
+        do i = 1, num_lines
+            line = trim(lines(i))
+            if (len_trim(line) == 0 .or. line(1:1) == '#') cycle  ! Skip empty lines and comments
+            
+            eq_pos = index(line, '=')
+            if (eq_pos == 0) cycle  ! No equals sign
+            
+            key = trim(line(1:eq_pos-1))
+            value = trim(line(eq_pos+1:))
+            
+            ! Remove quotes from string values
+            if (len(value) >= 2) then
+                if ((value(1:1) == '"' .and. value(len(value):len(value)) == '"') .or. &
+                    (value(1:1) == "'" .and. value(len(value):len(value)) == "'")) then
+                    value = value(2:len(value)-1)
+                end if
+            end if
+            
+            ! Parse known configuration keys
+            select case (key)
+            case ('fix')
+                this%fix = (value == 'true')
+            case ('show-fixes')
+                this%show_fixes = (value == 'true')
+            case ('line-length')
+                read(value, *, iostat=pos) this%line_length
+                if (pos /= 0) then
+                    error_msg = "Invalid line-length value: " // value
+                    return
+                end if
+            case ('target-version')
+                this%target_version = value
+            case ('output-format')  
+                this%output_format = value
+            end select
+        end do
         
     end subroutine config_from_toml_string
+    
+    ! Split TOML string into lines
+    subroutine split_lines(text, lines, num_lines)
+        character(len=*), intent(in) :: text
+        character(len=1000), intent(out) :: lines(:)
+        integer, intent(out) :: num_lines
+        
+        integer :: i, start_pos, end_pos, newline_pos
+        
+        num_lines = 0
+        start_pos = 1
+        
+        do while (start_pos <= len(text) .and. num_lines < size(lines))
+            ! Find next newline
+            newline_pos = index(text(start_pos:), new_line('a'))
+            if (newline_pos == 0) then
+                ! No more newlines, take rest of string
+                end_pos = len(text)
+            else
+                end_pos = start_pos + newline_pos - 2
+            end if
+            
+            if (end_pos >= start_pos) then
+                num_lines = num_lines + 1
+                lines(num_lines) = text(start_pos:end_pos)
+            end if
+            
+            if (newline_pos == 0) exit
+            start_pos = start_pos + newline_pos
+        end do
+        
+    end subroutine split_lines
     
     ! Apply CLI argument overrides
     subroutine config_from_cli_args(this, cli_args)
