@@ -620,13 +620,17 @@ contains
     
     ! F001: Check for missing implicit none  
     subroutine check_f001_implicit_none(ctx, node_index, violations)
+        use fortfront, only: ast_arena_t, semantic_context_t, &
+                            lex_source, parse_tokens, analyze_semantics, &
+                            create_ast_arena, create_semantic_context, &
+                            module_node, program_node, subroutine_def_node, function_def_node, &
+                            get_node_type_id_from_arena
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TEMPORARY: Text-based analysis until fortfront AST API is available
-        ! Issue: https://github.com/lazy-fortran/fortfront/issues/11-14
-        call check_f001_implicit_none_text_based(violations)
+        ! Use fortfront AST to check for implicit none statements
+        call check_f001_implicit_none_ast_based(ctx, node_index, violations)
         
     end subroutine check_f001_implicit_none
     
@@ -1357,6 +1361,115 @@ contains
         allocate(violations(0))
         
     end subroutine check_c001_undefined_var
+    
+    ! AST-BASED IMPLEMENTATIONS using fortfront
+    
+    ! F001: Check for missing implicit none using AST
+    subroutine check_f001_implicit_none_ast_based(ctx, node_index, violations)
+        use fortfront, only: ast_arena_t, program_node, module_node, &
+                            subroutine_def_node, function_def_node, &
+                            get_node_type_id_from_arena
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index  
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        logical :: found_implicit_none
+        integer :: i
+        
+        ! Initialize
+        allocate(temp_violations(10))
+        violation_count = 0
+        
+        ! Check if this is a program unit that needs implicit none
+        if (needs_implicit_none(ctx, node_index)) then
+            ! Search for implicit none statement in this scope
+            found_implicit_none = find_implicit_none_in_scope(ctx, node_index)
+            
+            if (.not. found_implicit_none) then
+                violation_count = violation_count + 1
+                if (violation_count <= size(temp_violations)) then
+                    temp_violations(violation_count) = create_diagnostic( &
+                        code="F001", &
+                        message="Missing 'implicit none' statement", &
+                        file_path="", &
+                        location=ctx%get_node_location(node_index), &
+                        severity=SEVERITY_WARNING)
+                end if
+            end if
+        end if
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        do i = 1, violation_count
+            violations(i) = temp_violations(i)
+        end do
+        
+    end subroutine check_f001_implicit_none_ast_based
+    
+    ! Check if a node type needs implicit none
+    function needs_implicit_none(ctx, node_index) result(needs)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: needs
+        
+        integer :: node_type
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Program units that should have implicit none
+        needs = node_type == NODE_MODULE .or. &
+               node_type == NODE_FUNCTION_DEF .or. &
+               node_type == NODE_SUBROUTINE_DEF
+        
+        ! Note: program node is handled differently as it's usually the root
+        
+    end function needs_implicit_none
+    
+    ! Find implicit none statement in scope
+    function find_implicit_none_in_scope(ctx, scope_index) result(found)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: scope_index
+        logical :: found
+        
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        
+        found = .false.
+        children = ctx%get_children(scope_index)
+        
+        ! Look through immediate children for implicit none
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                child_type = ctx%get_node_type(children(i))
+                ! Check if this child is an implicit none statement
+                if (is_implicit_none_statement(ctx, children(i))) then
+                    found = .true.
+                    exit
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function find_implicit_none_in_scope
+    
+    ! Check if node is an implicit none statement
+    function is_implicit_none_statement(ctx, node_index) result(is_implicit)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: is_implicit
+        
+        character(len=256) :: node_text
+        
+        ! For now, use text matching as a fallback
+        ! In a full implementation, we'd check the node type
+        call get_node_text(ctx, node_index, node_text)
+        is_implicit = index(node_text, "implicit") > 0 .and. &
+                     index(node_text, "none") > 0
+        
+    end function is_implicit_none_statement
     
     ! TEMPORARY TEXT-BASED IMPLEMENTATIONS
     ! These will be replaced when fortfront AST API is available
