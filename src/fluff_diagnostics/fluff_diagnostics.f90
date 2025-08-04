@@ -342,8 +342,37 @@ contains
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: sarif
         
-        ! TODO: Implement SARIF format conversion
-        sarif = '{"version": "2.1.0", "runs": []}'
+        ! Build SARIF 2.1.0 compliant JSON structure
+        character(len=:), allocatable :: results_array
+        integer :: i
+        
+        if (this%count == 0) then
+            sarif = '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "fluff"}}, "results": []}]}'
+            return
+        end if
+        
+        ! Build results array
+        results_array = ""
+        do i = 1, this%count
+            if (i > 1) results_array = results_array // ","
+            results_array = results_array // new_line('a') // "    " // format_diagnostic_sarif(this%diagnostics(i))
+        end do
+        
+        ! Build complete SARIF structure
+        sarif = '{' // new_line('a') // &
+               '  "version": "2.1.0",' // new_line('a') // &
+               '  "runs": [{' // new_line('a') // &
+               '    "tool": {' // new_line('a') // &
+               '      "driver": {' // new_line('a') // &
+               '        "name": "fluff",' // new_line('a') // &
+               '        "version": "0.1.0",' // new_line('a') // &
+               '        "informationUri": "https://github.com/krystophny/fluff"' // new_line('a') // &
+               '      }' // new_line('a') // &
+               '    },' // new_line('a') // &
+               '    "results": [' // results_array // new_line('a') // &
+               '    ]' // new_line('a') // &
+               '  }]' // new_line('a') // &
+               '}'
         
     end function collection_to_sarif
     
