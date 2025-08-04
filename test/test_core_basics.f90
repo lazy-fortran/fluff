@@ -1,6 +1,7 @@
 module test_core_basics
     use testdrive, only: new_unittest, unittest_type, error_type, check
     use fluff_core
+    use fluff_rules, only: CATEGORY_CORRECTNESS
     implicit none
     private
     
