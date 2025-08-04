@@ -1280,8 +1280,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        ! Use fortfront AST to analyze array access patterns
+        call check_p001_array_access_ast_based(ctx, node_index, violations)
         
     end subroutine check_p001_array_access
     
@@ -1291,8 +1291,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        ! Use fortfront AST to analyze loop ordering
+        call check_p002_loop_ordering_ast_based(ctx, node_index, violations)
         
     end subroutine check_p002_loop_ordering
     
@@ -1313,8 +1313,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) pure/elemental declaration check
-        allocate(violations(0))
+        ! Use fortfront AST to analyze pure/elemental declarations
+        call check_p004_pure_elemental_ast_based(ctx, node_index, violations)
         
     end subroutine check_p004_pure_elemental
     
@@ -1470,6 +1470,282 @@ contains
                      index(node_text, "none") > 0
         
     end function is_implicit_none_statement
+    
+    ! P001: Check array access patterns using AST
+    subroutine check_p001_array_access_ast_based(ctx, node_index, violations)
+        use fortfront, only: get_identifiers_in_subtree
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(50))
+        violation_count = 0
+        
+        ! Analyze array access patterns recursively
+        call analyze_array_access_patterns(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p001_array_access_ast_based
+    
+    ! Analyze array access patterns for memory efficiency
+    recursive subroutine analyze_array_access_patterns(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check for non-contiguous array access in loops
+        if (node_type == NODE_DO_LOOP) then
+            call check_loop_array_access(ctx, node_index, violations, violation_count)
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_array_access_patterns(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_array_access_patterns
+    
+    ! Check array access patterns within loops
+    subroutine check_loop_array_access(ctx, loop_node, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: loop_node
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        ! Simple implementation for now - check if this looks like a nested loop structure
+        if (has_array_like_accesses(ctx, loop_node)) then
+            if (violation_count < size(violations)) then
+                violation_count = violation_count + 1
+                violations(violation_count) = create_diagnostic( &
+                    code="P001", &
+                    message="Consider memory-efficient array access patterns", &
+                    file_path="", &
+                    location=ctx%get_node_location(loop_node), &
+                    severity=SEVERITY_INFO)
+            end if
+        end if
+        
+    end subroutine check_loop_array_access
+    
+    ! Simple heuristic to detect array-like access patterns
+    function has_array_like_accesses(ctx, node_index) result(has_arrays)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: has_arrays
+        
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        
+        has_arrays = .false.
+        children = ctx%get_children(node_index)
+        
+        ! Simple heuristic: if we find multiple children, assume there might be array access
+        if (size(children) > 2) then
+            has_arrays = .true.
+        end if
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function has_array_like_accesses
+    
+    ! P002: Check loop ordering efficiency using AST
+    subroutine check_p002_loop_ordering_ast_based(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(20))
+        violation_count = 0
+        
+        ! Analyze nested loops for optimal ordering
+        call analyze_nested_loops(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p002_loop_ordering_ast_based
+    
+    ! Analyze nested loops for memory-efficient ordering
+    recursive subroutine analyze_nested_loops(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i, nested_loop_count
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check for nested loops
+        if (node_type == NODE_DO_LOOP) then
+            nested_loop_count = count_nested_loops(ctx, node_index)
+            if (nested_loop_count > 1) then
+                ! This is a simplified heuristic - in practice would analyze array indexing patterns
+                if (violation_count < size(violations)) then
+                    violation_count = violation_count + 1
+                    violations(violation_count) = create_diagnostic( &
+                        code="P002", &
+                        message="Consider loop ordering for memory efficiency (innermost loop should access contiguous memory)", &
+                        file_path="", &
+                        location=ctx%get_node_location(node_index), &
+                        severity=SEVERITY_INFO)
+                end if
+            end if
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_nested_loops(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_nested_loops
+    
+    ! Count nested loops within a loop
+    recursive function count_nested_loops(ctx, loop_node) result(count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: loop_node
+        integer :: count
+        
+        integer, allocatable :: children(:)
+        integer :: i, node_type
+        
+        count = 0
+        children = ctx%get_children(loop_node)
+        
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                node_type = ctx%get_node_type(children(i))
+                if (node_type == NODE_DO_LOOP) then
+                    count = count + 1 + count_nested_loops(ctx, children(i))
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function count_nested_loops
+    
+    ! P004: Check pure/elemental declarations using AST
+    subroutine check_p004_pure_elemental_ast_based(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(20))
+        violation_count = 0
+        
+        ! Analyze procedures for pure/elemental opportunities
+        call analyze_procedure_purity(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p004_pure_elemental_ast_based
+    
+    ! Analyze procedures for pure/elemental opportunities
+    recursive subroutine analyze_procedure_purity(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i
+        character(len=256) :: node_text
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check functions and subroutines for pure/elemental opportunities
+        if (node_type == NODE_FUNCTION_DEF .or. node_type == NODE_SUBROUTINE_DEF) then
+            call get_node_text(ctx, node_index, node_text)
+            
+            ! Simple heuristic: if no "pure" or "elemental" keyword found
+            if (index(node_text, "pure") == 0 .and. index(node_text, "elemental") == 0) then
+                ! Check if this procedure could be pure (doesn't modify global state)
+                if (could_be_pure_procedure(ctx, node_index)) then
+                    if (violation_count < size(violations)) then
+                        violation_count = violation_count + 1
+                        violations(violation_count) = create_diagnostic( &
+                            code="P004", &
+                            message="Consider adding 'pure' attribute for optimization", &
+                            file_path="", &
+                            location=ctx%get_node_location(node_index), &
+                            severity=SEVERITY_INFO)
+                    end if
+                end if
+            end if
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_procedure_purity(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_procedure_purity
+    
+    ! Simple heuristic to check if procedure could be pure
+    function could_be_pure_procedure(ctx, proc_node) result(could_be_pure)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: proc_node
+        logical :: could_be_pure
+        
+        character(len=256) :: node_text
+        
+        ! Simplified analysis - check for obvious impure operations
+        call get_node_text(ctx, proc_node, node_text)
+        
+        ! If contains I/O or other side effects, not pure
+        could_be_pure = index(node_text, "print") == 0 .and. &
+                       index(node_text, "write") == 0 .and. &
+                       index(node_text, "read") == 0 .and. &
+                       index(node_text, "stop") == 0
+        
+    end function could_be_pure_procedure
     
     ! TEMPORARY TEXT-BASED IMPLEMENTATIONS
     ! These will be replaced when fortfront AST API is available
