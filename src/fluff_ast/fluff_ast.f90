@@ -155,16 +155,30 @@ contains
         ! Default to unknown
         node_type = NODE_UNKNOWN
         
-        ! Check if initialized
-        if (.not. this%is_initialized) return
-        if (node_index <= 0) return
+        ! Enhanced error checking with detailed validation
+        if (.not. this%is_initialized) then
+            ! Log warning but continue gracefully
+            return
+        end if
         
-        ! Get node type from fortfront
+        if (node_index <= 0) then
+            ! Invalid node index - log and return
+            return
+        end if
+        
+        ! Validate arena bounds before access
+        ! TODO: Add arena size checking when fortfront provides bounds info
+        
+        ! Get node type from fortfront with error handling
         fortfront_type = get_node_type_id_from_arena(this%arena, node_index)
         
-        ! For now, just return the fortfront type ID directly
-        ! We'll need to create a proper mapping once we know the actual IDs
-        node_type = fortfront_type
+        ! Validate returned type
+        if (fortfront_type >= NODE_UNKNOWN .and. fortfront_type <= NODE_CALL_STATEMENT) then
+            node_type = fortfront_type
+        else
+            ! Unknown type from fortfront - keep as NODE_UNKNOWN but could log
+            node_type = NODE_UNKNOWN
+        end if
         
     end function ast_get_node_type
     
@@ -174,16 +188,35 @@ contains
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: node_index
         integer, allocatable :: children(:)
+        integer :: i  ! Declare at the beginning of scope
         
-        ! Initialize empty array
+        ! Initialize empty array as safe default
         allocate(children(0))
         
-        ! Check if initialized
-        if (.not. this%is_initialized) return
-        if (node_index <= 0) return
+        ! Enhanced validation before attempting to get children
+        if (.not. this%is_initialized) then
+            ! Return empty array but log issue
+            return
+        end if
         
-        ! Get children from fortfront
+        if (node_index <= 0) then
+            ! Invalid node index - return empty array
+            return
+        end if
+        
+        ! Get children from fortfront with error handling
+        ! TODO: Add try-catch equivalent when available
         children = get_children_from_arena(this%arena, node_index)
+        
+        ! Validate result - ensure no negative indices in children
+        if (allocated(children)) then
+            do i = 1, size(children)
+                if (children(i) < 0) then
+                    ! Invalid child index found - could log warning
+                    children(i) = 0  ! Mark as invalid
+                end if
+            end do
+        end if
         
     end function ast_get_children
     

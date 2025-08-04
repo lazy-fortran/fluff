@@ -1,6 +1,7 @@
 module fluff_analysis_cache
     use fluff_core
     use fluff_lsp_performance
+    use fluff_string_utils
     implicit none
     private
     
@@ -497,50 +498,58 @@ contains
         
     end subroutine add_dependency
     
-    ! Get dependencies of a file
+    ! Get dependencies of a file (returns string_array_t to avoid gfortran bug)
     function get_dependencies(this, file_path) result(deps)
         class(analysis_cache_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
         integer :: index, count, i
         
+        deps = create_string_array()
+        
+        ! Validate input
+        if (len_trim(file_path) == 0) return
+        
         index = this%find_entry_index(file_path)
-        if (index > 0) then
-            count = this%entries(index)%dependency_count
-            if (count > 0) then
-                allocate(character(len=256) :: deps(count))
-                do i = 1, count
-                    deps(i) = this%entries(index)%dependencies(i)
-                end do
-            else
-                allocate(character(len=256) :: deps(1))
-                deps(1) = ""
+        if (index > 0 .and. index <= this%entry_count) then
+            if (allocated(this%entries(index)%dependencies)) then
+                count = min(this%entries(index)%dependency_count, &
+                           size(this%entries(index)%dependencies))
+                if (count > 0) then
+                    do i = 1, count
+                        if (len_trim(this%entries(index)%dependencies(i)) > 0) then
+                            call deps%append(trim(this%entries(index)%dependencies(i)))
+                        end if
+                    end do
+                end if
             end if
-        else
-            allocate(character(len=256) :: deps(1))
-            deps(1) = ""
         end if
+        
+        ! If no dependencies, array will be empty (count = 0)
         
     end function get_dependencies
     
-    ! Get transitive dependencies
+    ! Get transitive dependencies (returns string_array_t to avoid gfortran bug)
     function get_transitive_dependencies(this, file_path) result(deps)
         class(analysis_cache_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
-        character(len=:), allocatable :: direct_deps(:)
-        integer :: count
+        type(string_array_t) :: direct_deps
+        integer :: i
         
-        ! FIXME: Compiler segfault when calling get_dependencies
-        ! direct_deps = this%get_dependencies(file_path)
-        ! count = size(direct_deps)
+        ! Now we can safely call get_dependencies with the string_array_t workaround
+        direct_deps = this%get_dependencies(file_path)
         
-        ! Temporary workaround - return mock data
-        count = 1
-        allocate(character(len=256) :: deps(count))
-        deps(1) = "mock_transitive.f90"
+        ! For now, just return direct dependencies (not fully transitive)
+        ! A full implementation would need to recursively get dependencies
+        deps = create_string_array()
+        do i = 1, direct_deps%count
+            call deps%append(direct_deps%get_item(i))
+        end do
+        
+        call direct_deps%cleanup()
         
     end function get_transitive_dependencies
     
@@ -585,13 +594,18 @@ contains
         
     end function has_circular_dependencies
     
-    ! Get files depending on given file
+    ! Get files depending on given file (returns string_array_t to avoid gfortran bug)
     function get_files_depending_on(this, file_path) result(dependents)
         class(analysis_cache_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
-        character(len=:), allocatable :: dependents(:)
+        type(string_array_t) :: dependents
         
         integer :: i, count, dep_index
+        
+        dependents = create_string_array()
+        
+        ! Validate input
+        if (len_trim(file_path) == 0) return
         
         ! Find in dependency graph
         dep_index = 0
@@ -604,16 +618,19 @@ contains
             end if
         end do
         
-        if (dep_index > 0) then
-            count = this%dependency_graph(dep_index)%dependent_count
-            allocate(character(len=256) :: dependents(count))
-            
-            do i = 1, count
-                dependents(i) = this%dependency_graph(dep_index)%dependents(i)
-            end do
-        else
-            allocate(character(len=1) :: dependents(0))
+        if (dep_index > 0 .and. dep_index <= this%dependency_node_count) then
+            if (allocated(this%dependency_graph(dep_index)%dependents)) then
+                count = min(this%dependency_graph(dep_index)%dependent_count, &
+                           size(this%dependency_graph(dep_index)%dependents))
+                do i = 1, count
+                    if (len_trim(this%dependency_graph(dep_index)%dependents(i)) > 0) then
+                        call dependents%append(trim(this%dependency_graph(dep_index)%dependents(i)))
+                    end if
+                end do
+            end if
         end if
+        
+        ! If no dependents, array will be empty (count = 0)
         
     end function get_files_depending_on
     

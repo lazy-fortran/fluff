@@ -84,7 +84,7 @@ contains
                       "    integer :: i" // new_line('a') // &
                       "    real :: result" // new_line('a') // &
                       "    result = some_very_long_function_name_that_exceeds_the_" // &
-                      "maximum_line_length_limit(i, 42)" // new_line('a') // &
+                      "    maximum_line_length_limit(i, 42)" // new_line('a') // &
                       "end program long_line_example"
         
         ! Test formatting with source context

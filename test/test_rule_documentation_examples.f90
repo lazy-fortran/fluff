@@ -210,7 +210,8 @@ contains
         character(len=:), allocatable :: code
         code = "program line_too_long" // new_line('a') // &
                "    implicit none" // new_line('a') // &
-               "    real :: very_long_variable_name_that_makes_this_line_exceed_the_maximum_length_limit = 3.14159" // new_line('a') // &
+               "    real :: very_long_variable_name_that_makes_this_line_exceed_the_maximum_" // &
+               "length_limit = 3.14159" // new_line('a') // &
                "end program line_too_long"
     end function generate_f003_bad_example
     

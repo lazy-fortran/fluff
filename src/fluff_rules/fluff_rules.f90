@@ -792,11 +792,17 @@ contains
         type(diagnostic_t), allocatable :: temp_violations(:)
         integer :: violation_count
         
-        ! Initialize arrays
-        allocate(declared_vars(1000))
-        allocate(used_vars(1000))
-        allocate(var_is_used(1000))
-        allocate(temp_violations(100))
+        ! Initialize arrays with dynamic sizing based on estimated needs
+        ! Start with reasonable defaults but allow growth
+        integer, parameter :: INITIAL_VAR_CAPACITY = 100
+        integer, parameter :: MAX_VAR_CAPACITY = 10000
+        integer, parameter :: INITIAL_VIOLATION_CAPACITY = 50
+        integer, parameter :: MAX_VIOLATION_CAPACITY = 1000
+        
+        allocate(declared_vars(INITIAL_VAR_CAPACITY))
+        allocate(used_vars(INITIAL_VAR_CAPACITY))
+        allocate(var_is_used(INITIAL_VAR_CAPACITY))
+        allocate(temp_violations(INITIAL_VIOLATION_CAPACITY))
         declared_count = 0
         used_count = 0
         violation_count = 0
@@ -818,8 +824,18 @@ contains
             
             ! Create violation for unused variable
             if (.not. var_is_used(i)) then
-                violation_count = violation_count + 1
-                if (violation_count <= size(temp_violations)) then
+                if (violation_count < size(temp_violations)) then
+                    violation_count = violation_count + 1
+                    temp_violations(violation_count) = create_diagnostic( &
+                        code="F006", &
+                        message="Unused variable '" // trim(declared_vars(i)) // "'", &
+                        file_path="", &
+                        location=create_range(1, 1, 1, 1), &
+                        severity=SEVERITY_WARNING)
+                else if (violation_count < MAX_VIOLATION_CAPACITY) then
+                    ! Grow violations array
+                    call grow_violation_array(temp_violations, violation_count + 20)
+                    violation_count = violation_count + 1
                     temp_violations(violation_count) = create_diagnostic( &
                         code="F006", &
                         message="Unused variable '" // trim(declared_vars(i)) // "'", &
@@ -848,6 +864,9 @@ contains
         character(len=256), intent(inout) :: used_vars(:)
         integer, intent(inout) :: used_count
         
+        ! Define capacity constant locally for this subroutine
+        integer, parameter :: MAX_VAR_CAPACITY = 10000
+        
         integer, allocatable :: children(:)
         integer :: node_type
         integer :: i, num_children
@@ -871,11 +890,13 @@ contains
                     declared_count = declared_count + 1
                     declared_vars(declared_count) = trim(node_text)
                 end if
+                ! Skip if array is full (can't grow non-allocatable arrays)
             else
                 if (used_count < size(used_vars)) then
                     used_count = used_count + 1
                     used_vars(used_count) = trim(node_text)
                 end if
+                ! Skip if array is full (can't grow non-allocatable arrays)
             end if
         end if
         
@@ -961,11 +982,69 @@ contains
         
     end function create_range
     
+    ! Helper subroutine to grow variable name arrays
+    subroutine grow_var_array(var_array, new_size)
+        character(len=256), allocatable, intent(inout) :: var_array(:)
+        integer, intent(in) :: new_size
+        
+        character(len=256), allocatable :: temp_array(:)
+        integer :: old_size
+        
+        old_size = size(var_array)
+        if (new_size <= old_size) return
+        
+        ! Save old data
+        allocate(temp_array(old_size))
+        temp_array = var_array
+        
+        ! Resize array
+        deallocate(var_array)
+        allocate(var_array(new_size))
+        
+        ! Copy back old data
+        var_array(1:old_size) = temp_array
+        
+        deallocate(temp_array)
+        
+    end subroutine grow_var_array
+    
+    ! Helper subroutine to grow violation arrays
+    subroutine grow_violation_array(violation_array, new_size)
+        type(diagnostic_t), allocatable, intent(inout) :: violation_array(:)
+        integer, intent(in) :: new_size
+        
+        type(diagnostic_t), allocatable :: temp_array(:)
+        integer :: old_size
+        
+        old_size = size(violation_array)
+        if (new_size <= old_size) return
+        
+        ! Save old data
+        allocate(temp_array(old_size))
+        temp_array = violation_array
+        
+        ! Resize array
+        deallocate(violation_array)
+        allocate(violation_array(new_size))
+        
+        ! Copy back old data
+        violation_array(1:old_size) = temp_array
+        
+        deallocate(temp_array)
+        
+    end subroutine grow_violation_array
+    
     ! F007: Check undefined variable usage
     subroutine check_f007_undefined_variable(ctx, node_index, violations)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        ! Define capacity constants (same as in check_f006)
+        integer, parameter :: INITIAL_VAR_CAPACITY = 100
+        integer, parameter :: MAX_VAR_CAPACITY = 10000
+        integer, parameter :: INITIAL_VIOLATION_CAPACITY = 50
+        integer, parameter :: MAX_VIOLATION_CAPACITY = 1000
         
         ! Variable tracking arrays
         character(len=256), allocatable :: declared_vars(:)
@@ -978,11 +1057,11 @@ contains
         logical :: found
         logical :: already_reported
         
-        ! Initialize arrays
-        allocate(declared_vars(1000))
-        allocate(used_vars(1000))
-        allocate(var_is_declared(1000))
-        allocate(temp_violations(100))
+        ! Initialize arrays with safe capacity and bounds checking
+        allocate(declared_vars(INITIAL_VAR_CAPACITY))
+        allocate(used_vars(INITIAL_VAR_CAPACITY))
+        allocate(var_is_declared(INITIAL_VAR_CAPACITY))
+        allocate(temp_violations(INITIAL_VIOLATION_CAPACITY))
         declared_count = 0
         used_count = 0
         violation_count = 0

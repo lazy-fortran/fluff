@@ -639,9 +639,10 @@ contains
     end function test_invalid_config_reload
     
     function test_analyze_changed_only() result(success)
+        use fluff_string_utils
         logical :: success
         type(file_watcher_t) :: watcher
-        character(len=:), allocatable :: changed_files(:)
+        type(string_array_t) :: changed_files
         
         watcher = create_file_watcher()
         call watcher%start_watching()
@@ -649,7 +650,8 @@ contains
         call watcher%handle_file_change("test.f90", FILE_MODIFIED)
         changed_files = watcher%get_changed_files()
         
-        success = size(changed_files) == 1 .and. changed_files(1) == "test.f90"
+        success = changed_files%count == 1 .and. changed_files%get_item(1) == "test.f90"
+        call changed_files%cleanup()
         
     end function test_analyze_changed_only
     
