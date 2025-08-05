@@ -7,7 +7,7 @@ license = "MIT"
 copyright = "Copyright 2025, Christopher Albert"
 
 [dependencies]
-fortfront = { path = "../fortfront" }
+fortfront = { git = "https://github.com/lazy-fortran/fortfront.git" }
 stdlib = "*"
 json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git", tag = "8.3.0" }
 
