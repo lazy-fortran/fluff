@@ -530,6 +530,10 @@ contains
         if (.not. allocated(this%arena%entries(node_index)%node)) return
         
         ! Process based on node type
+        ! Debug: Print the actual node type we're processing
+        print *, "DEBUG: Processing node", node_index, "- type:", &
+            get_node_type_id_from_arena(this%arena, node_index)
+        
         select type (node => this%arena%entries(node_index)%node)
         type is (declaration_node)
             ! Get declaration info using fortfront API
@@ -614,9 +618,13 @@ contains
             ! Process all identifiers in if statement
             identifiers = get_identifiers_in_subtree(this%arena, node_index)
             if (allocated(identifiers)) then
+                print *, "DEBUG: if_node found", size(identifiers), "identifiers"
                 do i = 1, size(identifiers)
+                    print *, "DEBUG: Adding used variable from if_node:", identifiers(i)
                     call this%visitor%add_used_variable(identifiers(i))
                 end do
+            else
+                print *, "DEBUG: if_node - no identifiers found in subtree"
             end if
             
         type is (do_loop_node)
@@ -628,9 +636,46 @@ contains
                 end do
             end if
             
+        type is (literal_node)
+            ! Process identifiers in literal expressions
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: literal_node found", size(identifiers), "identifiers"
+                do i = 1, size(identifiers)
+                    print *, "DEBUG: Adding used variable from literal_node:", identifiers(i)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            else
+                print *, "DEBUG: literal_node - no identifiers found"
+            end if
+            
+        type is (program_node)
+            ! Process all identifiers in program
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: program_node found", size(identifiers), "identifiers"
+                do i = 1, size(identifiers)
+                    print *, "DEBUG: Adding used variable from program_node:", identifiers(i)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            else
+                print *, "DEBUG: program_node - no identifiers found"
+            end if
+            
         class default
             ! For other node types, try to process children generically
-            ! This is a fallback for node types not explicitly handled
+            print *, "DEBUG: Unhandled node type at index", node_index, &
+                "type_id:", get_node_type_id_from_arena(this%arena, node_index)
+            
+            ! Try to get identifiers from unhandled nodes
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: Found", size(identifiers), "identifiers in unhandled node"
+                do i = 1, size(identifiers)
+                    print *, "DEBUG: Adding used variable from unhandled node:", identifiers(i)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            end if
         end select
         
     end subroutine detector_process_node_enhanced
