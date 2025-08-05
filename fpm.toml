@@ -5,7 +5,7 @@ author = "Christopher Albert"
 maintainer = "albert@tugraz.at"
 copyright = "Copyright 2025, Christopher Albert"
 [dependencies]
-fortfront = { path = "../fortfront" }
+fortfront = { git = "https://github.com/lazy-fortran/fortfront.git" }
 stdlib = "*"
 
 [dev-dependencies]
