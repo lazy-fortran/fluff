@@ -1204,7 +1204,7 @@ contains
         character(len=1) :: char
         integer :: i
         
-        print *, "DEBUG: Looking for if conditions"
+        ! Note: Text-based parsing workaround for missing AST nodes
         
         ! Look for if statements: if (condition) then
         pos = 1
@@ -1297,25 +1297,20 @@ contains
         character(len=:), allocatable :: token
         character(len=1) :: char
         
-        print *, "DEBUG: Extracting identifiers from expression:", expression
+        ! Simple tokenizer for identifier extraction
         
         i = 1
         do while (i <= len(expression))
             char = expression(i:i)
             
             ! Start of identifier (letter or underscore)
-            if ((char >= 'a' .and. char <= 'z') .or. &
-                (char >= 'A' .and. char <= 'Z') .or. &
-                char == '_') then
+            if (is_identifier_start_char(char)) then
                 
                 start_pos = i
                 ! Continue while alphanumeric or underscore
                 do while (i <= len(expression))
                     char = expression(i:i)
-                    if ((char >= 'a' .and. char <= 'z') .or. &
-                        (char >= 'A' .and. char <= 'Z') .or. &
-                        (char >= '0' .and. char <= '9') .or. &
-                        char == '_') then
+                    if (is_identifier_char(char)) then
                         i = i + 1
                     else
                         exit
@@ -1329,7 +1324,7 @@ contains
                     if (token /= 'if' .and. token /= 'then' .and. token /= 'else' .and. &
                         token /= 'end' .and. token /= 'do' .and. token /= 'while' .and. &
                         token /= 'true' .and. token /= 'false') then
-                        print *, "DEBUG: Extracted identifier from expression:", token
+                        ! Add identified variable to usage list
                         call this%visitor%add_used_variable(token)
                     end if
                 end if
@@ -1339,5 +1334,25 @@ contains
         end do
         
     end subroutine extract_identifiers_from_expression
+    
+    ! Helper functions for character classification
+    pure function is_identifier_start_char(char) result(is_start)
+        character(len=1), intent(in) :: char
+        logical :: is_start
+        
+        is_start = (char >= 'a' .and. char <= 'z') .or. &
+                   (char >= 'A' .and. char <= 'Z') .or. &
+                   char == '_'
+    end function is_identifier_start_char
+    
+    pure function is_identifier_char(char) result(is_ident)
+        character(len=1), intent(in) :: char
+        logical :: is_ident
+        
+        is_ident = (char >= 'a' .and. char <= 'z') .or. &
+                   (char >= 'A' .and. char <= 'Z') .or. &
+                   (char >= '0' .and. char <= '9') .or. &
+                   char == '_'
+    end function is_identifier_char
     
 end module fluff_dead_code_detection
