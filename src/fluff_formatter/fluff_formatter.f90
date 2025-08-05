@@ -13,7 +13,7 @@ module fluff_formatter
         type(format_options_t) :: options
         character(len=:), allocatable :: current_style_guide
         type(aesthetic_settings_t) :: aesthetic_settings
-        logical :: enable_quality_improvements = .false.
+        logical :: enable_quality_improvements = .true.
     contains
         procedure :: initialize => formatter_initialize
         procedure :: format_file => formatter_format_file
@@ -56,7 +56,7 @@ contains
         
         ! Initialize aesthetic settings
         this%aesthetic_settings = create_aesthetic_settings()
-        this%enable_quality_improvements = .false.
+        this%enable_quality_improvements = .true.
         
     end subroutine formatter_initialize
     
