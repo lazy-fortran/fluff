@@ -39,6 +39,7 @@ module fluff_format_quality
     ! Public interface
     public :: assess_format_quality, apply_aesthetic_improvements
     public :: create_quality_metrics, create_aesthetic_settings
+    public :: optimize_line_breaks
     
 contains
     
@@ -457,38 +458,182 @@ contains
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
         
-        ! Simplified line break optimization
         character(len=:), allocatable :: result
-        integer :: i, line_start, line_length
+        character(len=1000), allocatable :: lines(:)
+        integer :: num_lines, i
+        logical :: first_line
+        
+        allocate(lines(10000))
+        call split_code_into_lines(code, lines, num_lines)
         
         result = ""
-        line_start = 1
-        line_length = 0
+        first_line = .true.
         
-        do i = 1, len(code)
-            if (code(i:i) == new_line('a')) then
-                result = result // code(line_start:i)
-                line_start = i + 1
-                line_length = 0
-            else
-                line_length = line_length + 1
-                if (line_length > max_length .and. code(i:i) == ' ') then
-                    ! Break line at space if too long
-                    result = result // code(line_start:i-1) // ' &' // new_line('a') // '    '
-                    line_start = i + 1
-                    line_length = 4  ! Account for continuation indent
+        do i = 1, num_lines
+            ! Safe trimming
+            if (i <= size(lines)) then
+                if (len_trim(lines(i)) > max_length) then
+                    if (.not. first_line) then
+                        result = result // new_line('a')
+                    end if
+                    call break_fortran_line(lines(i)(1:len_trim(lines(i))), result, max_length)
+                    first_line = .false.
+                else
+                    if (.not. first_line) then
+                        result = result // new_line('a')
+                    end if
+                    if (len_trim(lines(i)) > 0) then
+                        result = result // lines(i)(1:len_trim(lines(i)))
+                    end if
+                    first_line = .false.
                 end if
             end if
         end do
         
-        ! Add remaining characters
-        if (line_start <= len(code)) then
-            result = result // code(line_start:)
-        end if
-        
         code = result
         
     end subroutine optimize_line_breaks
+    
+    subroutine split_code_into_lines(code, lines, num_lines)
+        character(len=*), intent(in) :: code
+        character(len=*), intent(out) :: lines(:)
+        integer, intent(out) :: num_lines
+        
+        integer :: i, line_start, current_line
+        logical :: found_newline
+        
+        num_lines = 0
+        current_line = 1
+        line_start = 1
+        found_newline = .false.
+        
+        ! Initialize all lines to empty
+        do i = 1, size(lines)
+            lines(i) = ""
+        end do
+        
+        do i = 1, len(code)
+            if (code(i:i) == new_line('a')) then
+                if (i > line_start) then
+                    lines(current_line) = code(line_start:i-1)
+                else
+                    lines(current_line) = ""
+                end if
+                num_lines = current_line
+                current_line = current_line + 1
+                line_start = i + 1
+                found_newline = .true.
+                if (current_line > size(lines)) exit
+            end if
+        end do
+        
+        ! Handle last line or single line without newline
+        if (line_start <= len(code) .and. current_line <= size(lines)) then
+            lines(current_line) = code(line_start:)
+            num_lines = current_line
+        else if (.not. found_newline .and. len(code) > 0) then
+            ! Single line with no newline
+            lines(1) = code
+            num_lines = 1
+        end if
+        
+    end subroutine split_code_into_lines
+    
+    subroutine break_fortran_line(line, result, max_length)
+        character(len=*), intent(in) :: line
+        character(len=:), allocatable, intent(inout) :: result
+        integer, intent(in) :: max_length
+        
+        character(len=:), allocatable :: remaining, current_segment
+        integer :: break_pos, i, leading_spaces
+        logical :: found_break, in_string
+        character :: quote_char
+        
+        ! Count leading spaces
+        leading_spaces = 0
+        do i = 1, len(line)
+            if (line(i:i) == ' ') then
+                leading_spaces = leading_spaces + 1
+            else
+                exit
+            end if
+        end do
+        
+        remaining = line
+        
+        do while (len_trim(remaining) > 0)
+            if (len_trim(remaining) <= max_length) then
+                result = result // remaining
+                exit
+            end if
+            
+            ! Find a good break point
+            found_break = .false.
+            in_string = .false.
+            quote_char = ' '
+            
+            ! Scan backwards from max_length to find a break point
+            do i = min(max_length, len_trim(remaining)), 1, -1
+                ! Track string literals
+                if (remaining(i:i) == '"' .or. remaining(i:i) == "'") then
+                    if (.not. in_string) then
+                        in_string = .true.
+                        quote_char = remaining(i:i)
+                    else if (remaining(i:i) == quote_char) then
+                        in_string = .false.
+                    end if
+                end if
+                
+                ! Don't break inside strings
+                if (in_string) cycle
+                
+                ! Good break points (after these characters)
+                if (i < len_trim(remaining) .and. &
+                    (remaining(i:i) == ',' .or. &
+                     remaining(i:i) == '+' .or. &
+                     remaining(i:i) == '-' .or. &
+                     remaining(i:i) == '*' .or. &
+                     remaining(i:i) == '/' .or. &
+                     remaining(i:i) == ')')) then
+                    
+                    ! Don't break ** operator
+                    if (remaining(i:i) == '*' .and. i < len(remaining) .and. remaining(i+1:i+1) == '*') then
+                        cycle
+                    end if
+                    
+                    current_segment = remaining(1:i) // ' &'
+                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(i+1:))
+                    found_break = .true.
+                    exit
+                end if
+                
+                ! Break at spaces (before the space)
+                if (remaining(i:i) == ' ' .and. i > 1 .and. i < len_trim(remaining)) then
+                    current_segment = remaining(1:i-1) // ' &'
+                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(i+1:))
+                    found_break = .true.
+                    exit
+                end if
+            end do
+            
+            ! If no good break found, force break
+            if (.not. found_break) then
+                if (max_length-2 > 0) then
+                    current_segment = remaining(1:max_length-2) // ' &'
+                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(max_length-1:))
+                else
+                    current_segment = remaining
+                    remaining = ""
+                end if
+            end if
+            
+            result = result // trim(current_segment)
+            if (len_trim(remaining) > 0) then
+                result = result // new_line('a')
+            end if
+        end do
+        
+    end subroutine break_fortran_line
     
     ! Helper functions
     function should_add_blank_line_before(current_line, previous_line) result(needs_blank)
