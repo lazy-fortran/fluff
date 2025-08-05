@@ -105,6 +105,10 @@ module fluff_dead_code_detection
         procedure :: mark_if_block_unreachable => detector_mark_if_block_unreachable
         procedure :: get_diagnostics => detector_get_diagnostics
         procedure :: clear => detector_clear
+        procedure :: handle_missing_ast_constructs => detector_handle_missing_constructs
+        procedure :: extract_identifiers_from_conditions
+        procedure :: extract_identifiers_from_allocate_statements
+        procedure :: extract_identifiers_from_expression
     end type dead_code_detector_t
     
 contains
@@ -126,6 +130,8 @@ contains
         integer :: i, prog_index
         
         print *, "DEBUG: analyzer_analyze_source_ast called with file:", trim(file_path)
+        print *, "DEBUG: Source code to parse:"
+        print *, source_code
         
         found_dead_code = .false.
         
@@ -191,6 +197,10 @@ contains
                 call this%process_node_enhanced(i)
             end if
         end do
+        
+        ! WORKAROUND: Handle missing AST nodes for if statements
+        ! This is a temporary fix until fortfront AST parsing is improved
+        call this%handle_missing_ast_constructs(source_code)
         
         ! Finalize analysis to identify unused variables
         call this%visitor%finalize_analysis()
@@ -1168,5 +1178,164 @@ contains
             end if
         end if
     end function is_end_statement
+    
+    ! WORKAROUND: Handle constructs missing from AST due to fortfront parsing issues
+    subroutine detector_handle_missing_constructs(this, source_code)
+        class(dead_code_detector_t), intent(inout) :: this
+        character(len=*), intent(in) :: source_code
+        
+        print *, "DEBUG: Handling missing AST constructs"
+        
+        ! Handle if statement conditions that are missing from AST
+        call this%extract_identifiers_from_conditions(source_code)
+        
+        ! Handle other missing constructs
+        call this%extract_identifiers_from_allocate_statements(source_code)
+        
+    end subroutine detector_handle_missing_constructs
+    
+    ! Extract variable usage from if/while conditions
+    subroutine extract_identifiers_from_conditions(this, source_code)
+        class(dead_code_detector_t), intent(inout) :: this
+        character(len=*), intent(in) :: source_code
+        
+        integer :: pos, start_pos, end_pos, paren_level
+        character(len=:), allocatable :: condition
+        character(len=1) :: char
+        integer :: i
+        
+        print *, "DEBUG: Looking for if conditions"
+        
+        ! Look for if statements: if (condition) then
+        pos = 1
+        do
+            pos = index(source_code(pos:), 'if (') + pos - 1
+            if (pos <= 0) exit
+            
+            ! Find the matching closing parenthesis
+            start_pos = pos + len('if (')
+            paren_level = 1
+            end_pos = start_pos
+            
+            do i = start_pos, len(source_code)
+                char = source_code(i:i)
+                if (char == '(') then
+                    paren_level = paren_level + 1
+                else if (char == ')') then
+                    paren_level = paren_level - 1
+                    if (paren_level == 0) then
+                        end_pos = i - 1
+                        exit
+                    end if
+                end if
+            end do
+            
+            ! Extract condition
+            if (end_pos > start_pos) then
+                condition = source_code(start_pos:end_pos)
+                print *, "DEBUG: Found if condition:", condition
+                
+                ! Extract identifiers from condition
+                call this%extract_identifiers_from_expression(condition)
+            end if
+            
+            pos = pos + len('if (')
+        end do
+        
+    end subroutine extract_identifiers_from_conditions
+    
+    ! Extract identifiers from allocate statements
+    subroutine extract_identifiers_from_allocate_statements(this, source_code)
+        class(dead_code_detector_t), intent(inout) :: this
+        character(len=*), intent(in) :: source_code
+        
+        integer :: pos, stat_pos, comma_pos, paren_pos
+        character(len=:), allocatable :: stat_var
+        
+        print *, "DEBUG: Looking for allocate statements"
+        
+        ! Look for allocate statements with stat= parameter
+        pos = 1
+        do
+            pos = index(source_code(pos:), 'allocate(') + pos - 1
+            if (pos <= 0) exit
+            
+            ! Look for stat= parameter
+            stat_pos = index(source_code(pos:), 'stat=')
+            if (stat_pos > 0) then
+                stat_pos = pos + stat_pos + len('stat=') - 1
+                
+                ! Find end of stat variable (comma or closing paren)
+                comma_pos = index(source_code(stat_pos:), ',')
+                paren_pos = index(source_code(stat_pos:), ')')
+                
+                if (comma_pos > 0 .and. (paren_pos == 0 .or. comma_pos < paren_pos)) then
+                    stat_var = trim(source_code(stat_pos:stat_pos + comma_pos - 2))
+                else if (paren_pos > 0) then
+                    stat_var = trim(source_code(stat_pos:stat_pos + paren_pos - 2))
+                end if
+                
+                if (allocated(stat_var) .and. len_trim(stat_var) > 0) then
+                    print *, "DEBUG: Found stat variable:", stat_var
+                    call this%visitor%add_used_variable(stat_var)
+                end if
+            end if
+            
+            pos = pos + len('allocate(')
+        end do
+        
+    end subroutine extract_identifiers_from_allocate_statements
+    
+    ! Extract identifiers from expressions (simple tokenizer)
+    subroutine extract_identifiers_from_expression(this, expression)
+        class(dead_code_detector_t), intent(inout) :: this
+        character(len=*), intent(in) :: expression
+        
+        integer :: i, start_pos, end_pos
+        character(len=:), allocatable :: token
+        character(len=1) :: char
+        
+        print *, "DEBUG: Extracting identifiers from expression:", expression
+        
+        i = 1
+        do while (i <= len(expression))
+            char = expression(i:i)
+            
+            ! Start of identifier (letter or underscore)
+            if ((char >= 'a' .and. char <= 'z') .or. &
+                (char >= 'A' .and. char <= 'Z') .or. &
+                char == '_') then
+                
+                start_pos = i
+                ! Continue while alphanumeric or underscore
+                do while (i <= len(expression))
+                    char = expression(i:i)
+                    if ((char >= 'a' .and. char <= 'z') .or. &
+                        (char >= 'A' .and. char <= 'Z') .or. &
+                        (char >= '0' .and. char <= '9') .or. &
+                        char == '_') then
+                        i = i + 1
+                    else
+                        exit
+                    end if
+                end do
+                
+                end_pos = i - 1
+                if (end_pos >= start_pos) then
+                    token = expression(start_pos:end_pos)
+                    ! Skip Fortran keywords and literals
+                    if (token /= 'if' .and. token /= 'then' .and. token /= 'else' .and. &
+                        token /= 'end' .and. token /= 'do' .and. token /= 'while' .and. &
+                        token /= 'true' .and. token /= 'false') then
+                        print *, "DEBUG: Extracted identifier from expression:", token
+                        call this%visitor%add_used_variable(token)
+                    end if
+                end if
+            else
+                i = i + 1
+            end if
+        end do
+        
+    end subroutine extract_identifiers_from_expression
     
 end module fluff_dead_code_detection
