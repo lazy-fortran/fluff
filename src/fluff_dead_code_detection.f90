@@ -1209,8 +1209,9 @@ contains
         ! Look for if statements: if (condition) then
         pos = 1
         do
-            pos = index(source_code(pos:), 'if (') + pos - 1
-            if (pos <= 0) exit
+            i = index(source_code(pos:), 'if (')
+            if (i == 0) exit
+            pos = pos + i - 1  ! Convert to absolute position
             
             ! Find the matching closing parenthesis
             start_pos = pos + len('if (')
@@ -1249,7 +1250,7 @@ contains
         class(dead_code_detector_t), intent(inout) :: this
         character(len=*), intent(in) :: source_code
         
-        integer :: pos, stat_pos, comma_pos, paren_pos
+        integer :: pos, stat_pos, comma_pos, paren_pos, i
         character(len=:), allocatable :: stat_var
         
         print *, "DEBUG: Looking for allocate statements"
@@ -1257,8 +1258,9 @@ contains
         ! Look for allocate statements with stat= parameter
         pos = 1
         do
-            pos = index(source_code(pos:), 'allocate(') + pos - 1
-            if (pos <= 0) exit
+            i = index(source_code(pos:), 'allocate(')
+            if (i == 0) exit
+            pos = pos + i - 1  ! Convert to absolute position
             
             ! Look for stat= parameter
             stat_pos = index(source_code(pos:), 'stat=')
