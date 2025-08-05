@@ -21,7 +21,6 @@ auto-examples = true
 
 [install]
 library = false
-test = false
 
 [fortran]
 implicit-typing = false
