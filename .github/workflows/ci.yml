@@ -333,10 +333,91 @@ jobs:
       with:
         sarif_file: security-results.sarif
 
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Fortran
+      uses: fortran-lang/setup-fortran@v1
+      with:
+        compiler: gcc
+        version: 11
+
+    - name: Setup fpm (Linux)
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Install coverage dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lcov
+        pip install lcov_cobertura
+
+    - name: Run tests with coverage
+      run: |
+        export OMP_NUM_THREADS=24
+        fpm clean --all
+        fpm test --profile debug --flag '-cpp -fprofile-arcs -ftest-coverage -g'
+
+    - name: Generate coverage data
+      run: |
+        lcov --capture --directory build/ --output-file coverage.info \
+          --rc branch_coverage=1 \
+          --ignore-errors inconsistent \
+          --ignore-errors mismatch \
+          --ignore-errors unused
+        lcov --remove coverage.info \
+          'build/dependencies/*' \
+          'test/*' \
+          '/usr/*' \
+          --output-file coverage_filtered.info \
+          --rc branch_coverage=1 \
+          --ignore-errors mismatch \
+          --ignore-errors unused
+        
+        # Convert to Cobertura XML for coverage action
+        lcov_cobertura coverage_filtered.info --output cobertura.xml
+        
+        # Generate HTML report
+        genhtml coverage_filtered.info --output-directory coverage_html \
+          --branch-coverage \
+          --legend
+
+    - name: Produce the coverage report
+      uses: insightsengineering/coverage-action@v3
+      continue-on-error: true
+      with:
+        path: ./cobertura.xml
+        threshold: 70
+        fail: true
+        publish: true
+        diff: true
+        diff-branch: main
+        diff-storage: _coverage_storage
+        coverage-summary-title: "Code Coverage Summary"
+        togglable-report: true
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          coverage_filtered.info
+          coverage_html/
+          cobertura.xml
+        retention-days: 30
+
   release:
     name: Release Build
     runs-on: ubuntu-latest
-    needs: [test, lint, performance]
+    needs: [test, lint, performance, coverage]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
