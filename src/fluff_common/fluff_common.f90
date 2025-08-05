@@ -182,9 +182,40 @@ contains
         character(len=*), intent(in) :: path
         character(len=:), allocatable :: normalized
         
-        ! TODO: Implement proper path normalization
-        ! For now, just trim
-        normalized = trim(path)
+        ! Implement proper path normalization
+        character(len=:), allocatable :: temp
+        integer :: i, j, len_path
+        
+        temp = trim(path)
+        len_path = len(temp)
+        
+        if (len_path == 0) then
+            normalized = ""
+            return
+        end if
+        
+        ! Replace backslashes with forward slashes (for Windows compatibility)
+        do i = 1, len_path
+            if (temp(i:i) == '\') temp(i:i) = '/'
+        end do
+        
+        ! Remove duplicate slashes
+        normalized = ""
+        i = 1
+        do while (i <= len_path)
+            if (temp(i:i) == '/' .and. i < len_path .and. temp(i+1:i+1) == '/') then
+                ! Skip duplicate slash
+                i = i + 1
+            else
+                normalized = normalized // temp(i:i)
+                i = i + 1
+            end if
+        end do
+        
+        ! Remove trailing slash (except for root)
+        if (len(normalized) > 1 .and. normalized(len(normalized):len(normalized)) == '/') then
+            normalized = normalized(1:len(normalized)-1)
+        end if
         
     end function normalize_path
     

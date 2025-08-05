@@ -701,9 +701,22 @@ contains
     
     function test_template_error_handling() result(success)
         logical :: success
+        class(output_formatter_t), allocatable :: formatter
+        type(diagnostic_t) :: diagnostics(1)
+        character(len=:), allocatable :: output
         
-        ! Test template error handling and validation
-        success = .true.  ! Should fail in the test expectation (bad template should be rejected)
+        formatter = create_formatter("template")
+        
+        ! Try to load an invalid template (should fail)
+        select type (formatter)
+        type is (template_formatter_t)
+            call formatter%load_template("invalid_template.template")
+            
+            ! Check if template validation catches the error
+            success = .not. formatter%validate_template()
+        class default
+            success = .false.
+        end select
         
     end function test_template_error_handling
     

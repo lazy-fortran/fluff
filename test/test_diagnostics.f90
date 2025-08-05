@@ -69,7 +69,7 @@ contains
             file_path = "test.f90" &
         )
         
-        formatted = format_diagnostic(diag)
+        formatted = format_diagnostic(diag, OUTPUT_FORMAT_TEXT)
         
         call check(error, index(formatted, "test.f90") > 0, &
             "Formatted output should contain file path")
@@ -86,20 +86,22 @@ contains
         type(diagnostic_t) :: diag1, diag2
         type(source_range_t) :: loc
         
-        collection = create_diagnostic_collection()
+        ! Initialize collection with default constructor
+        collection%count = 0
+        allocate(collection%diagnostics(10))
         
         loc%start%line = 1
         loc%start%column = 1
         loc%end%line = 1
         loc%end%column = 10
         
-        diag1 = create_diagnostic("F001", "Test 1", SEVERITY_ERROR, loc, "test1.f90")
-        diag2 = create_diagnostic("F002", "Test 2", SEVERITY_WARNING, loc, "test2.f90")
+        diag1 = create_diagnostic("F001", "Test 1", "test1.f90", loc, SEVERITY_ERROR)
+        diag2 = create_diagnostic("F002", "Test 2", "test2.f90", loc, SEVERITY_WARNING)
         
         call collection%add(diag1)
         call collection%add(diag2)
         
-        call check(error, collection%count() == 2, "Collection should have 2 diagnostics")
+        call check(error, collection%get_count() == 2, "Collection should have 2 diagnostics")
         if (allocated(error)) return
         
         call check(error, collection%has_errors(), "Collection should have errors")
@@ -109,6 +111,7 @@ contains
     subroutine test_fix_suggestion(error)
         type(error_type), allocatable, intent(out) :: error
         type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
         type(source_range_t) :: loc
         
         loc%start%line = 5
@@ -116,15 +119,21 @@ contains
         loc%end%line = 5
         loc%end%column = 20
         
+        ! Create text edit
+        edit%range = loc
+        edit%new_text = "implicit none"
+        
+        ! Create fix with proper structure
         fix%description = "Add implicit none"
-        fix%location = loc
-        fix%replacement = "implicit none"
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        fix%is_safe = .true.
         
         call check(error, fix%description == "Add implicit none", &
             "Fix description should match")
         if (allocated(error)) return
         
-        call check(error, fix%replacement == "implicit none", &
+        call check(error, fix%edits(1)%new_text == "implicit none", &
             "Fix replacement should match")
         
     end subroutine test_fix_suggestion

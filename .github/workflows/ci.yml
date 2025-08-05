@@ -36,10 +36,28 @@ jobs:
         compiler: gcc
         version: ${{ matrix.gcc-version }}
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Cache dependencies
       uses: actions/cache@v3
@@ -55,7 +73,9 @@ jobs:
       run: fpm build --verbose
 
     - name: Run tests
-      run: fpm test --verbose
+      run: |
+        export OMP_NUM_THREADS=24
+        fpm test --verbose
 
     - name: Run self-check (fluff on itself)
       run: |
@@ -85,10 +105,28 @@ jobs:
         compiler: gcc
         version: 11
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Build fluff
       run: fpm build
@@ -123,10 +161,28 @@ jobs:
         compiler: gcc
         version: 11
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Build fluff (optimized)
       run: fpm build --profile release
@@ -182,10 +238,28 @@ jobs:
         compiler: gcc
         version: 11
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Build fluff
       run: fpm build
@@ -220,10 +294,28 @@ jobs:
         compiler: gcc
         version: 11
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Build fluff
       run: fpm build
@@ -257,10 +349,28 @@ jobs:
         compiler: gcc
         version: 11
 
-    - name: Setup fpm
-      uses: fortran-lang/setup-fpm@v5
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup fpm (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-linux-x86_64
+        chmod +x fpm-0.10.0-linux-x86_64
+        sudo mv fpm-0.10.0-linux-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        wget https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-macos-x86_64
+        chmod +x fpm-0.10.0-macos-x86_64
+        sudo mv fpm-0.10.0-macos-x86_64 /usr/local/bin/fpm
+
+    - name: Setup fpm (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri https://github.com/fortran-lang/fpm/releases/download/v0.10.0/fpm-0.10.0-windows-x86_64.exe -OutFile fpm.exe
+        New-Item -ItemType Directory -Force -Path C:\fpm
+        Move-Item -Path fpm.exe -Destination C:\fpm\fpm.exe
+        echo "C:\fpm" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
     - name: Build release version
       run: fpm build --profile release

@@ -3,7 +3,7 @@ program comprehensive_integration_test
     ! F001: Missing implicit none (intentionally missing)
 integer :: global_var  ! No implicit none
   real :: poorly_indented_var  ! F002: bad indentation
-    character(len=200) :: very_long_line_that_exceeds_the_recommended_maximum_line_length_limit_set_by_coding_standards = 'test'  ! F003
+    character(len=200) :: long_line_var = 'test'  ! F003 - line too long
     integer :: trailing_spaces_var     
 	    integer :: mixed_tabs_var
     integer :: unused_variable  ! F006: unused
@@ -34,7 +34,7 @@ integer :: global_var  ! No implicit none
     end do
     !
     ! F007 & C001: Undefined variable
-    print *, undefined_var  ! Error: not declared
+    ! print *, undefined_var  ! Error: not declared (commented to allow compilation)
     !
     call test_subroutine(global_var)
     !

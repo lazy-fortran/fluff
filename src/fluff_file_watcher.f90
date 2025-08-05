@@ -801,10 +801,21 @@ contains
         character(len=*), intent(in) :: text, pattern
         logical :: matches
         
+        character(len=:), allocatable :: suffix
+        integer :: suffix_len, text_len
+        
         ! Simplified pattern matching
         if (pattern(1:1) == "*") then
-            ! Wildcard pattern
-            matches = index(text, pattern(2:)) > 0
+            ! Wildcard pattern - check if text ends with the suffix
+            suffix = pattern(2:)
+            suffix_len = len(suffix)
+            text_len = len_trim(text)
+            
+            if (suffix_len <= text_len) then
+                matches = text(text_len - suffix_len + 1:text_len) == suffix
+            else
+                matches = .false.
+            end if
         else
             matches = text == pattern
         end if

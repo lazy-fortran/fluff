@@ -20,6 +20,9 @@ module fluff_rules
     public :: get_performance_rules
     public :: get_correctness_rules
     
+    ! Public constants
+    public :: CATEGORY_STYLE, CATEGORY_PERFORMANCE, CATEGORY_CORRECTNESS
+    
 contains
     
     ! Get all built-in rules
@@ -617,13 +620,17 @@ contains
     
     ! F001: Check for missing implicit none  
     subroutine check_f001_implicit_none(ctx, node_index, violations)
+        use fortfront, only: ast_arena_t, semantic_context_t, &
+                            lex_source, parse_tokens, analyze_semantics, &
+                            create_ast_arena, create_semantic_context, &
+                            module_node, program_node, subroutine_def_node, function_def_node, &
+                            get_node_type_id_from_arena
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! TEMPORARY: Text-based analysis until fortfront AST API is available
-        ! Issue: https://github.com/lazy-fortran/fortfront/issues/11-14
-        call check_f001_implicit_none_text_based(violations)
+        ! Use fortfront AST to check for implicit none statements
+        call check_f001_implicit_none_ast_based(ctx, node_index, violations)
         
     end subroutine check_f001_implicit_none
     
@@ -694,6 +701,9 @@ contains
                             file_path="", &
                             location=location, &
                             severity=SEVERITY_WARNING)
+                        
+                        ! Generate fix suggestion for indentation
+                        call add_indentation_fix(violations(violation_count), location, actual_indent)
                     end if
                 end if
             end if
@@ -1179,14 +1189,63 @@ contains
         type(diagnostic_t), intent(inout) :: violations(:)
         integer, intent(inout) :: violation_count
         
-        ! Simplified implementation
-        ! In a real implementation, we would:
-        ! 1. Get the argument list from the procedure node
-        ! 2. For each argument, check if it has an intent attribute
-        ! 3. Create violations for arguments without intent
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        character(len=256) :: arg_name
+        type(source_range_t) :: location
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
         
-        ! For now, just a placeholder that doesn't add violations
-        ! Real implementation would analyze the procedure's argument declarations
+        ! Simplified implementation that checks for variable declarations without intent
+        children = ctx%get_children(proc_node)
+        
+        ! Look for argument declarations without intent
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                child_type = ctx%get_node_type(children(i))
+                
+                ! Check if this looks like a variable declaration without intent
+                if (child_type == NODE_VARIABLE_DECL) then
+                    call get_node_text(ctx, children(i), arg_name)
+                    
+                    ! Simple heuristic: if it's a declaration without "intent" keyword
+                    if (len_trim(arg_name) > 0 .and. index(arg_name, "intent") == 0) then
+                        location = ctx%get_node_location(children(i))
+                        violation_count = violation_count + 1
+                        
+                        if (violation_count <= size(violations)) then
+                            violations(violation_count) = create_diagnostic( &
+                                code="F008", &
+                                message="Missing intent declaration for procedure argument", &
+                                file_path="", &
+                                location=location, &
+                                severity=SEVERITY_WARNING)
+                            
+                            ! Generate fix suggestion to add intent(in)
+                            fix%description = "Add 'intent(in)' attribute"
+                            fix%is_safe = .false.  ! Might change semantics
+                            
+                            ! Create text edit to add intent before the type
+                            edit%range%start%line = location%start%line
+                            edit%range%start%column = location%start%column
+                            edit%range%end%line = location%start%line
+                            edit%range%end%column = location%start%column
+                            edit%new_text = ", intent(in)"
+                            
+                            ! Attach edit to fix
+                            allocate(fix%edits(1))
+                            fix%edits(1) = edit
+                            
+                            ! Attach fix to diagnostic
+                            allocate(violations(violation_count)%fixes(1))
+                            violations(violation_count)%fixes(1) = fix
+                        end if
+                    end if
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
         
     end subroutine check_procedure_arguments_intent
     
@@ -1273,8 +1332,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        ! Use fortfront AST to analyze array access patterns
+        call check_p001_array_access_ast_based(ctx, node_index, violations)
         
     end subroutine check_p001_array_access
     
@@ -1284,8 +1343,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        ! Use fortfront AST to analyze loop ordering
+        call check_p002_loop_ordering_ast_based(ctx, node_index, violations)
         
     end subroutine check_p002_loop_ordering
     
@@ -1306,8 +1365,8 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) pure/elemental declaration check
-        allocate(violations(0))
+        ! Use fortfront AST to analyze pure/elemental declarations
+        call check_p004_pure_elemental_ast_based(ctx, node_index, violations)
         
     end subroutine check_p004_pure_elemental
     
@@ -1355,6 +1414,491 @@ contains
         
     end subroutine check_c001_undefined_var
     
+    ! AST-BASED IMPLEMENTATIONS using fortfront
+    
+    ! F001: Check for missing implicit none using AST
+    subroutine check_f001_implicit_none_ast_based(ctx, node_index, violations)
+        use fortfront, only: ast_arena_t, program_node, module_node, &
+                            subroutine_def_node, function_def_node, &
+                            get_node_type_id_from_arena
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index  
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        logical :: found_implicit_none
+        integer :: i
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        type(source_range_t) :: location
+        
+        ! Initialize
+        allocate(temp_violations(10))
+        violation_count = 0
+        
+        ! Check if this is a program unit that needs implicit none
+        if (needs_implicit_none(ctx, node_index)) then
+            ! Search for implicit none statement in this scope
+            found_implicit_none = find_implicit_none_in_scope(ctx, node_index)
+            
+            if (.not. found_implicit_none) then
+                location = ctx%get_node_location(node_index)
+                violation_count = violation_count + 1
+                if (violation_count <= size(temp_violations)) then
+                    temp_violations(violation_count) = create_diagnostic( &
+                        code="F001", &
+                        message="Missing 'implicit none' statement", &
+                        file_path="", &
+                        location=location, &
+                        severity=SEVERITY_WARNING)
+                    
+                    ! Generate fix suggestion - add implicit none after the program/module/subroutine/function statement
+                    fix%description = "Add 'implicit none' statement"
+                    fix%is_safe = .true.
+                    
+                    ! Create text edit to insert implicit none at the beginning of the scope
+                    edit%range%start%line = location%start%line + 1
+                    edit%range%start%column = 1
+                    edit%range%end%line = location%start%line + 1
+                    edit%range%end%column = 1
+                    edit%new_text = "    implicit none" // new_line('a')
+                    
+                    ! Attach the edit to the fix
+                    allocate(fix%edits(1))
+                    fix%edits(1) = edit
+                    
+                    ! Attach the fix to the diagnostic
+                    allocate(temp_violations(violation_count)%fixes(1))
+                    temp_violations(violation_count)%fixes(1) = fix
+                end if
+            end if
+        end if
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        do i = 1, violation_count
+            violations(i) = temp_violations(i)
+        end do
+        
+    end subroutine check_f001_implicit_none_ast_based
+    
+    ! Check if a node type needs implicit none
+    function needs_implicit_none(ctx, node_index) result(needs)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: needs
+        
+        integer :: node_type
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Program units that should have implicit none
+        needs = node_type == NODE_MODULE .or. &
+               node_type == NODE_FUNCTION_DEF .or. &
+               node_type == NODE_SUBROUTINE_DEF
+        
+        ! Note: program node is handled differently as it's usually the root
+        
+    end function needs_implicit_none
+    
+    ! Find implicit none statement in scope
+    function find_implicit_none_in_scope(ctx, scope_index) result(found)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: scope_index
+        logical :: found
+        
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        
+        found = .false.
+        children = ctx%get_children(scope_index)
+        
+        ! Look through immediate children for implicit none
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                child_type = ctx%get_node_type(children(i))
+                ! Check if this child is an implicit none statement
+                if (is_implicit_none_statement(ctx, children(i))) then
+                    found = .true.
+                    exit
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function find_implicit_none_in_scope
+    
+    ! Check if node is an implicit none statement
+    function is_implicit_none_statement(ctx, node_index) result(is_implicit)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: is_implicit
+        
+        character(len=256) :: node_text
+        
+        ! For now, use text matching as a fallback
+        ! In a full implementation, we'd check the node type
+        call get_node_text(ctx, node_index, node_text)
+        is_implicit = index(node_text, "implicit") > 0 .and. &
+                     index(node_text, "none") > 0
+        
+    end function is_implicit_none_statement
+    
+    ! P001: Check array access patterns using AST
+    subroutine check_p001_array_access_ast_based(ctx, node_index, violations)
+        use fortfront, only: get_identifiers_in_subtree
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(50))
+        violation_count = 0
+        
+        ! Analyze array access patterns recursively
+        call analyze_array_access_patterns(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p001_array_access_ast_based
+    
+    ! Analyze array access patterns for memory efficiency
+    recursive subroutine analyze_array_access_patterns(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check for non-contiguous array access in loops
+        if (node_type == NODE_DO_LOOP) then
+            call check_loop_array_access(ctx, node_index, violations, violation_count)
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_array_access_patterns(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_array_access_patterns
+    
+    ! Check array access patterns within loops
+    subroutine check_loop_array_access(ctx, loop_node, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: loop_node
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        ! Simple implementation for now - check if this looks like a nested loop structure
+        if (has_array_like_accesses(ctx, loop_node)) then
+            if (violation_count < size(violations)) then
+                violation_count = violation_count + 1
+                violations(violation_count) = create_diagnostic( &
+                    code="P001", &
+                    message="Consider memory-efficient array access patterns", &
+                    file_path="", &
+                    location=ctx%get_node_location(loop_node), &
+                    severity=SEVERITY_INFO)
+            end if
+        end if
+        
+    end subroutine check_loop_array_access
+    
+    ! Simple heuristic to detect array-like access patterns
+    function has_array_like_accesses(ctx, node_index) result(has_arrays)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        logical :: has_arrays
+        
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        
+        has_arrays = .false.
+        children = ctx%get_children(node_index)
+        
+        ! Simple heuristic: if we find multiple children, assume there might be array access
+        if (size(children) > 2) then
+            has_arrays = .true.
+        end if
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function has_array_like_accesses
+    
+    ! P002: Check loop ordering efficiency using AST
+    subroutine check_p002_loop_ordering_ast_based(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(20))
+        violation_count = 0
+        
+        ! Analyze nested loops for optimal ordering
+        call analyze_nested_loops(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p002_loop_ordering_ast_based
+    
+    ! Analyze nested loops for memory-efficient ordering
+    recursive subroutine analyze_nested_loops(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i, nested_loop_count
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check for nested loops
+        if (node_type == NODE_DO_LOOP) then
+            nested_loop_count = count_nested_loops(ctx, node_index)
+            if (nested_loop_count > 1) then
+                ! This is a simplified heuristic - in practice would analyze array indexing patterns
+                if (violation_count < size(violations)) then
+                    violation_count = violation_count + 1
+                    violations(violation_count) = create_diagnostic( &
+                        code="P002", &
+                        message="Consider loop ordering for memory efficiency (innermost loop should access contiguous memory)", &
+                        file_path="", &
+                        location=ctx%get_node_location(node_index), &
+                        severity=SEVERITY_INFO)
+                end if
+            end if
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_nested_loops(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_nested_loops
+    
+    ! Count nested loops within a loop
+    recursive function count_nested_loops(ctx, loop_node) result(count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: loop_node
+        integer :: count
+        
+        integer, allocatable :: children(:)
+        integer :: i, node_type
+        
+        count = 0
+        children = ctx%get_children(loop_node)
+        
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                node_type = ctx%get_node_type(children(i))
+                if (node_type == NODE_DO_LOOP) then
+                    count = count + 1 + count_nested_loops(ctx, children(i))
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end function count_nested_loops
+    
+    ! P004: Check pure/elemental declarations using AST
+    subroutine check_p004_pure_elemental_ast_based(ctx, node_index, violations)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(20))
+        violation_count = 0
+        
+        ! Analyze procedures for pure/elemental opportunities
+        call analyze_procedure_purity(ctx, node_index, temp_violations, violation_count)
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
+        
+    end subroutine check_p004_pure_elemental_ast_based
+    
+    ! Analyze procedures for pure/elemental opportunities
+    recursive subroutine analyze_procedure_purity(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer, allocatable :: children(:)
+        integer :: node_type, i
+        character(len=256) :: node_text
+        
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check functions and subroutines for pure/elemental opportunities
+        if (node_type == NODE_FUNCTION_DEF .or. node_type == NODE_SUBROUTINE_DEF) then
+            call get_node_text(ctx, node_index, node_text)
+            
+            ! Simple heuristic: if no "pure" or "elemental" keyword found
+            if (index(node_text, "pure") == 0 .and. index(node_text, "elemental") == 0) then
+                ! Check if this procedure could be pure (doesn't modify global state)
+                if (could_be_pure_procedure(ctx, node_index)) then
+                    if (violation_count < size(violations)) then
+                        violation_count = violation_count + 1
+                        violations(violation_count) = create_diagnostic( &
+                            code="P004", &
+                            message="Consider adding 'pure' attribute for optimization", &
+                            file_path="", &
+                            location=ctx%get_node_location(node_index), &
+                            severity=SEVERITY_INFO)
+                        
+                        ! Generate fix suggestion to add pure attribute
+                        call add_pure_attribute_fix(violations(violation_count), ctx%get_node_location(node_index))
+                    end if
+                end if
+            end if
+        end if
+        
+        ! Process children recursively
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call analyze_procedure_purity(ctx, children(i), violations, violation_count)
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
+        
+    end subroutine analyze_procedure_purity
+    
+    ! Simple heuristic to check if procedure could be pure
+    function could_be_pure_procedure(ctx, proc_node) result(could_be_pure)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: proc_node
+        logical :: could_be_pure
+        
+        character(len=256) :: node_text
+        
+        ! Simplified analysis - check for obvious impure operations
+        call get_node_text(ctx, proc_node, node_text)
+        
+        ! If contains I/O or other side effects, not pure
+        could_be_pure = index(node_text, "print") == 0 .and. &
+                       index(node_text, "write") == 0 .and. &
+                       index(node_text, "read") == 0 .and. &
+                       index(node_text, "stop") == 0
+        
+    end function could_be_pure_procedure
+    
+    ! Helper subroutine to add indentation fix
+    subroutine add_indentation_fix(diagnostic, location, actual_indent)
+        type(diagnostic_t), intent(inout) :: diagnostic
+        type(source_range_t), intent(in) :: location
+        integer, intent(in) :: actual_indent
+        
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        integer :: correct_indent
+        character(len=256) :: spaces
+        
+        ! Calculate correct indentation (round to nearest multiple of 4)
+        correct_indent = (actual_indent / 4) * 4
+        if (mod(actual_indent, 4) >= 2) then
+            correct_indent = correct_indent + 4
+        end if
+        
+        ! Generate spaces string
+        if (correct_indent > 0 .and. correct_indent <= 256) then
+            spaces = repeat(' ', correct_indent)
+        else
+            spaces = ""
+        end if
+        
+        ! Create fix suggestion
+        fix%description = "Fix indentation to " // trim(adjustl(char(correct_indent/4))) // " levels"
+        fix%is_safe = .true.
+        
+        ! Create text edit to replace indentation
+        edit%range%start%line = location%start%line
+        edit%range%start%column = 1
+        edit%range%end%line = location%start%line
+        edit%range%end%column = actual_indent + 1
+        edit%new_text = trim(spaces)
+        
+        ! Attach edit to fix
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        
+        ! Attach fix to diagnostic
+        allocate(diagnostic%fixes(1))
+        diagnostic%fixes(1) = fix
+        
+    end subroutine add_indentation_fix
+    
+    ! Helper subroutine to add pure attribute fix
+    subroutine add_pure_attribute_fix(diagnostic, location)
+        type(diagnostic_t), intent(inout) :: diagnostic
+        type(source_range_t), intent(in) :: location
+        
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        
+        ! Create fix suggestion to add pure attribute
+        fix%description = "Add 'pure' attribute to procedure"
+        fix%is_safe = .false.  ! Less certain about semantic correctness
+        
+        ! Create text edit to add pure before the procedure declaration
+        edit%range%start%line = location%start%line
+        edit%range%start%column = 1  
+        edit%range%end%line = location%start%line
+        edit%range%end%column = 1
+        edit%new_text = "pure "
+        
+        ! Attach edit to fix
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        
+        ! Attach fix to diagnostic
+        allocate(diagnostic%fixes(1))
+        diagnostic%fixes(1) = fix
+        
+    end subroutine add_pure_attribute_fix
+    
     ! TEMPORARY TEXT-BASED IMPLEMENTATIONS
     ! These will be replaced when fortfront AST API is available
     ! Issues: https://github.com/lazy-fortran/fortfront/issues/11-14
@@ -1363,8 +1907,20 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
         ! Text-based check for implicit none in common program units
-        ! This is a simplified implementation
-        allocate(violations(0))
+        ! This is a basic implementation that checks if implicit none is present
+        integer :: violation_count
+        
+        ! Simplified: create empty violations array for testing
+        violation_count = 0  
+        
+        ! For now, always pass - real implementation would parse source
+        ! In a full implementation, we would:
+        ! 1. Check if we're in a program, module, subroutine, or function
+        ! 2. Look for "implicit none" statement in the declaration section
+        ! 3. Report violation if missing
+        
+        ! Return empty violations array
+        allocate(violations(violation_count))
         
     end subroutine check_f001_implicit_none_text_based
     

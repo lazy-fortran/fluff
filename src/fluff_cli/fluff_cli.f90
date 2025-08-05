@@ -576,10 +576,12 @@ contains
     
     ! Print diagnostics
     subroutine print_diagnostics(diagnostics, format)
+        use fluff_diagnostics, only: diagnostic_collection_t
         type(diagnostic_t), intent(in) :: diagnostics(:)
         character(len=*), intent(in), optional :: format
         
-        character(len=:), allocatable :: output_format
+        character(len=:), allocatable :: output_format, json_output, sarif_output
+        type(diagnostic_collection_t) :: collection
         integer :: i
         
         if (present(format)) then
@@ -594,9 +596,21 @@ contains
                 call diagnostics(i)%print()
             end do
         case ("json")
-            print *, "JSON output not yet implemented"
+            ! Create collection and output as JSON
+            call collection%clear()
+            do i = 1, size(diagnostics)
+                call collection%add(diagnostics(i))
+            end do
+            json_output = collection%to_json()
+            print *, json_output
         case ("sarif")
-            print *, "SARIF output not yet implemented"
+            ! Create collection and output as SARIF
+            call collection%clear()
+            do i = 1, size(diagnostics)
+                call collection%add(diagnostics(i))
+            end do  
+            sarif_output = collection%to_sarif()
+            print *, sarif_output
         end select
         
     end subroutine print_diagnostics

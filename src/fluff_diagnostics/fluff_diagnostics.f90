@@ -4,12 +4,12 @@ module fluff_diagnostics
     implicit none
     private
     
-    ! Diagnostic severity levels
+    ! Diagnostic severity levels (higher number = higher severity)
     enum, bind(c)
-        enumerator :: SEVERITY_ERROR = 1
-        enumerator :: SEVERITY_WARNING = 2
-        enumerator :: SEVERITY_INFO = 3
-        enumerator :: SEVERITY_HINT = 4
+        enumerator :: SEVERITY_HINT = 1
+        enumerator :: SEVERITY_INFO = 2
+        enumerator :: SEVERITY_WARNING = 3
+        enumerator :: SEVERITY_ERROR = 4
     end enum
     
     ! Output format constants
@@ -84,6 +84,8 @@ module fluff_diagnostics
         procedure :: to_json => collection_to_json
         procedure :: to_sarif => collection_to_sarif
         procedure :: get_stats => collection_get_stats
+        procedure :: get_count => collection_count
+        procedure :: has_errors => collection_has_errors
     end type diagnostic_collection_t
     
     ! Public procedures
@@ -290,7 +292,28 @@ contains
     subroutine collection_sort(this)
         class(diagnostic_collection_t), intent(inout) :: this
         
-        ! TODO: Implement sorting by file and line number
+        ! Implement sorting by file and line number using simple bubble sort
+        integer :: i, j
+        type(diagnostic_t) :: temp_diag
+        logical :: swapped
+        
+        if (this%count <= 1) return
+        
+        ! Simple bubble sort - good enough for typical diagnostic counts
+        do i = 1, this%count - 1
+            swapped = .false.
+            do j = 1, this%count - i
+                ! Compare file names first, then line numbers
+                if (should_swap_diagnostics(this%diagnostics(j), this%diagnostics(j+1))) then
+                    ! Swap diagnostics
+                    temp_diag = this%diagnostics(j)
+                    this%diagnostics(j) = this%diagnostics(j+1)
+                    this%diagnostics(j+1) = temp_diag
+                    swapped = .true.
+                end if
+            end do
+            if (.not. swapped) exit  ! Already sorted
+        end do
         
     end subroutine collection_sort
     
@@ -319,8 +342,37 @@ contains
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: sarif
         
-        ! TODO: Implement SARIF format conversion
-        sarif = '{"version": "2.1.0", "runs": []}'
+        ! Build SARIF 2.1.0 compliant JSON structure
+        character(len=:), allocatable :: results_array
+        integer :: i
+        
+        if (this%count == 0) then
+            sarif = '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "fluff"}}, "results": []}]}'
+            return
+        end if
+        
+        ! Build results array
+        results_array = ""
+        do i = 1, this%count
+            if (i > 1) results_array = results_array // ","
+            results_array = results_array // new_line('a') // "    " // format_diagnostic_sarif(this%diagnostics(i))
+        end do
+        
+        ! Build complete SARIF structure
+        sarif = '{' // new_line('a') // &
+               '  "version": "2.1.0",' // new_line('a') // &
+               '  "runs": [{' // new_line('a') // &
+               '    "tool": {' // new_line('a') // &
+               '      "driver": {' // new_line('a') // &
+               '        "name": "fluff",' // new_line('a') // &
+               '        "version": "0.1.0",' // new_line('a') // &
+               '        "informationUri": "https://github.com/krystophny/fluff"' // new_line('a') // &
+               '      }' // new_line('a') // &
+               '    },' // new_line('a') // &
+               '    "results": [' // results_array // new_line('a') // &
+               '    ]' // new_line('a') // &
+               '  }]' // new_line('a') // &
+               '}'
         
     end function collection_to_sarif
     
@@ -374,8 +426,8 @@ contains
         
         severity_str = severity_to_string(diagnostic%severity)
         
-        write(buffer, '("file:",I0,":",I0,": ",A," [",A,"] ",A)') &
-            diagnostic%location%start%line, diagnostic%location%start%column, &
+        write(buffer, '(A,":",I0,":",I0,": ",A," [",A,"] ",A)') &
+            diagnostic%file_path, diagnostic%location%start%line, diagnostic%location%start%column, &
             severity_str, diagnostic%code, diagnostic%message
         
         formatted = trim(buffer)
@@ -736,6 +788,28 @@ contains
         stats = this%stats
     end function collection_get_stats
     
+    ! Get count of diagnostics in collection
+    function collection_count(this) result(count)
+        class(diagnostic_collection_t), intent(in) :: this
+        integer :: count
+        count = this%count
+    end function collection_count
+    
+    ! Check if collection has error-level diagnostics
+    function collection_has_errors(this) result(has_errors)
+        class(diagnostic_collection_t), intent(in) :: this
+        logical :: has_errors
+        integer :: i
+        
+        has_errors = .false.
+        do i = 1, this%count
+            if (this%diagnostics(i)%severity == SEVERITY_ERROR) then
+                has_errors = .true.
+                return
+            end if
+        end do
+    end function collection_has_errors
+    
     ! Helper functions for string conversion
     function int_to_string(val) result(str)
         integer, intent(in) :: val
@@ -752,5 +826,24 @@ contains
         write(buffer, '(F0.6)') val
         str = trim(buffer)
     end function real_to_string
+    
+    ! Helper function to determine if two diagnostics should be swapped
+    function should_swap_diagnostics(diag1, diag2) result(should_swap)
+        type(diagnostic_t), intent(in) :: diag1, diag2
+        logical :: should_swap
+        
+        ! Compare file paths first
+        if (diag1%file_path /= diag2%file_path) then
+            should_swap = diag1%file_path > diag2%file_path
+        else
+            ! Same file, compare line numbers
+            if (diag1%location%start%line /= diag2%location%start%line) then
+                should_swap = diag1%location%start%line > diag2%location%start%line
+            else
+                ! Same line, compare column numbers
+                should_swap = diag1%location%start%column > diag2%location%start%column
+            end if
+        end if
+    end function should_swap_diagnostics
     
 end module fluff_diagnostics

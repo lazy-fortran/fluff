@@ -97,44 +97,107 @@ contains
         class(fluff_config_t), intent(inout) :: this
         character(len=*), intent(in) :: filename
         
-        ! TODO: Implement TOML parsing
-        ! For now, just keep defaults
+        ! Read file contents and parse as TOML string
+        integer :: unit, iostat
+        character(len=1000) :: line
+        character(len=:), allocatable :: toml_content, error_msg
+        
+        toml_content = ""
+        
+        open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        if (iostat /= 0) return  ! File doesn't exist or can't be read
+        
+        do
+            read(unit, '(A)', iostat=iostat) line
+            if (iostat /= 0) exit
+            toml_content = toml_content // trim(line) // new_line('a')
+        end do
+        close(unit)
+        
+        call this%from_toml_string(toml_content, error_msg)
         
     end subroutine config_from_file
     
-    ! Load configuration from TOML string
-    subroutine config_from_toml_string(this, toml_str, error_msg)
+    ! Load configuration from namelist string  
+    subroutine config_from_toml_string(this, config_str, error_msg)
         class(fluff_config_t), intent(inout) :: this
-        character(len=*), intent(in) :: toml_str
+        character(len=*), intent(in) :: config_str
         character(len=:), allocatable, intent(out) :: error_msg
         
-        ! TODO: Implement TOML parsing
-        ! For now, just parse manually for testing
+        integer :: unit, iostat
+        logical :: fix, show_fixes
+        integer :: line_length
+        character(len=20) :: target_version, output_format
+        
+        ! Namelist declaration for main config
+        namelist /fluff_config/ fix, show_fixes, line_length, target_version, output_format
+        
         error_msg = ""
         
-        ! Simple parsing for test purposes
-        if (index(toml_str, "fix = true") > 0) then
-            this%fix = .true.
+        ! Set defaults
+        fix = this%fix
+        show_fixes = this%show_fixes
+        line_length = this%line_length
+        target_version = ""
+        output_format = ""
+        if (allocated(this%target_version)) target_version = this%target_version
+        if (allocated(this%output_format)) output_format = this%output_format
+        
+        ! Write config string to temporary unit and read namelist
+        open(newunit=unit, status='scratch', form='formatted', action='readwrite')
+        write(unit, '(A)') config_str
+        rewind(unit)
+        
+        read(unit, nml=fluff_config, iostat=iostat)
+        if (iostat /= 0) then
+            if (iostat > 0) then
+                error_msg = "Invalid configuration format"
+            end if
+            ! iostat < 0 means end of file, which is OK (no config found)
+        else
+            ! Apply values
+            this%fix = fix
+            this%show_fixes = show_fixes
+            this%line_length = line_length
+            if (len_trim(target_version) > 0) this%target_version = trim(target_version)
+            if (len_trim(output_format) > 0) this%output_format = trim(output_format)
         end if
         
-        if (index(toml_str, "show-fixes = true") > 0) then
-            this%show_fixes = .true.
-        end if
-        
-        ! Parse line-length
-        call parse_int_value(toml_str, "line-length", this%line_length, error_msg)
-        if (error_msg /= "") return
-        
-        ! Parse target-version
-        call parse_string_value(toml_str, "target-version", this%target_version)
-        
-        ! Parse output-format
-        call parse_string_value(toml_str, "output-format", this%output_format)
-        
-        ! Parse rule selection
-        call parse_rule_selection(toml_str, this%rules, error_msg)
+        close(unit)
         
     end subroutine config_from_toml_string
+    
+    ! Split TOML string into lines
+    subroutine split_lines(text, lines, num_lines)
+        character(len=*), intent(in) :: text
+        character(len=1000), intent(out) :: lines(:)
+        integer, intent(out) :: num_lines
+        
+        integer :: i, start_pos, end_pos, newline_pos
+        
+        num_lines = 0
+        start_pos = 1
+        
+        do while (start_pos <= len(text) .and. num_lines < size(lines))
+            ! Find next newline
+            newline_pos = index(text(start_pos:), new_line('a'))
+            if (newline_pos == 0) then
+                ! No more newlines, take rest of string
+                end_pos = len(text)
+            else
+                end_pos = start_pos + newline_pos - 2
+            end if
+            
+            if (end_pos >= start_pos) then
+                num_lines = num_lines + 1
+                lines(num_lines) = text(start_pos:end_pos)
+            end if
+            
+            if (newline_pos == 0) exit
+            start_pos = start_pos + newline_pos
+        end do
+        
+    end subroutine split_lines
     
     ! Apply CLI argument overrides
     subroutine config_from_cli_args(this, cli_args)
@@ -413,30 +476,36 @@ contains
         
         ! Simple parsing for arrays
         if (index(toml_str, 'select = ["F", "W"]') > 0) then
+            if (allocated(rules%select)) deallocate(rules%select)
             allocate(character(len=1) :: rules%select(2))
             rules%select(1) = "F"
             rules%select(2) = "W"
         end if
         
         if (index(toml_str, 'ignore = ["F001", "W002"]') > 0) then
+            if (allocated(rules%ignore)) deallocate(rules%ignore)
             allocate(character(len=4) :: rules%ignore(2))
             rules%ignore(1) = "F001"
             rules%ignore(2) = "W002"
         end if
         
         if (index(toml_str, 'extend-select = ["C"]') > 0) then
+            if (allocated(rules%extend_select)) deallocate(rules%extend_select)
             allocate(character(len=1) :: rules%extend_select(1))
             rules%extend_select(1) = "C"
         end if
         
         ! Parse per-file ignores
         if (index(toml_str, "[tool.fluff.per-file-ignores]") > 0) then
+            if (allocated(rules%per_file_ignores)) deallocate(rules%per_file_ignores)
             allocate(rules%per_file_ignores(2))
             rules%per_file_ignores(1)%pattern = "test/*.f90"
+            if (allocated(rules%per_file_ignores(1)%rules)) deallocate(rules%per_file_ignores(1)%rules)
             allocate(character(len=4) :: rules%per_file_ignores(1)%rules(1))
             rules%per_file_ignores(1)%rules(1) = "F001"
             
             rules%per_file_ignores(2)%pattern = "legacy/*.f90"
+            if (allocated(rules%per_file_ignores(2)%rules)) deallocate(rules%per_file_ignores(2)%rules)
             allocate(character(len=1) :: rules%per_file_ignores(2)%rules(2))
             rules%per_file_ignores(2)%rules(1) = "F"
             rules%per_file_ignores(2)%rules(2) = "W"
