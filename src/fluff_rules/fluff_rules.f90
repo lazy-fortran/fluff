@@ -701,6 +701,9 @@ contains
                             file_path="", &
                             location=location, &
                             severity=SEVERITY_WARNING)
+                        
+                        ! Generate fix suggestion for indentation
+                        call add_indentation_fix(violations(violation_count), location, actual_indent)
                     end if
                 end if
             end if
@@ -1186,14 +1189,63 @@ contains
         type(diagnostic_t), intent(inout) :: violations(:)
         integer, intent(inout) :: violation_count
         
-        ! Simplified implementation
-        ! In a real implementation, we would:
-        ! 1. Get the argument list from the procedure node
-        ! 2. For each argument, check if it has an intent attribute
-        ! 3. Create violations for arguments without intent
+        integer, allocatable :: children(:)
+        integer :: i, child_type
+        character(len=256) :: arg_name
+        type(source_range_t) :: location
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
         
-        ! For now, just a placeholder that doesn't add violations
-        ! Real implementation would analyze the procedure's argument declarations
+        ! Simplified implementation that checks for variable declarations without intent
+        children = ctx%get_children(proc_node)
+        
+        ! Look for argument declarations without intent
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                child_type = ctx%get_node_type(children(i))
+                
+                ! Check if this looks like a variable declaration without intent
+                if (child_type == NODE_VARIABLE_DECL) then
+                    call get_node_text(ctx, children(i), arg_name)
+                    
+                    ! Simple heuristic: if it's a declaration without "intent" keyword
+                    if (len_trim(arg_name) > 0 .and. index(arg_name, "intent") == 0) then
+                        location = ctx%get_node_location(children(i))
+                        violation_count = violation_count + 1
+                        
+                        if (violation_count <= size(violations)) then
+                            violations(violation_count) = create_diagnostic( &
+                                code="F008", &
+                                message="Missing intent declaration for procedure argument", &
+                                file_path="", &
+                                location=location, &
+                                severity=SEVERITY_WARNING)
+                            
+                            ! Generate fix suggestion to add intent(in)
+                            fix%description = "Add 'intent(in)' attribute"
+                            fix%is_safe = .false.  ! Might change semantics
+                            
+                            ! Create text edit to add intent before the type
+                            edit%range%start%line = location%start%line
+                            edit%range%start%column = location%start%column
+                            edit%range%end%line = location%start%line
+                            edit%range%end%column = location%start%column
+                            edit%new_text = ", intent(in)"
+                            
+                            ! Attach edit to fix
+                            allocate(fix%edits(1))
+                            fix%edits(1) = edit
+                            
+                            ! Attach fix to diagnostic
+                            allocate(violations(violation_count)%fixes(1))
+                            violations(violation_count)%fixes(1) = fix
+                        end if
+                    end if
+                end if
+            end if
+        end do
+        
+        if (allocated(children)) deallocate(children)
         
     end subroutine check_procedure_arguments_intent
     
@@ -1377,6 +1429,9 @@ contains
         integer :: violation_count
         logical :: found_implicit_none
         integer :: i
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        type(source_range_t) :: location
         
         ! Initialize
         allocate(temp_violations(10))
@@ -1388,14 +1443,34 @@ contains
             found_implicit_none = find_implicit_none_in_scope(ctx, node_index)
             
             if (.not. found_implicit_none) then
+                location = ctx%get_node_location(node_index)
                 violation_count = violation_count + 1
                 if (violation_count <= size(temp_violations)) then
                     temp_violations(violation_count) = create_diagnostic( &
                         code="F001", &
                         message="Missing 'implicit none' statement", &
                         file_path="", &
-                        location=ctx%get_node_location(node_index), &
+                        location=location, &
                         severity=SEVERITY_WARNING)
+                    
+                    ! Generate fix suggestion - add implicit none after the program/module/subroutine/function statement
+                    fix%description = "Add 'implicit none' statement"
+                    fix%is_safe = .true.
+                    
+                    ! Create text edit to insert implicit none at the beginning of the scope
+                    edit%range%start%line = location%start%line + 1
+                    edit%range%start%column = 1
+                    edit%range%end%line = location%start%line + 1
+                    edit%range%end%column = 1
+                    edit%new_text = "    implicit none" // new_line('a')
+                    
+                    ! Attach the edit to the fix
+                    allocate(fix%edits(1))
+                    fix%edits(1) = edit
+                    
+                    ! Attach the fix to the diagnostic
+                    allocate(temp_violations(violation_count)%fixes(1))
+                    temp_violations(violation_count)%fixes(1) = fix
                 end if
             end if
         end if
@@ -1711,6 +1786,9 @@ contains
                             file_path="", &
                             location=ctx%get_node_location(node_index), &
                             severity=SEVERITY_INFO)
+                        
+                        ! Generate fix suggestion to add pure attribute
+                        call add_pure_attribute_fix(violations(violation_count), ctx%get_node_location(node_index))
                     end if
                 end if
             end if
@@ -1746,6 +1824,80 @@ contains
                        index(node_text, "stop") == 0
         
     end function could_be_pure_procedure
+    
+    ! Helper subroutine to add indentation fix
+    subroutine add_indentation_fix(diagnostic, location, actual_indent)
+        type(diagnostic_t), intent(inout) :: diagnostic
+        type(source_range_t), intent(in) :: location
+        integer, intent(in) :: actual_indent
+        
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        integer :: correct_indent
+        character(len=256) :: spaces
+        
+        ! Calculate correct indentation (round to nearest multiple of 4)
+        correct_indent = (actual_indent / 4) * 4
+        if (mod(actual_indent, 4) >= 2) then
+            correct_indent = correct_indent + 4
+        end if
+        
+        ! Generate spaces string
+        if (correct_indent > 0 .and. correct_indent <= 256) then
+            spaces = repeat(' ', correct_indent)
+        else
+            spaces = ""
+        end if
+        
+        ! Create fix suggestion
+        fix%description = "Fix indentation to " // trim(adjustl(char(correct_indent/4))) // " levels"
+        fix%is_safe = .true.
+        
+        ! Create text edit to replace indentation
+        edit%range%start%line = location%start%line
+        edit%range%start%column = 1
+        edit%range%end%line = location%start%line
+        edit%range%end%column = actual_indent + 1
+        edit%new_text = trim(spaces)
+        
+        ! Attach edit to fix
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        
+        ! Attach fix to diagnostic
+        allocate(diagnostic%fixes(1))
+        diagnostic%fixes(1) = fix
+        
+    end subroutine add_indentation_fix
+    
+    ! Helper subroutine to add pure attribute fix
+    subroutine add_pure_attribute_fix(diagnostic, location)
+        type(diagnostic_t), intent(inout) :: diagnostic
+        type(source_range_t), intent(in) :: location
+        
+        type(fix_suggestion_t) :: fix
+        type(text_edit_t) :: edit
+        
+        ! Create fix suggestion to add pure attribute
+        fix%description = "Add 'pure' attribute to procedure"
+        fix%is_safe = .false.  ! Less certain about semantic correctness
+        
+        ! Create text edit to add pure before the procedure declaration
+        edit%range%start%line = location%start%line
+        edit%range%start%column = 1  
+        edit%range%end%line = location%start%line
+        edit%range%end%column = 1
+        edit%new_text = "pure "
+        
+        ! Attach edit to fix
+        allocate(fix%edits(1))
+        fix%edits(1) = edit
+        
+        ! Attach fix to diagnostic
+        allocate(diagnostic%fixes(1))
+        diagnostic%fixes(1) = fix
+        
+    end subroutine add_pure_attribute_fix
     
     ! TEMPORARY TEXT-BASED IMPLEMENTATIONS
     ! These will be replaced when fortfront AST API is available

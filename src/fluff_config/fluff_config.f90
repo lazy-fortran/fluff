@@ -118,58 +118,52 @@ contains
         
     end subroutine config_from_file
     
-    ! Load configuration from TOML string
-    subroutine config_from_toml_string(this, toml_str, error_msg)
+    ! Load configuration from namelist string  
+    subroutine config_from_toml_string(this, config_str, error_msg)
         class(fluff_config_t), intent(inout) :: this
-        character(len=*), intent(in) :: toml_str
+        character(len=*), intent(in) :: config_str
         character(len=:), allocatable, intent(out) :: error_msg
         
-        integer :: pos, eq_pos, end_pos
-        character(len=:), allocatable :: line, key, value
-        character(len=1000) :: lines(100)
-        integer :: num_lines, i
+        integer :: unit, iostat
+        logical :: fix, show_fixes
+        integer :: line_length
+        character(len=20) :: target_version, output_format
+        
+        ! Namelist declaration for main config
+        namelist /fluff_config/ fix, show_fixes, line_length, target_version, output_format
         
         error_msg = ""
         
-        ! Split into lines
-        call split_lines(toml_str, lines, num_lines)
+        ! Set defaults
+        fix = this%fix
+        show_fixes = this%show_fixes
+        line_length = this%line_length
+        target_version = ""
+        output_format = ""
+        if (allocated(this%target_version)) target_version = this%target_version
+        if (allocated(this%output_format)) output_format = this%output_format
         
-        do i = 1, num_lines
-            line = trim(lines(i))
-            if (len_trim(line) == 0 .or. line(1:1) == '#') cycle  ! Skip empty lines and comments
-            
-            eq_pos = index(line, '=')
-            if (eq_pos == 0) cycle  ! No equals sign
-            
-            key = trim(line(1:eq_pos-1))
-            value = trim(line(eq_pos+1:))
-            
-            ! Remove quotes from string values
-            if (len(value) >= 2) then
-                if ((value(1:1) == '"' .and. value(len(value):len(value)) == '"') .or. &
-                    (value(1:1) == "'" .and. value(len(value):len(value)) == "'")) then
-                    value = value(2:len(value)-1)
-                end if
+        ! Write config string to temporary unit and read namelist
+        open(newunit=unit, status='scratch', form='formatted', action='readwrite')
+        write(unit, '(A)') config_str
+        rewind(unit)
+        
+        read(unit, nml=fluff_config, iostat=iostat)
+        if (iostat /= 0) then
+            if (iostat > 0) then
+                error_msg = "Invalid configuration format"
             end if
-            
-            ! Parse known configuration keys
-            select case (key)
-            case ('fix')
-                this%fix = (value == 'true')
-            case ('show-fixes')
-                this%show_fixes = (value == 'true')
-            case ('line-length')
-                read(value, *, iostat=pos) this%line_length
-                if (pos /= 0) then
-                    error_msg = "Invalid line-length value: " // value
-                    return
-                end if
-            case ('target-version')
-                this%target_version = value
-            case ('output-format')  
-                this%output_format = value
-            end select
-        end do
+            ! iostat < 0 means end of file, which is OK (no config found)
+        else
+            ! Apply values
+            this%fix = fix
+            this%show_fixes = show_fixes
+            this%line_length = line_length
+            if (len_trim(target_version) > 0) this%target_version = trim(target_version)
+            if (len_trim(output_format) > 0) this%output_format = trim(output_format)
+        end if
+        
+        close(unit)
         
     end subroutine config_from_toml_string
     
@@ -482,30 +476,36 @@ contains
         
         ! Simple parsing for arrays
         if (index(toml_str, 'select = ["F", "W"]') > 0) then
+            if (allocated(rules%select)) deallocate(rules%select)
             allocate(character(len=1) :: rules%select(2))
             rules%select(1) = "F"
             rules%select(2) = "W"
         end if
         
         if (index(toml_str, 'ignore = ["F001", "W002"]') > 0) then
+            if (allocated(rules%ignore)) deallocate(rules%ignore)
             allocate(character(len=4) :: rules%ignore(2))
             rules%ignore(1) = "F001"
             rules%ignore(2) = "W002"
         end if
         
         if (index(toml_str, 'extend-select = ["C"]') > 0) then
+            if (allocated(rules%extend_select)) deallocate(rules%extend_select)
             allocate(character(len=1) :: rules%extend_select(1))
             rules%extend_select(1) = "C"
         end if
         
         ! Parse per-file ignores
         if (index(toml_str, "[tool.fluff.per-file-ignores]") > 0) then
+            if (allocated(rules%per_file_ignores)) deallocate(rules%per_file_ignores)
             allocate(rules%per_file_ignores(2))
             rules%per_file_ignores(1)%pattern = "test/*.f90"
+            if (allocated(rules%per_file_ignores(1)%rules)) deallocate(rules%per_file_ignores(1)%rules)
             allocate(character(len=4) :: rules%per_file_ignores(1)%rules(1))
             rules%per_file_ignores(1)%rules(1) = "F001"
             
             rules%per_file_ignores(2)%pattern = "legacy/*.f90"
+            if (allocated(rules%per_file_ignores(2)%rules)) deallocate(rules%per_file_ignores(2)%rules)
             allocate(character(len=1) :: rules%per_file_ignores(2)%rules(2))
             rules%per_file_ignores(2)%rules(1) = "F"
             rules%per_file_ignores(2)%rules(2) = "W"
