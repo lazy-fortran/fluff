@@ -1,7 +1,7 @@
 module fluff_config_watcher
     use fluff_core
     use fluff_config
-    use fluff_file_watcher
+    use fluff_file_watcher, only: file_watcher_t, create_file_watcher, FILE_MODIFIED
     use fluff_lsp_performance
     implicit none
     private

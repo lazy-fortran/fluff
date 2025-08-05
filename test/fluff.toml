@@ -1,11 +1,2 @@
-[tool.fluff]
-line-length = 88
-target-version = "f2018"
-
-[tool.fluff.rules]
-select = ["F001", "F002", "F003"]
-ignore = []
-
-[tool.fluff.format]
-quote-style = "double"
-indent-width = 4
+# Test configuration placeholder
+# TOML configuration is not yet implemented

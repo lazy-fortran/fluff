@@ -19,7 +19,7 @@
 - **Incremental Analysis**: Only re-analyze changed files
 - **Smart Caching**: Intelligent caching system for faster subsequent runs
 - **File Watching**: Automatic re-analysis on file changes
-- **Configuration Hot Reload**: Changes to `fluff.toml` apply immediately
+- **Configuration Options**: Control behavior via command-line arguments
 
 ### 🔌 Integrations
 - **GitHub Actions**: Native support with annotations and problem matchers
@@ -59,34 +59,20 @@ fluff format src/
 ```
 
 ### Configuration
-Create a `fluff.toml` in your project root:
+Configuration support is currently being developed. Command-line arguments can be used to control fluff behavior:
 
-```toml
-[tool.fluff]
+```bash
 # Enable automatic fixing
-fix = true
+fluff check --fix src/
 
 # Show fix suggestions without applying
-show-fixes = true
+fluff check --show-fixes src/
 
-# Maximum line length
-line-length = 100
+# Set maximum line length
+fluff format --line-length 100 src/
 
-# Target Fortran standard
-target-version = "2018"
-
-# Output format
-output-format = "text"  # or "json", "sarif", "xml", "github"
-
-# Rule selection
-select = ["F", "P"]     # Enable all F and P rules
-ignore = ["F001"]       # Disable specific rules
-extend-select = ["C"]   # Add more rule categories
-
-# Per-file ignores
-[tool.fluff.per-file-ignores]
-"test/*.f90" = ["F001", "F002"]
-"legacy/*.f90" = ["F", "P"]
+# Select output format
+fluff check --output-format json src/
 ```
 
 ### Using Namelist Configuration (Alternative)

@@ -76,7 +76,7 @@ contains
         this%is_initialized = .true.
         this%rule_registry%rule_count = 0
         this%rule_registry%metrics = create_metrics_collector()
-        this%ast_cache = create_ast_cache(max_size=50, ttl=600.0)  ! 10 minute TTL
+        ! Note: AST cache initialization disabled due to memory safety issues
         
         ! Register built-in rules
         call this%rule_registry%discover_builtin_rules()
@@ -94,7 +94,7 @@ contains
         type(fluff_ast_context_t) :: ast_ctx
         character(len=:), allocatable :: source_code
         character(len=1000) :: line
-        integer :: unit, iostat, cache_index
+        integer :: unit, iostat
         
         ! Read file contents
         open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
@@ -123,26 +123,17 @@ contains
         end do
         close(unit)
         
-        ! Check cache first
-        cache_index = this%ast_cache%get(filename, source_code)
+        ! Parse AST fresh each time to avoid memory safety issues
+        ! Note: Caching disabled due to shallow copy issues with AST context
+        ! containing fortfront arena and semantic context with pointer components
+        call ast_ctx%from_source(source_code, error_msg)
         
-        if (cache_index > 0) then
-            ! Use cached AST
-            ast_ctx = this%ast_cache%get_ast(cache_index)
-        else
-            ! Parse AST
-            call ast_ctx%from_source(source_code, error_msg)
-            
-            if (allocated(error_msg) .and. len(error_msg) > 0) then
-                print *, "ERROR: fortfront AST parsing failed in linter!"
-                print *, "Error: ", error_msg
-                print *, "File: ", filename
-                print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
-                error stop "AST parsing required - no fallbacks!"
-            end if
-            
-            ! Cache the parsed AST
-            call this%ast_cache%put(filename, source_code, ast_ctx)
+        if (allocated(error_msg) .and. len(error_msg) > 0) then
+            print *, "ERROR: fortfront AST parsing failed in linter!"
+            print *, "Error: ", error_msg
+            print *, "File: ", filename
+            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
+            error stop "AST parsing required - no fallbacks!"
         end if
         
         ! Lint the AST

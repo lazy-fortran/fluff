@@ -61,7 +61,7 @@ Fluff is built with fpm and integrates seamlessly with fpm-based projects:
 ```toml
 # In your fpm.toml
 [dependencies]
-fluff = { git = "https://github.com/fortran-lang/fluff" }
+fluff = { git = "https://github.com/lazy-fortran/fluff" }
 
 [[executable]]
 name = "my_app"
@@ -209,8 +209,8 @@ The pre-commit hook supports several options:
 # Check all files (not just staged)
 .git/hooks/pre-commit --check-all
 
-# Use custom config
-.git/hooks/pre-commit --config my-fluff.toml
+# Use custom options
+.git/hooks/pre-commit --fix --line-length 100
 ```
 
 ## Editor Integration
@@ -238,7 +238,7 @@ Configuration options:
 {
   "fluff.enable": true,
   "fluff.executable": "fluff",
-  "fluff.configFile": "fluff.toml",
+  "fluff.configFile": "(not yet supported)",
   "fluff.linting.enabled": true,
   "fluff.linting.onSave": true,
   "fluff.formatting.enabled": true,
@@ -471,13 +471,13 @@ fpm build --profile debug
 gdb build/gfortran_*/app/fluff
 ```
 
-**Problem**: Configuration not found
+**Problem**: Configuration options
 ```bash
-# Check config file location
-ls -la fluff.toml pyproject.toml
+# Use command-line arguments
+fluff check --fix --line-length 100 src/
 
-# Use explicit config path
-fluff check --config /path/to/fluff.toml src/
+# Configuration files are not yet supported
+# Use CLI options instead
 ```
 
 ### Performance Issues
