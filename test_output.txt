@@ -1,0 +1,378 @@
+[  0%]  fluff_dead_code_detection.f90
+[  1%]  fluff_dead_code_detection.f90  done.
+[  1%]                     libfluff.a
+[  2%]                     libfluff.a  done.
+[  2%]   test_dead_code_detection.f90
+[  3%]   test_dead_code_detection.f90  done.
+[  3%]                          fluff
+[  4%]                          fluff  done.
+[  4%]         test_standardize_types
+[  5%]         test_standardize_types  done.
+[  5%]                     test_check
+[  6%]                     test_check  done.
+[  6%]                 test_ast_cache
+[  7%]                 test_ast_cache  done.
+[  7%]                 test_ast_debug
+[  8%]                 test_ast_debug  done.
+[  8%]         test_cache_integration
+[  9%]         test_cache_integration  done.
+[  9%]        test_clean_architecture
+[ 10%]        test_clean_architecture  done.
+[ 10%]      test_cli_argument_parsing
+[ 11%]      test_cli_argument_parsing  done.
+[ 11%]              test_cli_override
+[ 12%]              test_cli_override  done.
+[ 12%]           test_cli_subcommands
+[ 13%]           test_cli_subcommands  done.
+[ 13%]             test_config_schema
+[ 14%]             test_config_schema  done.
+[ 14%]         test_config_validation
+[ 15%]         test_config_validation  done.
+[ 15%]      test_configuration_reload
+[ 17%]      test_configuration_reload  done.
+[ 17%]       test_dead_code_detection
+[ 18%]       test_dead_code_detection  done.
+[ 18%]       test_dependency_analysis
+[ 19%]       test_dependency_analysis  done.
+[ 19%]     test_diagnostic_formatting
+[ 20%]     test_diagnostic_formatting  done.
+[ 20%]    test_diagnostic_performance
+[ 21%]    test_diagnostic_performance  done.
+[ 21%]     test_diagnostic_statistics
+[ 22%]     test_diagnostic_statistics  done.
+[ 22%]      test_enhanced_style_rules
+[ 23%]      test_enhanced_style_rules  done.
+[ 23%]             test_file_watching
+[ 24%]             test_file_watching  done.
+[ 24%]           test_fix_suggestions
+[ 25%]           test_fix_suggestions  done.
+[ 25%]   test_format_quality_analysis
+[ 26%]   test_format_quality_analysis  done.
+[ 26%]         test_format_validation
+[ 27%]         test_format_validation  done.
+[ 27%]        test_formatter_advanced
+[ 28%]        test_formatter_advanced  done.
+[ 28%]   test_formatter_comprehensive
+[ 29%]   test_formatter_comprehensive  done.
+[ 29%]       test_formatter_framework
+[ 30%]       test_formatter_framework  done.
+[ 30%]     test_formatter_performance
+[ 31%]     test_formatter_performance  done.
+[ 31%]         test_formatter_quality
+[ 32%]         test_formatter_quality  done.
+[ 32%]          test_formatter_simple
+[ 34%]          test_formatter_simple  done.
+[ 34%] test_fortfront_api_capabilitie
+[ 35%] test_fortfront_api_capabilitie  done.
+[ 35%]        test_fortfront_comments
+[ 36%]        test_fortfront_comments  done.
+[ 36%]      test_fortfront_direct_api
+[ 37%]      test_fortfront_direct_api  done.
+[ 37%]            test_fortfront_emit
+[ 38%]            test_fortfront_emit  done.
+[ 38%]       test_fortfront_init_vars
+[ 39%]       test_fortfront_init_vars  done.
+[ 39%] test_fortfront_integration_rea
+[ 40%] test_fortfront_integration_rea  done.
+[ 40%] test_fortfront_issue_assignmen
+[ 41%] test_fortfront_issue_assignmen  done.
+[ 41%]   test_fortfront_issue_complex
+[ 42%]   test_fortfront_issue_complex  done.
+[ 42%]      test_fortfront_multi_vars
+[ 43%]      test_fortfront_multi_vars  done.
+[ 43%] test_fortfront_with_format_opt
+[ 44%] test_fortfront_with_format_opt  done.
+[ 44%]    test_fortran_specific_style
+[ 45%]    test_fortran_specific_style  done.
+[ 45%]      test_incremental_analysis
+[ 46%]      test_incremental_analysis  done.
+[ 46%]       test_integration_quality
+[ 47%]       test_integration_quality  done.
+[ 47%]       test_intelligent_caching
+[ 48%]       test_intelligent_caching  done.
+[ 48%]          test_lsp_code_actions
+[ 50%]          test_lsp_code_actions  done.
+[ 50%]           test_lsp_diagnostics
+[ 51%]           test_lsp_diagnostics  done.
+[ 51%]         test_lsp_document_sync
+[ 52%]         test_lsp_document_sync  done.
+[ 52%]       test_lsp_goto_definition
+[ 53%]       test_lsp_goto_definition  done.
+[ 53%]                 test_lsp_hover
+[ 54%]                 test_lsp_hover  done.
+[ 54%]      test_lsp_message_handling
+[ 55%]      test_lsp_message_handling  done.
+[ 55%]            test_output_formats
+[ 56%]            test_output_formats  done.
+[ 56%]                   test_metrics
+[ 57%]                   test_metrics  done.
+[ 57%]       test_metrics_integration
+[ 58%]       test_metrics_integration  done.
+[ 58%]        test_module_compilation
+[ 59%]        test_module_compilation  done.
+[ 59%]       test_module_dependencies
+[ 60%]       test_module_dependencies  done.
+[ 60%]   test_parallel_rule_execution
+[ 61%]   test_parallel_rule_execution  done.
+[ 61%]      test_quality_improvements
+[ 62%]      test_quality_improvements  done.
+[ 62%]                    debug_hover
+[ 63%]                    debug_hover  done.
+[ 63%] test_rule_documentation_exampl
+[ 64%] test_rule_documentation_exampl  done.
+[ 64%]   test_rule_f001_implicit_none
+[ 65%]   test_rule_f001_implicit_none  done.
+[ 65%]     test_rule_f002_indentation
+[ 67%]     test_rule_f002_indentation  done.
+[ 67%]     test_rule_f003_line_length
+[ 68%]     test_rule_f003_line_length  done.
+[ 68%] test_rule_f004_trailing_whites
+[ 69%] test_rule_f004_trailing_whites  done.
+[ 69%] test_rule_f005_mixed_tabs_spac
+[ 70%] test_rule_f005_mixed_tabs_spac  done.
+[ 70%] test_rule_f006_unused_variable
+[ 71%] test_rule_f006_unused_variable  done.
+[ 71%] test_rule_f007_undefined_varia
+[ 72%] test_rule_f007_undefined_varia  done.
+[ 72%]  test_rule_f008_missing_intent
+[ 73%]  test_rule_f008_missing_intent  done.
+[ 73%] test_rule_f009_inconsistent_in
+[ 74%] test_rule_f009_inconsistent_in  done.
+[ 74%] test_rule_f010_obsolete_featur
+[ 75%] test_rule_f010_obsolete_featur  done.
+[ 75%] test_rule_f011_missing_end_lab
+[ 76%] test_rule_f011_missing_end_lab  done.
+[ 76%] test_rule_f012_naming_conventi
+[ 77%] test_rule_f012_naming_conventi  done.
+[ 77%] test_rule_f013_multiple_statem
+[ 78%] test_rule_f013_multiple_statem  done.
+[ 78%] test_rule_f014_unnecessary_par
+[ 79%] test_rule_f014_unnecessary_par  done.
+[ 79%] test_rule_f015_redundant_conti
+[ 80%] test_rule_f015_redundant_conti  done.
+[ 80%] test_rule_false_positive_analy
+[ 81%] test_rule_false_positive_analy  done.
+[ 81%]            test_rule_interface
+[ 82%]            test_rule_interface  done.
+[ 82%]   test_rule_p002_loop_ordering
+[ 84%]   test_rule_p002_loop_ordering  done.
+[ 84%] test_rule_p003_array_temporari
+[ 85%] test_rule_p003_array_temporari  done.
+[ 85%]  test_rule_p004_pure_elemental
+[ 86%]  test_rule_p004_pure_elemental  done.
+[ 86%] test_rule_p005_string_operatio
+[ 87%] test_rule_p005_string_operatio  done.
+[ 87%] test_rule_p006_loop_allocation
+[ 88%] test_rule_p006_loop_allocation  done.
+[ 88%] test_rule_p007_mixed_precision
+[ 89%] test_rule_p007_mixed_precision  done.
+[ 89%] test_rule_performance_benchmar
+[ 90%] test_rule_performance_benchmar  done.
+[ 90%]             test_rule_registry
+[ 91%]             test_rule_registry  done.
+[ 91%]              test_style_guides
+[ 92%]              test_style_guides  done.
+[ 92%]              test_toml_parsing
+[ 93%]              test_toml_parsing  done.
+[ 93%]          test_tool_integration
+[ 94%]          test_tool_integration  done.
+[ 94%]        test_user_feedback_demo
+[ 95%]        test_user_feedback_demo  done.
+[ 95%]      test_optimize_line_breaks
+[ 96%]      test_optimize_line_breaks  done.
+[ 96%]                benchmark_small
+[ 97%]                benchmark_small  done.
+[ 97%]          debug_hover_intrinsic
+[ 98%]          debug_hover_intrinsic  done.
+[ 98%]              test_minimal_sqrt
+[100%]              test_minimal_sqrt  done.
+[100%] Project compiled successfully.
+ === Dead Code Detection Test Suite (RED Phase) ===
+ 
+ Testing unused variable detection...
+ DEBUG: analyzer_analyze_source_ast called with file:test.f90
+ DEBUG: Source code to parse:
+ program test
+  integer :: unused_var
+  integer :: used_var
+  used_var = 42
+  print *, used_var
+end program
+ DEBUG: Building CFG for prog_index           8
+ DEBUG: CFG found           0 unreachable nodes
+ DEBUG: Node           1 type ID:          11 node_type_str:multi_declaration
+ DEBUG: Node           2 type ID:          11 node_type_str:multi_declaration
+ DEBUG: Node           3 type ID:           5 node_type_str:identifier
+ DEBUG: Node           4 type ID:           6 node_type_str:literal
+ DEBUG: Node           5 type ID:           3 node_type_str:assignment
+ DEBUG: Node           6 type ID:           5 node_type_str:identifier
+ DEBUG: Node           7 type ID:          20 node_type_str:print_statement
+ DEBUG: Node           8 type ID:           1 node_type_str:program
+ DEBUG: Processing node           1 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:unused_var
+ DEBUG: Processing node           2 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:used_var
+ DEBUG: Processing node           3 - type:           5
+ DEBUG: Processing node           4 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           5 - type:           3
+ DEBUG: Processing node           4 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           6 - type:           5
+ DEBUG: Processing node           7 - type:          20
+ DEBUG: Processing node           8 - type:           1
+ DEBUG: program_node found           1 identifiers
+ DEBUG: Adding used variable from program_node:used_var
+ DEBUG: Handling missing AST constructs
+ DEBUG: Looking for if conditions
+ DEBUG: Looking for allocate statements
+   PASS: Simple unused variable detection
+ DEBUG: analyzer_analyze_source_ast called with file:test.f90
+ DEBUG: Source code to parse:
+ program test
+  integer :: used_var
+  used_var = 42
+  print *, used_var
+end program
+ DEBUG: Building CFG for prog_index           7
+ DEBUG: CFG found           0 unreachable nodes
+ DEBUG: Node           1 type ID:          11 node_type_str:multi_declaration
+ DEBUG: Node           2 type ID:           5 node_type_str:identifier
+ DEBUG: Node           3 type ID:           6 node_type_str:literal
+ DEBUG: Node           4 type ID:           3 node_type_str:assignment
+ DEBUG: Node           5 type ID:           5 node_type_str:identifier
+ DEBUG: Node           6 type ID:          20 node_type_str:print_statement
+ DEBUG: Node           7 type ID:           1 node_type_str:program
+ DEBUG: Processing node           1 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:used_var
+ DEBUG: Processing node           2 - type:           5
+ DEBUG: Processing node           3 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           4 - type:           3
+ DEBUG: Processing node           3 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           5 - type:           5
+ DEBUG: Processing node           6 - type:          20
+ DEBUG: Processing node           7 - type:           1
+ DEBUG: program_node found           1 identifiers
+ DEBUG: Adding used variable from program_node:used_var
+ DEBUG: Handling missing AST constructs
+ DEBUG: Looking for if conditions
+ DEBUG: Looking for allocate statements
+   PASS: Used variable (negative test)
+ DEBUG: analyzer_analyze_source_ast called with file:test.f90
+ DEBUG: Source code to parse:
+ program test
+  integer :: unused_var = 42
+  print *, 'hello'
+end program
+ DEBUG: Building CFG for prog_index           4
+ DEBUG: CFG found           0 unreachable nodes
+ DEBUG: Node           1 type ID:          11 node_type_str:multi_declaration
+At line 1221 of file ././src/fluff_dead_code_detection.f90
+Fortran runtime error: Substring out of bounds: lower bound (-2147483647) of 'source_code' is less than one
+
+Error termination. Backtrace:
+#0  0x7fac334218c2 in ???
+#1  0x7fac334223b9 in ???
+#2  0x7fac33422949 in ???
+#3  0x556163c9b4f2 in __fluff_dead_code_detection_MOD_extract_identifiers_from_conditions
+	at ././src/fluff_dead_code_detection.f90:1221
+#4  0x556163c9b89b in __fluff_dead_code_detection_MOD_detector_handle_missing_constructs
+	at ././src/fluff_dead_code_detection.f90:1190
+#5  0x556163cb14ab in __fluff_dead_code_detection_MOD_detector_analyze_source_ast
+	at ././src/fluff_dead_code_detection.f90:203
+#6  0x556163c89b6c in test_variable_in_conditionals
+	at test/test_dead_code_detection.f90:302
+#7  0x556163c91373 in run_dead_code_test
+	at test/test_dead_code_detection.f90:231
+#8  0x556163c92007 in test_unused_variable_detection
+	at test/test_dead_code_detection.f90:59
+#9  0x556163c61c22 in test_dead_code_detection
+	at test/test_dead_code_detection.f90:15
+#10  0x556163c9206f in main
+	at test/test_dead_code_detection.f90:2
+ DEBUG: Node           2 type ID:           6 node_type_str:literal
+ DEBUG: Node           3 type ID:          20 node_type_str:print_statement
+ DEBUG: Node           4 type ID:           1 node_type_str:program
+ DEBUG: Processing node           1 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:unused_var
+ DEBUG: Processing node           2 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           3 - type:          20
+ DEBUG: Processing node           4 - type:           1
+ DEBUG: program_node found           0 identifiers
+ DEBUG: Handling missing AST constructs
+ DEBUG: Looking for if conditions
+ DEBUG: Looking for allocate statements
+   PASS: Unused variable with initialization
+ DEBUG: analyzer_analyze_source_ast called with file:test.f90
+ DEBUG: Source code to parse:
+ program test
+  integer :: x = 1
+  x = x
+end program
+ DEBUG: Building CFG for prog_index           6
+ DEBUG: CFG found           0 unreachable nodes
+ DEBUG: Node           1 type ID:           6 node_type_str:literal
+ DEBUG: Node           2 type ID:          11 node_type_str:declaration
+ DEBUG: Node           3 type ID:           5 node_type_str:identifier
+ DEBUG: Node           4 type ID:           5 node_type_str:identifier
+ DEBUG: Node           5 type ID:           3 node_type_str:assignment
+ DEBUG: Node           6 type ID:           1 node_type_str:program
+ DEBUG: Processing node           1 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           2 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:x
+ DEBUG: Processing node           3 - type:           5
+ DEBUG: Processing node           4 - type:           5
+ DEBUG: Processing node           5 - type:           3
+ DEBUG: Processing node           6 - type:           1
+ DEBUG: program_node found           0 identifiers
+ DEBUG: Handling missing AST constructs
+ DEBUG: Looking for if conditions
+ DEBUG: Looking for allocate statements
+   PASS: Variable self-assignment
+ DEBUG: analyzer_analyze_source_ast called with file:test.f90
+ DEBUG: Source code to parse:
+ program test
+  integer :: x = 1
+  if (x > 0) then
+    print *, 'positive'
+  end if
+end program
+ DEBUG: Building CFG for prog_index           4
+ DEBUG: CFG found           0 unreachable nodes
+ DEBUG: Node           1 type ID:          11 node_type_str:multi_declaration
+ DEBUG: Node           2 type ID:           6 node_type_str:literal
+ DEBUG: Node           3 type ID:          20 node_type_str:print_statement
+ DEBUG: Node           4 type ID:           1 node_type_str:program
+ DEBUG: Processing node           1 - type:          11
+ DEBUG: declaration_node - found = T
+ DEBUG: Declaring           1 variables
+ DEBUG: Declaring variable:x
+ DEBUG: Processing node           2 - type:           6
+ DEBUG: literal_node found           0 identifiers
+ DEBUG: Processing node           3 - type:          20
+ DEBUG: Processing node           4 - type:           1
+ DEBUG: program_node found           0 identifiers
+ DEBUG: Handling missing AST constructs
+ DEBUG: Looking for if conditions
+ DEBUG: Found if condition:x > 0
+ DEBUG: Extracting identifiers from expression:x > 0
+ DEBUG: Extracted identifier from expression:x
+ DEBUG: Found if condition: 0
+ DEBUG: Extracting identifiers from expression: 0
+<ERROR> Execution for object " test_dead_code_detection " returned exit code  2
+<ERROR> *cmd_run*:stopping due to failed executions
+STOP 2
