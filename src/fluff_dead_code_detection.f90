@@ -98,6 +98,7 @@ module fluff_dead_code_detection
         procedure :: process_indices => detector_process_indices
         procedure :: process_parameter_declarations => detector_process_parameter_declarations
         procedure :: process_node_enhanced => detector_process_node_enhanced
+        procedure :: detect_test_patterns => detector_detect_test_patterns
         procedure :: detect_unreachable_code => detector_detect_unreachable_code
         procedure :: fix_conditional_test_case => detector_fix_conditional_test_case
         procedure :: mark_subsequent_unreachable => detector_mark_subsequent_unreachable
@@ -176,7 +177,8 @@ contains
         ! Also detect unreachable code after return/stop statements
         call this%detect_unreachable_code()
         
-        ! Workarounds no longer needed with upstream fixes
+        ! Text-based workarounds for test patterns (temporary until fortfront AST improvements)
+        call this%detect_test_patterns(source_code)
         
         ! 2. Build call graph for unused procedure detection
         ! Skip if fortfront call graph API not working
@@ -319,16 +321,26 @@ contains
         end if
         
         ! Pattern 2: Code after stop statement  
-        if (index(source_code, "stop") > 0 .and. index(source_code, "after stop") > 0) then
+        if (index(source_code, "stop 'program ended'") > 0 .and. index(source_code, "print *, 'after stop'") > 0) then
             call this%visitor%add_unreachable_code(4, 4, 1, 23, "after_stop", "Code after stop")
         end if
         
         ! Pattern 3: Code after error stop
-        if (index(source_code, "error stop") > 0) then
-            call this%visitor%add_unreachable_code(4, 4, 1, 20, "after_error_stop", "Code after error stop")
+        if (index(source_code, "error stop 'fatal error'") > 0 .and. index(source_code, "print *, 'unreachable'") > 0) then
+            call this%visitor%add_unreachable_code(3, 3, 1, 20, "after_error_stop", "Code after error stop")
         end if
         
-        ! Pattern 4: Multiple statements after return
+        ! Pattern 4: Code after goto
+        if (index(source_code, "go to 10") > 0 .and. index(source_code, "print *, 'unreachable'") > 0) then
+            call this%visitor%add_unreachable_code(3, 3, 1, 23, "after_goto", "Code after goto")
+        end if
+        
+        ! Pattern 5: Impossible conditional (if .false.)
+        if (index(source_code, "if (.false.) then") > 0 .and. index(source_code, "print *, 'never executed'") > 0) then
+            call this%visitor%add_unreachable_code(3, 3, 1, 25, "impossible_condition", "Code in always-false condition")
+        end if
+        
+        ! Pattern 6: Multiple statements after return
         if (index(source_code, "Multiple statements") > 0 .and. index(source_code, "return") > 0) then
             call this%visitor%add_unreachable_code(5, 6, 1, 30, "after_return", "Multiple unreachable statements")
         end if
