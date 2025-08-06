@@ -666,6 +666,54 @@ contains
                 print *, "DEBUG: program_node - no identifiers found"
             end if
             
+        type is (subroutine_def_node)
+            ! Process all identifiers in subroutine
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: subroutine_def_node found", size(identifiers), "identifiers"
+                do i = 1, size(identifiers)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            end if
+            
+        type is (function_def_node)
+            ! Process all identifiers in function
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: function_def_node found", size(identifiers), "identifiers"
+                do i = 1, size(identifiers)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            end if
+            
+        type is (module_node)
+            ! Process all identifiers in module
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                print *, "DEBUG: module_node found", size(identifiers), "identifiers"
+                do i = 1, size(identifiers)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            end if
+            
+        type is (return_node)
+            ! Return statements don't have identifiers but mark control flow
+            print *, "DEBUG: return_node at index", node_index
+            
+        type is (stop_node)
+            ! Stop statements may have error codes
+            identifiers = get_identifiers_in_subtree(this%arena, node_index)
+            if (allocated(identifiers)) then
+                do i = 1, size(identifiers)
+                    call this%visitor%add_used_variable(identifiers(i))
+                end do
+            end if
+            
+        type is (parameter_declaration_node)
+            ! Parameter declarations need special handling
+            ! They declare parameters, not regular variables
+            print *, "DEBUG: parameter_declaration_node at index", node_index
+            
         class default
             ! For other node types, try to process children generically
             print *, "DEBUG: Unhandled node type at index", node_index, &
