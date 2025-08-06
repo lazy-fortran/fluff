@@ -105,6 +105,7 @@ module fluff_dead_code_detection
         procedure :: mark_if_block_unreachable => detector_mark_if_block_unreachable
         procedure :: get_diagnostics => detector_get_diagnostics
         procedure :: clear => detector_clear
+        procedure :: process_identifiers_from_node
     end type dead_code_detector_t
     
 contains
@@ -125,8 +126,6 @@ contains
         integer, allocatable :: unreachable_nodes(:)
         integer :: i, prog_index
         
-        print *, "DEBUG: analyzer_analyze_source_ast called with file:", trim(file_path)
-        print *, "DEBUG: Source code to parse:"
         print *, source_code
         
         found_dead_code = .false.
@@ -155,10 +154,8 @@ contains
         call this%visitor%clear()
         
         ! 1. Build control flow graph for unreachable code detection
-        print *, "DEBUG: Building CFG for prog_index", prog_index
         cfg = build_control_flow_graph(this%arena, prog_index)
         unreachable_nodes = find_unreachable_code(cfg)
-        print *, "DEBUG: CFG found", size(unreachable_nodes), "unreachable nodes"
         
         ! Process CFG unreachable nodes
         
@@ -257,7 +254,6 @@ contains
             
             ! Process terminating statements
             if (i <= 20) then
-                print *, "DEBUG: Node", i, "type ID:", node_type, "node_type_str:", this%arena%entries(i)%node_type
                 if (this%arena%entries(i)%node_type == "return" .or. &
                     this%arena%entries(i)%node_type == "stop" .or. &
                     node_type == NODE_RETURN .or. node_type == NODE_STOP) then
@@ -268,11 +264,9 @@ contains
             ! Check if this node is a terminating statement
             select case (node_type)
             case (NODE_RETURN)
-                print *, "DEBUG: Found NODE_RETURN at index", i
                 ! Find all subsequent nodes in the same block
                 call this%mark_subsequent_unreachable(i)
             case (NODE_STOP)
-                print *, "DEBUG: Found NODE_STOP at index", i
                 ! Find all subsequent nodes in the same block
                 call this%mark_subsequent_unreachable(i)
             case (NODE_CYCLE, NODE_EXIT)
@@ -298,18 +292,15 @@ contains
         integer :: i, j, return_line, next_stmt_line
         logical :: found_return, found_code_after
         
-        print *, "DEBUG: Starting text-based unreachable code detection"
         
         ! Simple approach: look for "return" followed by "print" in the source
         if (index(source_code, "return") > 0 .and. index(source_code, "print *, 'after return'") > 0) then
-            print *, "DEBUG: Found return followed by unreachable print statement"
             call this%visitor%add_unreachable_code( &
                 4, 4, 1, 25, &
                 "after_return_stop", "Code after return statement")
         end if
         
         if (index(source_code, "stop") > 0 .and. index(source_code, "print *, 'after stop'") > 0) then
-            print *, "DEBUG: Found stop followed by unreachable print statement"
             call this%visitor%add_unreachable_code( &
                 4, 4, 1, 23, &
                 "after_return_stop", "Code after stop statement")
@@ -324,7 +315,6 @@ contains
         
         ! Pattern 1: Code after return statement
         if (index(source_code, "return") > 0 .and. index(source_code, "after return") > 0) then
-            print *, "DEBUG: Pattern matching found return + after return"
             call this%visitor%add_unreachable_code(4, 4, 1, 25, "after_return", "Code after return")
         end if
         
@@ -352,7 +342,6 @@ contains
         
         ! Pattern: Variable used in conditionals test case
         if (index(source_code, "if (x > 0)") > 0 .and. index(source_code, "integer :: x = 1") > 0) then
-            print *, "DEBUG: Conditional workaround activated - marking x as used"
             ! Mark variable x as used to fix the conditional test
             call this%visitor%add_used_variable("x")
         end if
@@ -534,19 +523,13 @@ contains
         if (.not. allocated(this%arena%entries(node_index)%node)) return
         
         ! Process based on node type
-        ! Debug: Print the actual node type we're processing
-        print *, "DEBUG: Processing node", node_index, "- type:", &
-            get_node_type_id_from_arena(this%arena, node_index)
         
         select type (node => this%arena%entries(node_index)%node)
         type is (declaration_node)
             ! Get declaration info using fortfront API
             found = get_declaration_info(this%arena, node_index, var_names, type_spec, attributes)
-            print *, "DEBUG: declaration_node - found =", found
             if (found .and. allocated(var_names)) then
-                print *, "DEBUG: Declaring", size(var_names), "variables"
                 do i = 1, size(var_names)
-                    print *, "DEBUG: Declaring variable:", trim(var_names(i))
                     call this%visitor%add_declared_variable(var_names(i))
                 end do
             end if
@@ -601,136 +584,73 @@ contains
             
         type is (call_or_subscript_node)
             ! Process function/array reference
-            ! Get all identifiers in this subtree
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (print_statement_node)
-            ! Process print arguments - get all identifiers
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            ! Process print arguments
+            call this%process_identifiers_from_node(node_index)
             
         type is (if_node)
             ! Process all identifiers in if statement
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: if_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    print *, "DEBUG: Adding used variable from if_node:", identifiers(i)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            else
-                print *, "DEBUG: if_node - no identifiers found in subtree"
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (do_loop_node)
             ! Process all identifiers in loop
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (literal_node)
             ! Process identifiers in literal expressions
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: literal_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    print *, "DEBUG: Adding used variable from literal_node:", identifiers(i)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            else
-                print *, "DEBUG: literal_node - no identifiers found"
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (program_node)
             ! Process all identifiers in program
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: program_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    print *, "DEBUG: Adding used variable from program_node:", identifiers(i)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            else
-                print *, "DEBUG: program_node - no identifiers found"
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (subroutine_def_node)
             ! Process all identifiers in subroutine
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: subroutine_def_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (function_def_node)
             ! Process all identifiers in function
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: function_def_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (module_node)
             ! Process all identifiers in module
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: module_node found", size(identifiers), "identifiers"
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (return_node)
             ! Return statements don't have identifiers but mark control flow
-            print *, "DEBUG: return_node at index", node_index
             
         type is (stop_node)
             ! Stop statements may have error codes
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                do i = 1, size(identifiers)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
             
         type is (parameter_declaration_node)
             ! Parameter declarations need special handling
             ! They declare parameters, not regular variables
-            print *, "DEBUG: parameter_declaration_node at index", node_index
             
         class default
             ! For other node types, try to process children generically
-            print *, "DEBUG: Unhandled node type at index", node_index, &
-                "type_id:", get_node_type_id_from_arena(this%arena, node_index)
-            
-            ! Try to get identifiers from unhandled nodes
-            identifiers = get_identifiers_in_subtree(this%arena, node_index)
-            if (allocated(identifiers)) then
-                print *, "DEBUG: Found", size(identifiers), "identifiers in unhandled node"
-                do i = 1, size(identifiers)
-                    print *, "DEBUG: Adding used variable from unhandled node:", identifiers(i)
-                    call this%visitor%add_used_variable(identifiers(i))
-                end do
-            end if
+            call this%process_identifiers_from_node(node_index)
         end select
         
     end subroutine detector_process_node_enhanced
+    
+    ! Helper to process identifiers from a node - eliminates code duplication
+    subroutine process_identifiers_from_node(this, node_index)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: node_index
+        
+        character(len=:), allocatable :: identifiers(:)
+        integer :: i
+        
+        identifiers = get_identifiers_in_subtree(this%arena, node_index)
+        if (allocated(identifiers)) then
+            do i = 1, size(identifiers)
+                call this%visitor%add_used_variable(identifiers(i))
+            end do
+        end if
+    end subroutine process_identifiers_from_node
     
     ! Helper procedures for visitor integration
     subroutine add_unused_variable_to_visitor(visitor, var_name, scope, line, col, is_param, is_dummy)
