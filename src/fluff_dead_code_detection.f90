@@ -8,7 +8,6 @@ module fluff_dead_code_detection
                          declaration_node, identifier_node, assignment_node, &
                          function_def_node, subroutine_def_node, &
                          return_node, stop_node, if_node, &
-                         goto_node, error_stop_node, &
                          ast_node, program_node, binary_op_node, &
                          call_or_subscript_node, subroutine_call_node, &
                          literal_node, print_statement_node, do_loop_node, &
@@ -28,6 +27,10 @@ module fluff_dead_code_detection
                          visit_node_at, get_node_type_id, &
                          get_declaration_info, get_identifier_name, &
                          get_assignment_indices, get_binary_op_info
+    
+    ! Import new AST nodes from ast_nodes_control
+    use ast_nodes_control, only: goto_node, error_stop_node
+    
     implicit none
     private
     
@@ -189,7 +192,8 @@ contains
         ! Fix remaining edge cases that AST might miss
         call this%fix_remaining_issues(source_code)
         
-        ! Temporary: Keep text patterns until AST detection is fully working
+        ! Text-based patterns for cases where AST nodes aren't generated yet
+        ! TODO: Remove when fortfront parser creates goto_node and error_stop_node instances
         call this%detect_test_patterns(source_code)
         
         ! 2. Build call graph for unused procedure detection
@@ -479,6 +483,7 @@ contains
             ! Check for goto statements
             select type (node => this%arena%entries(i)%node)
             type is (goto_node)
+                ! AST-based goto detection (when parser creates these nodes)
                 ! Find the next statement after the goto
                 next_stmt_idx = this%find_next_statement(i)
                 if (next_stmt_idx > 0) then
@@ -491,6 +496,7 @@ contains
                 end if
                 
             type is (error_stop_node)
+                ! AST-based error stop detection (when parser creates these nodes)
                 ! Find the next statement after the error stop
                 next_stmt_idx = this%find_next_statement(i)
                 if (next_stmt_idx > 0) then
