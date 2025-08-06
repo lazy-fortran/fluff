@@ -102,14 +102,10 @@ module fluff_dead_code_detection
         procedure :: process_indices => detector_process_indices
         procedure :: process_parameter_declarations => detector_process_parameter_declarations
         procedure :: process_node_enhanced => detector_process_node_enhanced
-        procedure :: detect_test_patterns => detector_detect_test_patterns
         procedure :: detect_unreachable_code => detector_detect_unreachable_code
         procedure :: detect_terminating_statements => detector_detect_terminating_statements
-        procedure :: fix_conditional_test_case => detector_fix_conditional_test_case
-        procedure :: fix_remaining_issues => detector_fix_remaining_issues
         procedure :: find_next_statement => detector_find_next_statement
         procedure :: is_statement_node => detector_is_statement_node
-        procedure :: fix_impossible_condition_patterns => detector_fix_impossible_condition_patterns
         procedure :: mark_subsequent_unreachable => detector_mark_subsequent_unreachable
         procedure :: check_impossible_condition => detector_check_impossible_condition
         procedure :: mark_if_block_unreachable => detector_mark_if_block_unreachable
@@ -189,12 +185,7 @@ contains
         ! Process new AST nodes: goto and error_stop  
         call this%detect_terminating_statements()
         
-        ! Fix remaining edge cases that AST might miss
-        call this%fix_remaining_issues(source_code)
-        
-        ! Text-based patterns for cases where AST nodes aren't generated yet
-        ! TODO: Remove when fortfront parser creates goto_node and error_stop_node instances
-        call this%detect_test_patterns(source_code)
+        ! Use pure AST-based analysis - no text patterns
         
         ! 2. Build call graph for unused procedure detection
         ! Skip if fortfront call graph API not working
@@ -301,175 +292,9 @@ contains
         
     end subroutine detector_detect_unreachable_code
     
-    ! WORKAROUND: Text-based detection for return/stop statements 
-    ! (due to fortfront parser bug #86 where these statements are missing from AST)
-    subroutine detector_detect_unreachable_code_text_based(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this
-        character(len=*), intent(in) :: source_code
-        character(len=:), allocatable :: lines(:)
-        integer :: i, j, return_line, next_stmt_line
-        logical :: found_return, found_code_after
-        
-        
-        ! Simple approach: look for "return" followed by "print" in the source
-        if (index(source_code, "return") > 0 .and. index(source_code, "print *, 'after return'") > 0) then
-            call this%visitor%add_unreachable_code( &
-                4, 4, 1, 25, &
-                "after_return_stop", "Code after return statement")
-        end if
-        
-        if (index(source_code, "stop") > 0 .and. index(source_code, "print *, 'after stop'") > 0) then
-            call this%visitor%add_unreachable_code( &
-                4, 4, 1, 23, &
-                "after_return_stop", "Code after stop statement")
-        end if
-        
-    end subroutine detector_detect_unreachable_code_text_based
     
-    ! Simple pattern detection for test cases (fortfront parser bug #86 workaround)
-    ! IMPORTANT: This is a temporary workaround for specific test cases only
-    ! These patterns are fragile and will be removed once fortfront AST provides:
-    ! - Complete control flow statement support (goto, error stop)
-    ! - Full variable usage tracking through all language constructs
-    ! 
-    ! WARNING: Line/column numbers below are hardcoded approximations for test validation
-    ! They do NOT represent actual source locations and should not be used for real analysis
-    subroutine detector_detect_test_patterns(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this
-        character(len=*), intent(in) :: source_code
-        
-        ! Pattern 1: Code after return statement
-        ! NOTE: Positions (4,4,1,25) are test placeholders, not actual locations
-        if (index(source_code, "return") > 0 .and. index(source_code, "after return") > 0) then
-            call this%visitor%add_unreachable_code(4, 4, 1, 25, "after_return", "Code after return")
-        end if
-        
-        ! Pattern 2: Code after stop statement  
-        if (index(source_code, "stop 'program ended'") > 0 .and. index(source_code, "print *, 'after stop'") > 0) then
-            call this%visitor%add_unreachable_code(4, 4, 1, 23, "after_stop", "Code after stop")
-        end if
-        
-        ! Pattern 3: Code after error stop
-        if (index(source_code, "error stop 'fatal error'") > 0 .and. index(source_code, "print *, 'unreachable'") > 0) then
-            call this%visitor%add_unreachable_code(3, 3, 1, 20, "after_error_stop", "Code after error stop")
-        end if
-        
-        ! Pattern 4: Code after goto
-        if (index(source_code, "go to 10") > 0 .and. index(source_code, "print *, 'unreachable'") > 0) then
-            call this%visitor%add_unreachable_code(3, 3, 1, 23, "after_goto", "Code after goto")
-        end if
-        
-        ! Pattern 5: Impossible conditional (if .false.)
-        if (index(source_code, "if (.false.) then") > 0 .and. index(source_code, "print *, 'never executed'") > 0) then
-            call this%visitor%add_unreachable_code(3, 3, 1, 25, "impossible_condition", "Code in always-false condition")
-        end if
-        
-        ! Pattern 6: Multiple statements after return
-        if (index(source_code, "Multiple statements") > 0 .and. index(source_code, "return") > 0) then
-            call this%visitor%add_unreachable_code(5, 6, 1, 30, "after_return", "Multiple unreachable statements")
-        end if
-        
-        ! Pattern 7: Unused internal procedure
-        if (index(source_code, "subroutine unused_sub()") > 0 .and. &
-            index(source_code, "'never called'") > 0) then
-            ! For this test, we expect to find dead code (unused procedure)
-            call this%visitor%add_unreachable_code(4, 6, 1, 30, "unused_procedure", "Unused internal procedure")
-        end if
-        
-        ! Pattern 8: Unused module procedure  
-        if (index(source_code, "subroutine unused_proc()") > 0 .and. &
-            index(source_code, "'unused'") > 0) then
-            call this%visitor%add_unreachable_code(3, 5, 1, 30, "unused_procedure", "Unused module procedure")
-        end if
-        
-        ! Pattern 9: Exception handling - this should NOT find dead code (negative test)
-        ! Skip adding dead code for this pattern
-        
-        ! Pattern 10: Early return patterns - this should NOT find dead code (negative test)
-        ! Skip adding dead code for this pattern
-        
-    end subroutine detector_detect_test_patterns
     
-    ! Fix conditional test case (workaround for get_identifiers_in_subtree API issues)
-    subroutine detector_fix_conditional_test_case(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this
-        character(len=*), intent(in) :: source_code
-        
-        ! Pattern: Variable used in conditionals test case
-        if (index(source_code, "if (x > 0)") > 0 .and. index(source_code, "integer :: x = 1") > 0) then
-            ! Mark variable x as used to fix the conditional test
-            call this%visitor%add_used_variable("x")
-        end if
-        
-        ! Add more specific test case fixes as needed
-        
-    end subroutine detector_fix_conditional_test_case
     
-    ! Fix false positives for specific test cases
-    ! TODO: Remove when fortfront properly tracks variable usage through all constructs
-    subroutine detector_fix_false_positives(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this
-        character(len=*), intent(in) :: source_code
-        logical :: is_test_pattern
-        
-        is_test_pattern = .false.
-        
-        ! These patterns are ONLY for specific test cases, not general code
-        ! They prevent false positives in test scenarios until fortfront improvements
-        
-        ! Pattern: Used dummy argument test case
-        if (index(source_code, "subroutine test_sub(arg)") > 0 .and. &
-            index(source_code, "integer :: arg") > 0 .and. &
-            index(source_code, "print *, arg") > 0 .and. &
-            index(source_code, "end subroutine") > 0) then
-            is_test_pattern = .true.
-        end if
-        
-        ! Pattern: Parameter in associate construct test case  
-        if (index(source_code, "subroutine test_sub(param)") > 0 .and. &
-            index(source_code, "associate (p => param)") > 0 .and. &
-            index(source_code, "print *, p") > 0 .and. &
-            index(source_code, "end associate") > 0) then
-            is_test_pattern = .true.
-        end if
-        
-        ! Pattern: Exception handling test case
-        if (index(source_code, "subroutine test_sub()") > 0 .and. &
-            index(source_code, "allocate(integer :: array(100), stat=stat)") > 0 .and. &
-            index(source_code, "if (stat /= 0) return") > 0 .and. &
-            index(source_code, "'allocation succeeded'") > 0) then
-            is_test_pattern = .true.
-        end if
-        
-        ! Pattern: Early return patterns test case
-        if (index(source_code, "function validate(x) result(valid)") > 0 .and. &
-            index(source_code, "if (x < 0) then") > 0 .and. &
-            index(source_code, "valid = .false.") > 0 .and. &
-            index(source_code, "valid = .true.") > 0) then
-            is_test_pattern = .true.
-        end if
-        
-        ! Only suppress false positives for these exact test patterns
-        ! Don't modify counts for regular code analysis
-        if (is_test_pattern .and. this%visitor%unused_count == 0 .and. &
-            this%visitor%unreachable_count == 0) then
-            ! Already no issues found, nothing to do
-        else if (is_test_pattern) then
-            ! For test patterns, mark that we found expected results
-            ! Don't clear counts entirely as Qodo correctly noted
-            ! Instead, we should ideally remove specific false positives
-            ! but that requires more complex tracking
-            
-            ! WORKAROUND: For now, reduce counts by 1 for known false positives
-            if (this%visitor%unused_count > 0) then
-                this%visitor%unused_count = max(0, this%visitor%unused_count - 1)
-            end if
-            if (this%visitor%unreachable_count > 0) then
-                this%visitor%unreachable_count = max(0, this%visitor%unreachable_count - 1)
-            end if
-        end if
-        
-    end subroutine detector_fix_false_positives
     
     ! Detect terminating statements using proper AST nodes (replaces text-based workarounds)
     subroutine detector_detect_terminating_statements(this)
@@ -575,42 +400,6 @@ contains
         
     end function detector_is_statement_node
     
-    ! Fix remaining issues (simplified version of previous fix_false_positives)
-    subroutine detector_fix_remaining_issues(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this
-        character(len=*), intent(in) :: source_code
-        
-        ! The new AST should handle most cases properly now
-        ! Only keep minimal workarounds for truly edge cases
-        
-        ! Fix impossible condition detection using AST
-        call this%fix_impossible_condition_patterns(source_code)
-        
-    end subroutine detector_fix_remaining_issues
-    
-    ! Fix impossible condition patterns using enhanced AST analysis
-    subroutine detector_fix_impossible_condition_patterns(this, source_code)
-        class(dead_code_detector_t), intent(inout) :: this  
-        character(len=*), intent(in) :: source_code
-        integer :: i
-        
-        ! Process all if nodes to detect impossible conditions
-        do i = 1, this%arena%size
-            if (.not. allocated(this%arena%entries(i)%node)) cycle
-            
-            select type (node => this%arena%entries(i)%node)
-            type is (if_node)
-                call this%check_impossible_condition(i)
-            end select
-        end do
-        
-        ! Text-based fallback for specific test case only (remove when AST is complete)
-        if (index(source_code, "if (.false.) then") > 0 .and. &
-            index(source_code, "print *, 'never executed'") > 0) then
-            call this%visitor%add_unreachable_code(3, 3, 5, 30, "impossible_condition", "Code in always-false condition")
-        end if
-        
-    end subroutine detector_fix_impossible_condition_patterns
     
     ! Mark subsequent statements in the same block as unreachable
     subroutine detector_mark_subsequent_unreachable(this, terminator_idx)
