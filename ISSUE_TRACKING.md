@@ -48,16 +48,15 @@
    - **Priority**: Medium
    - **Related**: Issue #19 (advanced formatting)
    
-5. **test_formatter_advanced** (partial progress)
+5. **test_formatter_advanced** (major progress - basic functionality working)
    - **Issue**: Test expectations don't match fortfront behavior
    - **Priority**: Medium  
    - **Related**: Issue #19 (advanced formatting)
-   - **Status**: Basic formatter working, but fortfront has limitations:
-     - Changes `real` to `real(8)` and adds `d0` to literals
-     - Doesn't preserve complex nested expressions correctly (simplifies them incorrectly)
-     - Doesn't preserve line continuations
-     - Adds spaces around all operators
-     - Adds blank lines before assignment statements
+   - **Status**: 
+     - ✅ **Fixed critical bug**: Type default initialization now working (explicit constructor)
+     - ✅ **Line breaking working**: Long expressions properly broken with `&` continuation
+     - ✅ **Basic formatting working**: Indentation, spacing, variable separation
+     - ⚠️ **Remaining limitations**: Still blocked by fortfront bugs documented above
    
 6. **test_formatter_framework** ✅ **PASSING**
    - No issues needed
@@ -127,14 +126,16 @@ All LSP tests (19% passing average) need implementation:
 
 #### Fortfront Bugs Discovered (Issue #19 Investigation):
 7. **Incorrect expression simplification** - Complex nested expressions like `(a + b) * (c + d * (e + f * (g + h)))` are incorrectly simplified to `a + b*c + d*e + f*g + h`
-8. **Operator spacing issue** - The `/=` operator is split into `/ =` with a space
+8. **Operator spacing issue** - The `/=` operator is split into `/ =` with a space (inconsistent with other operators)
 9. **Line continuation not preserved** - Multi-line expressions with `&` continuations are collapsed to single lines
+10. **Array literal syntax change** - Modern `[1, 2, 3]` syntax is converted to legacy `( / 1, 2, 3 / )` syntax
+11. **Default type initialization bug** - Type default values (`logical :: flag = .true.`) not being applied correctly, requiring explicit initialization in constructor functions
 
 #### Original Issues Still Needed:
-10. Constant folding for if conditions (detect if(.false.) at compile time)
-11. Call graph analysis for internal procedures  
-12. Cross-module usage tracking
-13. Control flow graph with early returns
+12. Constant folding for if conditions (detect if(.false.) at compile time)
+13. Call graph analysis for internal procedures  
+14. Cross-module usage tracking
+15. Control flow graph with early returns
 
 ### New fluff Issues Needed (7):
 1. File watching infrastructure
