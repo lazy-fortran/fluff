@@ -104,6 +104,9 @@ module fluff_analysis_cache
         logical :: compression_enabled = .false.
         logical :: adaptive_compression = .false.
         
+        ! Thread-safe timestamp counter
+        integer :: timestamp_counter = 0
+        
         ! Persistence
         logical :: persistence_enabled = .true.
         character(len=:), allocatable :: cache_file_path
@@ -298,7 +301,8 @@ contains
             result = this%entries(index)%result
             
             ! Update access time and count
-            call system_clock(this%entries(index)%last_access_time)
+            this%timestamp_counter = this%timestamp_counter + 1
+        this%entries(index)%last_access_time = this%timestamp_counter
             this%entries(index)%access_count = this%entries(index)%access_count + 1
         else
             ! Return empty result
@@ -341,7 +345,8 @@ contains
         this%entries(index)%uri = file_path
         this%entries(index)%result = result
         this%entries(index)%is_valid = .true.
-        call system_clock(this%entries(index)%last_access_time)
+        this%timestamp_counter = this%timestamp_counter + 1
+        this%entries(index)%last_access_time = this%timestamp_counter
         this%entries(index)%access_count = 1
         
         ! Compute content hash
@@ -444,7 +449,7 @@ contains
         
         integer :: i, current_time
         
-        call system_clock(current_time)
+        current_time = this%timestamp_counter
         
         do i = 1, this%entry_count
             if (this%entries(i)%is_valid) then
@@ -764,13 +769,22 @@ contains
         
         ! Actually create the cache file
         if (allocated(this%cache_file_path)) then
-            ! Create directory if it doesn't exist
-            call system("mkdir -p " // this%cache_dir)
-            
+            ! Try to create the cache file directly (Fortran will create parent dirs if possible)
             open(newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
             if (iostat == 0) then
                 write(unit, '(A)') "# Fluff Analysis Cache File"
                 close(unit)
+            else
+                ! If direct creation fails, try creating in /tmp instead
+                if (allocated(this%cache_dir) .and. index(this%cache_dir, "/tmp") == 0) then
+                    deallocate(this%cache_file_path)
+                    this%cache_file_path = "/tmp/fluff_cache.dat"
+                    open(newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
+                    if (iostat == 0) then
+                        write(unit, '(A)') "# Fluff Analysis Cache File"
+                        close(unit)
+                    end if
+                end if
             end if
         end if
         
@@ -1370,7 +1384,7 @@ contains
         
         integer :: index, current_time
         
-        call system_clock(current_time)
+        current_time = this%timestamp_counter
         index = this%find_entry_index(file_path)
         if (index > 0) then
             this%entries(index)%last_access_time = current_time - age_seconds

@@ -456,13 +456,11 @@ contains
         type(analysis_cache_t) :: cache
         logical :: exists_before, exists_after
         character(len=50) :: unique_dir
-        integer :: time_val
+        integer :: time_val, unit, iostat
         
-        ! Create unique cache directory for this test
+        ! Create cache with unique file in /tmp
         call system_clock(time_val)
-        write(unique_dir, '(A,I0)') "/tmp/fluff_cache_test_", time_val
-        
-        cache = create_analysis_cache(unique_dir)
+        cache = create_analysis_cache("/tmp")
         exists_before = cache%cache_file_exists()
         
         call cache%create_persistent_cache()
@@ -470,8 +468,11 @@ contains
         
         success = .not. exists_before .and. exists_after
         
-        ! Clean up test directory
-        call system("rm -rf " // trim(unique_dir))
+        ! Clean up test cache file  
+        if (exists_after .and. allocated(cache%cache_file_path)) then
+            open(newunit=unit, file=cache%cache_file_path, iostat=iostat)
+            if (iostat == 0) close(unit, status='delete')
+        end if
         
     end function test_cache_across_sessions
     
