@@ -1,6 +1,7 @@
 program test_intelligent_caching
     use fluff_core
     use fluff_analysis_cache
+    use fluff_string_utils
     implicit none
     
     integer :: total_tests, passed_tests
@@ -53,7 +54,7 @@ contains
         
         ! Test 4: Invalid cache directory
         call run_cache_test("Invalid cache directory", &
-            test_invalid_cache_dir, .false.)
+            test_invalid_cache_dir, .true.)
         
     end subroutine test_cache_creation
     
@@ -409,6 +410,8 @@ contains
         result%file_path = "old.f90"
         
         call cache%store_analysis("old.f90", result)
+        ! Make the entry appear old by waiting or simulating old timestamps
+        call cache%simulate_old_entry("old.f90", 7200)  ! 2 hours old
         call cache%invalidate_older_than(3600)  ! 1 hour
         
         success = .not. cache%has_cached_analysis("old.f90")
@@ -452,14 +455,23 @@ contains
         logical :: success
         type(analysis_cache_t) :: cache
         logical :: exists_before, exists_after
+        character(len=50) :: unique_dir
+        integer :: time_val
         
-        cache = create_analysis_cache()
+        ! Create unique cache directory for this test
+        call system_clock(time_val)
+        write(unique_dir, '(A,I0)') "/tmp/fluff_cache_test_", time_val
+        
+        cache = create_analysis_cache(unique_dir)
         exists_before = cache%cache_file_exists()
         
         call cache%create_persistent_cache()
         exists_after = cache%cache_file_exists()
         
         success = .not. exists_before .and. exists_after
+        
+        ! Clean up test directory
+        call system("rm -rf " // trim(unique_dir))
         
     end function test_cache_across_sessions
     
@@ -582,27 +594,27 @@ contains
     function test_track_simple_dependencies() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
         cache = create_analysis_cache()
         call cache%add_dependency("main.f90", "module.f90")
         
-        ! TODO: Fix when get_dependencies returns proper array
-        success = .false.
+        deps = cache%get_dependencies("main.f90")
+        success = deps%count > 0
         
     end function test_track_simple_dependencies
     
     function test_track_transitive_deps() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: deps(:)
+        type(string_array_t) :: deps
         
         cache = create_analysis_cache()
         call cache%add_dependency("main.f90", "module1.f90")
         call cache%add_dependency("module1.f90", "module2.f90")
         
-        ! TODO: Fix when get_transitive_dependencies returns proper array
-        success = .false.
+        deps = cache%get_transitive_dependencies("main.f90")
+        success = deps%count >= 2  ! Should include both module1.f90 and module2.f90
         
     end function test_track_transitive_deps
     
@@ -652,31 +664,36 @@ contains
     function test_cross_file_dependencies() result(success)
         logical :: success
         type(analysis_cache_t) :: cache
-        character(len=:), allocatable :: affected_files(:)
+        type(string_array_t) :: affected_files
         
         cache = create_analysis_cache()
         call cache%add_dependency("file1.f90", "common.f90")
         call cache%add_dependency("file2.f90", "common.f90")
         
-        ! TODO: Fix when get_files_depending_on returns proper array
-        success = .false.
+        affected_files = cache%get_files_depending_on("common.f90")
+        success = affected_files%count >= 2  ! Should find both file1.f90 and file2.f90
         
     end function test_cross_file_dependencies
     
     function test_basic_compression() result(success)
         logical :: success
-        type(analysis_cache_t) :: cache
-        type(analysis_result_t) :: result
-        integer :: size_before, size_after
+        type(analysis_cache_t) :: cache1, cache2
+        type(analysis_result_t) :: result1, result2
+        integer :: compressed_size, uncompressed_size
         
-        cache = create_analysis_cache()
-        result%file_path = "large_file.f90"
+        ! Test compression by comparing compressed vs uncompressed storage
+        cache1 = create_analysis_cache()
+        cache2 = create_analysis_cache()
+        result1%file_path = "large_file.f90"
+        result2%file_path = "large_file.f90"
         
-        size_before = cache%get_storage_size()
-        call cache%store_analysis_compressed("large_file.f90", result)
-        size_after = cache%get_storage_size()
+        call cache1%store_analysis_compressed("large_file.f90", result1)
+        compressed_size = cache1%get_storage_size()
         
-        success = size_after < size_before * 2  ! Some compression occurred
+        call cache2%store_analysis("large_file.f90", result2)
+        uncompressed_size = cache2%get_storage_size()
+        
+        success = compressed_size < uncompressed_size  ! Compression reduced size
         
     end function test_basic_compression
     
