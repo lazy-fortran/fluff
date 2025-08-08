@@ -101,9 +101,19 @@ contains
         type(fluff_ast_context_t), intent(inout) :: ast_ctx
         character(len=:), allocatable, intent(out) :: formatted_code
         
+        character(len=:), allocatable :: temp_code
+        
         ! Use fortfront's formatting
         if (ast_ctx%is_initialized) then
-            call emit_fortran(ast_ctx%arena, ast_ctx%root_index, formatted_code)
+            call emit_fortran(ast_ctx%arena, ast_ctx%root_index, temp_code)
+            
+            ! Apply aesthetic improvements if enabled
+            if (this%enable_quality_improvements) then
+                call apply_aesthetic_improvements(temp_code, formatted_code, &
+                    this%aesthetic_settings)
+            else
+                formatted_code = temp_code
+            end if
         else
             formatted_code = ""
         end if

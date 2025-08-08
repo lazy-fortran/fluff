@@ -52,7 +52,18 @@ contains
     ! Create default aesthetic settings
     function create_aesthetic_settings() result(settings)
         type(aesthetic_settings_t) :: settings
-        ! Initialized with default values
+        
+        ! Explicitly set default values for compatibility
+        settings%add_blank_lines = .true.
+        settings%align_declarations = .true.
+        settings%align_assignments = .true.
+        settings%group_related_statements = .true.
+        settings%improve_operator_spacing = .true.
+        settings%optimize_line_breaks = .true.
+        settings%max_line_length = 88
+        settings%indent_size = 4
+        settings%blank_line_ratio = 0.15_dp
+        
     end function create_aesthetic_settings
     
     ! Assess the quality of formatted code
