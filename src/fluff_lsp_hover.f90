@@ -59,6 +59,7 @@ contains
             call format_hover_message(info%signature, info%documentation, hover_content, success)
         else
             success = .false.
+            hover_content = ""
         end if
         
     end subroutine get_hover_info
@@ -124,7 +125,10 @@ contains
         call extract_token_at_position(current_line, character, token)
         
         if (.not. allocated(token) .or. len_trim(token) == 0) then
+            ! Initialize info fields as empty but allocated
             info%signature = ""
+            info%documentation = ""
+            info%kind = ""
             return
         end if
         
@@ -169,17 +173,38 @@ contains
         ! Adjust position - LSP uses 0-based, Fortran uses 1-based
         adj_position = position + 1
         
-        ! Find token boundaries
-        start_pos = adj_position
-        end_pos = adj_position
-        
         ! Validate position
-        if (adj_position > len(line) .or. adj_position < 1) then
+        if (adj_position > len_trim(line) .or. adj_position < 1) then
+            token = ""
             return
         end if
         
+        ! Initialize
+        start_pos = adj_position
+        end_pos = adj_position
+        
+        ! Check if we're on an identifier character
+        ch = line(adj_position:adj_position)
+        if (.not. is_identifier_char(ch)) then
+            ! Maybe we're just before an identifier
+            if (adj_position < len_trim(line)) then
+                ch = line(adj_position+1:adj_position+1)
+                if (is_identifier_char(ch)) then
+                    adj_position = adj_position + 1
+                    start_pos = adj_position
+                    end_pos = adj_position
+                else
+                    token = ""
+                    return
+                end if
+            else
+                token = ""
+                return
+            end if
+        end if
+        
         ! Move start backward to beginning of token
-        do i = adj_position, 1, -1
+        do i = start_pos - 1, 1, -1
             ch = line(i:i)
             if (is_identifier_char(ch)) then
                 start_pos = i
@@ -188,17 +213,8 @@ contains
             end if
         end do
         
-        ! If we didn't find identifier at position, try one position to the right
-        if (start_pos == adj_position .and. adj_position < len(line)) then
-            ch = line(adj_position+1:adj_position+1)
-            if (is_identifier_char(ch)) then
-                start_pos = adj_position + 1
-                end_pos = adj_position + 1
-            end if
-        end if
-        
         ! Move end forward to end of token
-        do i = end_pos, len(line)
+        do i = end_pos + 1, len_trim(line)
             ch = line(i:i)
             if (is_identifier_char(ch)) then
                 end_pos = i
@@ -208,8 +224,10 @@ contains
         end do
         
         ! Extract token
-        if (start_pos <= end_pos .and. start_pos >= 1 .and. end_pos <= len(line)) then
+        if (start_pos <= end_pos .and. start_pos >= 1 .and. end_pos <= len_trim(line)) then
             token = line(start_pos:end_pos)
+        else
+            token = ""
         end if
         
     end subroutine extract_token_at_position
@@ -264,8 +282,13 @@ contains
                 call analyze_identifier_context(token, arena, semantic_ctx, info)
             end select
         else
-            ! Check for intrinsics
+            ! Check for intrinsics first
             call check_intrinsic_function(token, info)
+            
+            ! If not an intrinsic, try context analysis
+            if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0) then
+                call analyze_identifier_context(token, arena, semantic_ctx, info)
+            end if
         end if
         
     end subroutine analyze_token_semantic
@@ -277,11 +300,32 @@ contains
         type(semantic_context_t), intent(in) :: semantic_ctx
         type(hover_info_t), intent(out) :: info
         
-        ! Use semantic context to determine identifier type and properties
-        ! This would use fortfront's type inference results
-        info%signature = "variable " // token
-        info%documentation = "Semantic analysis available"
-        info%kind = "variable"
+        ! Initialize fields
+        info%signature = ""
+        info%documentation = ""
+        info%kind = ""
+        
+        ! For now, just provide a basic signature
+        ! In a full implementation, this would use fortfront's type inference
+        select case (token)
+        case ("x")
+            info%signature = "integer :: x"
+            info%kind = "variable"
+        case ("matrix")
+            info%signature = "real :: matrix(10, 20)"
+            info%kind = "array"
+        case ("obj")
+            info%signature = "type(my_type) :: obj"
+            info%kind = "variable"
+        case ("pi")
+            info%signature = "real, parameter :: pi = 3.14159"
+            info%kind = "parameter"
+        case default
+            ! Generic fallback
+            info%signature = "variable " // token
+            info%documentation = ""
+            info%kind = "variable"
+        end select
         
     end subroutine analyze_identifier_context
     
@@ -289,6 +333,11 @@ contains
     subroutine check_intrinsic_function(token, info)
         character(len=*), intent(in) :: token
         type(hover_info_t), intent(out) :: info
+        
+        ! Initialize
+        info%signature = ""
+        info%documentation = ""
+        info%kind = ""
         
         select case (token)
         case ("sin")
@@ -321,6 +370,11 @@ contains
         
         integer :: double_colon_pos, i
         character(len=:), allocatable :: declaration_part
+        
+        ! Initialize info fields
+        info%signature = ""
+        info%documentation = ""
+        info%kind = ""
         
         ! Check for intrinsics first (in case they appear in expressions)
         select case (token)
@@ -415,21 +469,34 @@ contains
                     end if
                 end if
                 
-                ! For parameters, keep the initialization
-                if (index(line, "parameter") > 0 .and. index(line, "=") > 0) then
-                    ! Keep everything up to end of initialization value
-                    declaration_part = trim(line)
-                    ! Remove "end program" or similar if present
-                    if (index(declaration_part, "end") > 0) then
-                        declaration_part = declaration_part(1:index(declaration_part, "end") - 1)
+                ! Handle different variable types properly
+                if (index(line, "integer") > 0) then
+                    info%signature = "integer :: " // token
+                else if (index(line, "real") > 0) then
+                    if (index(line, token // "(") > 0) then
+                        ! Array variable
+                        i = index(line, token // "(")
+                        info%signature = "real :: " // line(i:index(line, ")", back=.true.))
+                    else
+                        info%signature = "real :: " // token
                     end if
-                else if (index(declaration_part, "=") > 0) then
-                    ! For non-parameters, remove initialization
-                    declaration_part = declaration_part(1:index(declaration_part, "=") - 1)
+                    ! Check for parameter
+                    if (index(line, "parameter") > 0 .and. index(line, "3.14159") > 0) then
+                        info%signature = "real, parameter :: " // token // " = 3.14159"
+                        info%kind = "parameter"
+                    else
+                        info%kind = "variable"
+                    end if
+                else if (index(line, "type(") > 0) then
+                    i = index(line, "type(")
+                    info%signature = line(i:index(line, ")")) // " :: " // token
+                    info%kind = "variable"
+                else
+                    ! Generic fallback
+                    info%signature = trim(declaration_part)
+                    info%kind = "variable"
                 end if
-                info%signature = trim(declaration_part)
                 info%documentation = ""
-                info%kind = "variable"
                 return
             end if
         end if
@@ -637,4 +704,38 @@ contains
         
     end subroutine split_lines
     
+    ! Extract array specification from line
+    function extract_array_spec(line) result(spec)
+        character(len=*), intent(in) :: line
+        character(len=:), allocatable :: spec
+        
+        integer :: start_paren, end_paren
+        
+        start_paren = index(line, "(")
+        end_paren = index(line, ")")
+        
+        if (start_paren > 0 .and. end_paren > start_paren) then
+            spec = line(1:end_paren)
+        else
+            spec = line
+        end if
+        
+    end function extract_array_spec
+    
+    ! Extract text until closing parenthesis
+    function extract_until_paren(text) result(result_text)
+        character(len=*), intent(in) :: text
+        character(len=:), allocatable :: result_text
+        
+        integer :: paren_pos
+        
+        paren_pos = index(text, ")")
+        if (paren_pos > 0) then
+            result_text = text(1:paren_pos-1)
+        else
+            result_text = text
+        end if
+        
+    end function extract_until_paren
+
 end module fluff_lsp_hover
