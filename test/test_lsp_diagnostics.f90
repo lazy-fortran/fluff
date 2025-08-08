@@ -40,6 +40,7 @@ contains
         ! Test 1: Generate diagnostics from syntax errors
         call run_diagnostic_test("Syntax error diagnostics", &
             "program test" // new_line('a') // &
+            "implicit none" // new_line('a') // &
             "integer :: x" // new_line('a') // &
             "x = undefined_var" // new_line('a') // &
             "end program", &
@@ -48,6 +49,7 @@ contains
         ! Test 2: Generate diagnostics from style violations
         call run_diagnostic_test("Style violation diagnostics", &
             "program test" // new_line('a') // &
+            "implicit none" // new_line('a') // &
             "integer::x,y" // new_line('a') // &
             "x=1;y=2" // new_line('a') // &
             "end program", &
