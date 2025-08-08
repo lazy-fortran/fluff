@@ -772,39 +772,5 @@ contains
         end if
         
     end subroutine split_lines
-    
-    ! Extract array specification from line
-    function extract_array_spec(line) result(spec)
-        character(len=*), intent(in) :: line
-        character(len=:), allocatable :: spec
-        
-        integer :: start_paren, end_paren
-        
-        start_paren = index(line, "(")
-        end_paren = index(line, ")")
-        
-        if (start_paren > 0 .and. end_paren > start_paren) then
-            spec = line(1:end_paren)
-        else
-            spec = line
-        end if
-        
-    end function extract_array_spec
-    
-    ! Extract text until closing parenthesis
-    function extract_until_paren(text) result(result_text)
-        character(len=*), intent(in) :: text
-        character(len=:), allocatable :: result_text
-        
-        integer :: paren_pos
-        
-        paren_pos = index(text, ")")
-        if (paren_pos > 0) then
-            result_text = text(1:paren_pos-1)
-        else
-            result_text = text
-        end if
-        
-    end function extract_until_paren
 
 end module fluff_lsp_hover

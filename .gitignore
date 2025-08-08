@@ -1,1 +1,5 @@
 thirdparty
+build/
+*.log
+test_output.txt
+build_output.txt
