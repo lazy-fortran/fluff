@@ -48,10 +48,16 @@
    - **Priority**: Medium
    - **Related**: Issue #19 (advanced formatting)
    
-5. **test_formatter_advanced** (failing)
-   - **Issue**: Missing AST formatting helpers
+5. **test_formatter_advanced** (partial progress)
+   - **Issue**: Test expectations don't match fortfront behavior
    - **Priority**: Medium  
    - **Related**: Issue #19 (advanced formatting)
+   - **Status**: Basic formatter working, but fortfront has limitations:
+     - Changes `real` to `real(8)` and adds `d0` to literals
+     - Doesn't preserve complex nested expressions correctly (simplifies them incorrectly)
+     - Doesn't preserve line continuations
+     - Adds spaces around all operators
+     - Adds blank lines before assignment statements
    
 6. **test_formatter_framework** ✅ **PASSING**
    - No issues needed
@@ -119,11 +125,16 @@ All LSP tests (19% passing average) need implementation:
 6. **Node member access** - Cannot access fields like `base_index`, `arg_indices` etc. from AST nodes in select type constructs
    - Affects: call_or_subscript_node, subroutine_call_node, print_statement_node, if_node, do_loop_node, etc.
 
+#### Fortfront Bugs Discovered (Issue #19 Investigation):
+7. **Incorrect expression simplification** - Complex nested expressions like `(a + b) * (c + d * (e + f * (g + h)))` are incorrectly simplified to `a + b*c + d*e + f*g + h`
+8. **Operator spacing issue** - The `/=` operator is split into `/ =` with a space
+9. **Line continuation not preserved** - Multi-line expressions with `&` continuations are collapsed to single lines
+
 #### Original Issues Still Needed:
-7. Constant folding for if conditions (detect if(.false.) at compile time)
-8. Call graph analysis for internal procedures  
-9. Cross-module usage tracking
-10. Control flow graph with early returns
+10. Constant folding for if conditions (detect if(.false.) at compile time)
+11. Call graph analysis for internal procedures  
+12. Cross-module usage tracking
+13. Control flow graph with early returns
 
 ### New fluff Issues Needed (7):
 1. File watching infrastructure
