@@ -6,7 +6,7 @@ program test_intelligent_caching
     
     integer :: total_tests, passed_tests
     
-    print *, "=== Intelligent Caching Test Suite (RED Phase) ==="
+    print *, "=== Intelligent Caching Test Suite ==="
     
     total_tests = 0
     passed_tests = 0
@@ -30,7 +30,7 @@ program test_intelligent_caching
     if (passed_tests == total_tests) then
         print *, "✅ All intelligent caching tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "❌ Some tests failed"
         error stop 1
     end if
     
