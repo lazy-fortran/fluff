@@ -433,13 +433,19 @@ contains
         character(len=*), intent(in) :: file_path
         logical :: should_watch
         
-        character(len=:), allocatable :: filename, extension
-        integer :: i, dot_pos
+        character(len=:), allocatable :: filename
+        integer :: i
         
         should_watch = .true.
         
-        ! Extract filename
+        ! Extract filename once for efficiency
         filename = extract_filename(file_path)
+        
+        ! Early return for empty filename
+        if (len_trim(filename) == 0) then
+            should_watch = .false.
+            return
+        end if
         
         ! Check hidden files
         if (this%config%ignore_hidden .and. filename(1:1) == ".") then
@@ -682,10 +688,28 @@ contains
         class(file_watcher_t), intent(in) :: this
         integer :: usage
         
-        ! Simple estimation
-        usage = size(this%watch_paths) * 256 + &
-               this%file_count * 512 + &
-               this%event_count * 256
+        ! Improved memory estimation
+        usage = 1024  ! Base memory for the watcher object
+        
+        ! Add memory for watch paths
+        if (allocated(this%watch_paths)) then
+            usage = usage + size(this%watch_paths) * 256
+        end if
+        
+        ! Add memory for watched files
+        if (allocated(this%watched_files)) then
+            usage = usage + this%file_count * 512
+        end if
+        
+        ! Add memory for events
+        if (allocated(this%events)) then
+            usage = usage + this%event_count * 256
+        end if
+        
+        ! Add memory for configuration patterns
+        if (allocated(this%config%patterns)) then
+            usage = usage + size(this%config%patterns) * 32
+        end if
         
     end function get_memory_usage
     
@@ -801,23 +825,35 @@ contains
         character(len=*), intent(in) :: text, pattern
         logical :: matches
         
-        character(len=:), allocatable :: suffix
+        character(len=:), allocatable :: clean_text, clean_pattern, suffix
         integer :: suffix_len, text_len
         
-        ! Simplified pattern matching
-        if (pattern(1:1) == "*") then
-            ! Wildcard pattern - check if text ends with the suffix
-            suffix = pattern(2:)
-            suffix_len = len(suffix)
-            text_len = len_trim(text)
-            
-            if (suffix_len <= text_len) then
-                matches = text(text_len - suffix_len + 1:text_len) == suffix
+        ! Defensive programming - handle empty inputs
+        clean_text = trim(text)
+        clean_pattern = trim(pattern)
+        
+        if (len(clean_pattern) == 0) then
+            matches = .false.
+            return
+        end if
+        
+        ! Wildcard pattern matching
+        if (clean_pattern(1:1) == "*") then
+            if (len(clean_pattern) == 1) then
+                ! Just "*" matches everything
+                matches = .true.
             else
-                matches = .false.
+                ! Extract suffix after wildcard
+                suffix = clean_pattern(2:)
+                suffix_len = len(suffix)
+                text_len = len(clean_text)
+                
+                matches = (suffix_len <= text_len) .and. &
+                         (clean_text(text_len - suffix_len + 1:text_len) == suffix)
             end if
         else
-            matches = text == pattern
+            ! Exact match
+            matches = (clean_text == clean_pattern)
         end if
         
     end function matches_pattern

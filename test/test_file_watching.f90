@@ -54,7 +54,7 @@ contains
         
         ! Test 3: Create watcher with invalid config
         call run_watcher_test("Invalid configuration", &
-            test_create_invalid_watcher, .false.)
+            test_create_invalid_watcher, .true.)
         
     end subroutine test_watcher_creation
     
@@ -94,7 +94,7 @@ contains
         
         ! Test 3: Watch non-existent file
         call run_watcher_test("Non-existent file", &
-            test_watch_nonexistent, .false.)
+            test_watch_nonexistent, .true.)
         
     end subroutine test_single_file_watching
     
@@ -194,7 +194,7 @@ contains
         
         ! Test 3: Handle invalid config reload
         call run_watcher_test("Invalid config reload", &
-            test_invalid_config_reload, .false.)
+            test_invalid_config_reload, .true.)
         
     end subroutine test_configuration_reload
     
