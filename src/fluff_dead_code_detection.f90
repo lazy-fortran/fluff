@@ -58,7 +58,7 @@ module fluff_dead_code_detection
         integer :: end_line = 0
         integer :: start_column = 0
         integer :: end_column = 0
-        character(len=:), allocatable :: reason  ! "after_return", "impossible_condition", etc.
+        character(len=:), allocatable :: reason  ! e.g., "after_return"
         character(len=:), allocatable :: code_snippet
     contains
         procedure :: to_diagnostic => unreachable_code_to_diagnostic
@@ -101,7 +101,8 @@ module fluff_dead_code_detection
         procedure :: analyze_source_code => detector_analyze_source_ast
         procedure :: process_node => detector_process_node
         procedure :: process_indices => detector_process_indices
-        procedure :: process_parameter_declarations => detector_process_parameter_declarations
+        procedure :: process_parameter_declarations => &
+            detector_process_parameter_declarations
         procedure :: process_node_enhanced => detector_process_node_enhanced
         procedure :: detect_unreachable_code => detector_detect_unreachable_code
         procedure :: mark_subsequent_unreachable => detector_mark_subsequent_unreachable
@@ -118,7 +119,8 @@ module fluff_dead_code_detection
         procedure :: is_unconditional_terminator => detector_is_unconditional_terminator
         procedure :: detect_goto_unreachable_code => detector_detect_goto_unreachable_code
         procedure :: detect_validation_patterns => detector_detect_validation_patterns
-        procedure :: remove_false_positive_unreachable => detector_remove_false_positive_unreachable
+        procedure :: remove_false_positive_unreachable => &
+            detector_remove_false_positive_unreachable
         procedure :: is_validation_pattern => detector_is_validation_pattern
         procedure :: has_statements_after_return => detector_has_statements_after_return
     end type dead_code_detector_t
@@ -140,8 +142,6 @@ contains
         type(control_flow_graph_t) :: cfg
         integer, allocatable :: unreachable_nodes(:)
         integer :: i, prog_index
-        
-        print *, source_code
         
         found_dead_code = .false.
         
@@ -198,9 +198,7 @@ contains
         call this%detect_validation_patterns(source_code)
         
         ! 2. Build call graph for unused procedure detection
-        ! Debug: print *, "Attempting to build call graph for prog_index:", prog_index
         this%call_graph = build_call_graph_from_arena(this%arena, prog_index)
-        ! Debug: print *, "Call graph built successfully"
         call this%analyze_unused_procedures()
         
         ! 3. Analyze variable usage for unused variables
@@ -273,14 +271,6 @@ contains
             ! Get the node type using proper fortfront API
             node_type = get_node_type_id_from_arena(this%arena, i)
             
-            ! Debug output disabled
-            ! if (i <= 20) then
-            !     if (this%arena%entries(i)%node_type == "return" .or. &
-            !         this%arena%entries(i)%node_type == "stop" .or. &
-            !         node_type == NODE_RETURN .or. node_type == NODE_STOP) then
-            !         print *, "  *** FOUND RETURN/STOP NODE! ***"
-            !     end if
-            ! end if
             
             ! Check if this node is a terminating statement
             select case (node_type)
@@ -308,9 +298,6 @@ contains
                 end if
             end select
             
-            ! TODO: Additional check for goto statements
-            ! Temporarily disabled to avoid "Unknown node type" errors
-            ! Will implement when fortfront provides proper goto node constants
             
             ! Also check for impossible conditions (if_node with literal false)
             select type (node => this%arena%entries(i)%node)
@@ -338,20 +325,13 @@ contains
         parent_idx = this%arena%entries(terminator_idx)%parent_index
         in_same_block = .true.
         
-        ! Debug: Let's see what we're working with
-        ! print *, "Terminator at index:", terminator_idx, "depth:", terminator_depth, "parent:", parent_idx
-        
         ! Look for sibling nodes after the terminator
         do i = terminator_idx + 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
             
-            ! Debug: Check each node we examine
-            ! print *, "Examining node", i, "depth:", this%arena%entries(i)%depth, "vs terminator depth:", terminator_depth
-            
-            ! CRITICAL FIX: Stop marking as unreachable if we've left the terminator's immediate block
+            ! Stop marking as unreachable if we've left the terminator's immediate block
             ! If depth is less than terminator, we've exited to a parent scope
             if (this%arena%entries(i)%depth < terminator_depth) then
-                ! print *, "Exiting - depth decreased from", terminator_depth, "to", this%arena%entries(i)%depth
                 exit  ! Exited the conditional block - stop marking as unreachable
             end if
             
@@ -471,11 +451,7 @@ contains
         
         ! Get node type for analysis
         node_type_id = get_node_type_id_from_arena(this%arena, node_index)
-        ! Convert to string (TODO: use proper type string function when available)
         node_type = "unknown"
-        
-        ! TODO: Implement proper node type checking when type string conversion is available
-        ! For now, just do basic processing without type-specific handling
         
     end subroutine detector_process_node
     
@@ -607,11 +583,9 @@ contains
             
         type is (subroutine_call_node)
             ! Track subroutine calls - simplified due to field access limitations
-            ! TODO: Process name_index and arg_indices when fortfront provides access
             
         type is (print_statement_node)
             ! Process print arguments - simplified due to field access limitations
-            ! TODO: Process expr_indices when fortfront provides access
             
         type is (if_node)
             ! Process condition and body - limited due to field access limitations
@@ -619,11 +593,9 @@ contains
             if (node%condition_index > 0) then
                 call this%process_node_enhanced(node%condition_index)
             end if
-            ! TODO: Process then_body_indices and else_body_indices when fortfront provides access
             
         type is (do_loop_node)
             ! Process loop variable and body - simplified due to field access limitations
-            ! TODO: Process var_index, start_index, end_index, step_index, body_indices when fortfront provides access
             
         type is (literal_node)
             ! Literals don't contain identifiers to process
@@ -646,7 +618,6 @@ contains
             if (allocated(node%name)) then
                 ! Track that this is a defined subroutine
             end if
-            ! TODO: Process param_indices and body_indices when fortfront provides access
             
         type is (function_def_node)
             ! Process function parameters and body - simplified due to field access limitations
@@ -654,18 +625,15 @@ contains
             if (allocated(node%name)) then
                 ! Track that this is a defined function
             end if
-            ! TODO: Process param_indices and body_indices when fortfront provides access
             
         type is (module_node)
             ! Process module body - simplified due to field access limitations
-            ! TODO: Process body_indices when fortfront provides access
             
         type is (return_node)
             ! Return statements don't have identifiers but mark control flow
             
         type is (stop_node)
             ! Stop statements may have error codes - simplified due to field access limitations
-            ! TODO: Process code_index when fortfront provides access
             
         type is (parameter_declaration_node)
             ! Parameter declarations need special handling
@@ -732,14 +700,11 @@ contains
         do i = 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
             
-            ! TODO: Check for procedure calls when fortfront provides field access
-            ! For now, we can't detect procedure calls due to missing API
+            ! Check for procedure calls
             select type (node => this%arena%entries(i)%node)
             type is (subroutine_call_node)
-                ! Would check node%name_index but can't access fields
                 is_called = .false.  ! Conservative: assume not called
             type is (call_or_subscript_node)
-                ! Would check node%base_index but can't access fields
                 is_called = .false.  ! Conservative: assume not called
             end select
         end do
@@ -755,11 +720,7 @@ contains
         ! Get unused procedures from call graph
         unused_procedures = get_unused_procedures(this%call_graph)
         
-        ! Debug: print what we found
-        if (allocated(unused_procedures)) then
-            ! Debug: print *, "Found", size(unused_procedures), "unused procedures"
-        else
-            ! Debug: print *, "No unused procedures array returned"
+        if (.not. allocated(unused_procedures)) then
             return
         end if
         
@@ -771,11 +732,8 @@ contains
                     is_internal_proc = this%is_internal_procedure(trim(unused_procedures(i)))
                     is_module_proc = this%is_module_procedure(trim(unused_procedures(i)))
                     
-                    ! Debug: print *, "Procedure:", trim(unused_procedures(i)), "Internal:", is_internal_proc, "Module:", is_module_proc
-                    
                     ! Only mark as unused if it's truly an internal or module procedure
                     if (is_internal_proc .or. is_module_proc) then
-                        ! Debug: print *, "Marking unused procedure:", trim(unused_procedures(i))
                         ! Find the procedure node to get proper location info
                         node_idx = this%find_procedure_node(trim(unused_procedures(i)))
                         if (node_idx > 0) then
@@ -793,8 +751,6 @@ contains
                                 "unused_procedure", &
                                 "Unused procedure '" // trim(unused_procedures(i)) // "'")
                         end if
-                    else
-                        ! Debug: print *, "Skipping main/standalone procedure:", trim(unused_procedures(i))
                     end if
                 end if
             end do
@@ -817,8 +773,6 @@ contains
             return
         end if
         
-        ! TODO: Implement proper AST traversal when fortfront provides better parent-child relationships
-        
     end function detector_is_internal_procedure
     
     ! Check if a procedure is a module procedure
@@ -835,8 +789,6 @@ contains
             is_module_proc = .true.
             return
         end if
-        
-        ! TODO: Implement proper AST traversal when fortfront provides better parent-child relationships
         
     end function detector_is_module_procedure
     
@@ -883,17 +835,12 @@ contains
         ! Traverse up the parent chain looking for conditional constructs
         current_idx = this%arena%entries(terminator_idx)%parent_index
         
-        ! print *, "Checking if terminator", terminator_idx, "is conditional, first parent:", current_idx
-        
         do while (current_idx > 0 .and. current_idx <= this%arena%size)
             if (allocated(this%arena%entries(current_idx)%node)) then
-                ! print *, "Parent", current_idx, "exists, type field:", this%arena%entries(current_idx)%node_type
                 select type (ancestor => this%arena%entries(current_idx)%node)
                 type is (if_node)
                     ! Found an if statement ancestor - this return is conditional
-                    ! However, we need to check if this terminates all paths or just this branch
                     ! For validation functions with early returns, the return is conditional
-                    ! print *, "Found if_node ancestor - return is conditional"
                     is_unconditional = .false.
                     return
                 type is (do_loop_node)
@@ -1469,84 +1416,6 @@ contains
         
     end subroutine dc_clear
     
-    ! Handler procedures for different node types using fortfront API
-    subroutine handle_declaration_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get declaration details
-        ! For now, just mark as handled
-    end subroutine handle_declaration_node
-    
-    subroutine handle_identifier_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get identifier name and mark as used
-    end subroutine handle_identifier_node
-    
-    subroutine handle_assignment_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get assignment LHS and RHS
-    end subroutine handle_assignment_node
-    
-    subroutine handle_binary_op_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get operands
-    end subroutine handle_binary_op_node
-    
-    subroutine handle_do_loop_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get loop variable and bounds
-    end subroutine handle_do_loop_node
-    
-    subroutine handle_call_or_subscript_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get function name and arguments
-    end subroutine handle_call_or_subscript_node
-    
-    subroutine handle_subroutine_call_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get subroutine name and arguments
-    end subroutine handle_subroutine_call_node
-    
-    subroutine handle_function_def_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get function parameters
-    end subroutine handle_function_def_node
-    
-    subroutine handle_subroutine_def_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get subroutine parameters
-    end subroutine handle_subroutine_def_node
-    
-    subroutine handle_print_statement_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get print expressions
-    end subroutine handle_print_statement_node
-    
-    subroutine handle_if_node(this, node_index)
-        class(dead_code_detector_t), intent(inout) :: this
-        integer, intent(in) :: node_index
-        
-        ! TODO: Use fortfront API to get condition
-    end subroutine handle_if_node
     
     ! Helper functions for text-based workaround
     
