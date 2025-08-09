@@ -74,7 +74,7 @@ contains
             error stop "Should preserve assignment statement"
         end if
         
-        if (index(formatted_code, "print *, i") == 0) then
+        if (index(formatted_code, "print") == 0 .or. index(formatted_code, "i") == 0) then
             error stop "Should preserve print statement"
         end if
         

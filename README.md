@@ -13,6 +13,7 @@
 - **Auto-fix Support**: Automatically fix many violations with `--fix`
 - **Multiple Output Formats**: JSON, SARIF, XML, GitHub Actions annotations
 - **Parallel Execution**: OpenMP-based parallel rule checking for speed
+- **Advanced Formatting**: Intelligent line breaking at 88 characters with magic comment overrides
 
 ### 🛠️ Developer Experience
 - **Language Server Protocol (LSP)**: Full IDE integration with hover, diagnostics, and code actions
@@ -115,6 +116,20 @@ fluff check --output-format json src/
 - **P007**: Mixed precision arithmetic
 
 ## 🔧 Advanced Features
+
+### Formatting Magic Comments
+Control formatter behavior with special comments:
+```fortran
+! Disable line breaking for specific sections
+! fmt: skip
+real :: very_long_variable_name_1, very_long_variable_name_2, very_long_variable_name_3
+! fmt: on
+
+! Alternative syntax
+! fluff: noqa
+real :: another_long_line_that_wont_be_broken
+! fluff: qa
+```
 
 ### Language Server Protocol (LSP)
 ```bash

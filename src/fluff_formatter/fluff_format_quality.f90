@@ -31,6 +31,7 @@ module fluff_format_quality
         logical :: group_related_statements = .true.
         logical :: improve_operator_spacing = .true.
         logical :: optimize_line_breaks = .true.
+        logical :: combine_short_lines = .false.  ! Disabled by default
         integer :: max_line_length = 88
         integer :: indent_size = 4
         real(dp) :: blank_line_ratio = 0.15_dp  ! Target 15% blank lines
@@ -39,7 +40,7 @@ module fluff_format_quality
     ! Public interface
     public :: assess_format_quality, apply_aesthetic_improvements
     public :: create_quality_metrics, create_aesthetic_settings
-    public :: optimize_line_breaks
+    public :: optimize_line_breaks, combine_short_lines
     
 contains
     
@@ -60,6 +61,7 @@ contains
         settings%group_related_statements = .true.
         settings%improve_operator_spacing = .true.
         settings%optimize_line_breaks = .true.
+        settings%combine_short_lines = .false.
         settings%max_line_length = 88
         settings%indent_size = 4
         settings%blank_line_ratio = 0.15_dp
@@ -469,21 +471,50 @@ contains
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
         
+        character(len=:), allocatable :: temp_code
+        type(aesthetic_settings_t) :: settings
+        
+        settings = create_aesthetic_settings()
+        
+        ! Only combine short lines if explicitly enabled
+        if (settings%combine_short_lines) then
+            call combine_short_lines(code, max_length)
+        end if
+        
+        ! Always break long lines
+        call break_long_lines(code, max_length)
+        
+    end subroutine optimize_line_breaks
+    
+    subroutine break_long_lines(code, max_length)
+        character(len=:), allocatable, intent(inout) :: code
+        integer, intent(in) :: max_length
+        
         character(len=:), allocatable :: result
         character(len=1000), allocatable :: lines(:)
         integer :: num_lines, i
-        logical :: first_line
+        logical :: first_line, skip_line_breaking
         
         allocate(lines(10000))
         call split_code_into_lines(code, lines, num_lines)
         
         result = ""
         first_line = .true.
+        skip_line_breaking = .false.
         
         do i = 1, num_lines
             ! Safe trimming
             if (i <= size(lines)) then
-                if (len_trim(lines(i)) > max_length) then
+                ! Check for magic comment to skip line breaking
+                if (index(adjustl(lines(i)), '! fmt: skip') > 0 .or. &
+                    index(adjustl(lines(i)), '! fluff: noqa') > 0) then
+                    skip_line_breaking = .true.
+                else if (index(adjustl(lines(i)), '! fmt: on') > 0 .or. &
+                         index(adjustl(lines(i)), '! fluff: qa') > 0) then
+                    skip_line_breaking = .false.
+                end if
+                
+                if (len_trim(lines(i)) > max_length .and. .not. skip_line_breaking) then
                     if (.not. first_line) then
                         result = result // new_line('a')
                     end if
@@ -503,7 +534,182 @@ contains
         
         code = result
         
-    end subroutine optimize_line_breaks
+    end subroutine break_long_lines
+    
+    subroutine combine_short_lines(code, max_length)
+        character(len=:), allocatable, intent(inout) :: code
+        integer, intent(in) :: max_length
+        
+        character(len=:), allocatable :: result
+        character(len=1000), allocatable :: lines(:)
+        integer :: num_lines, i, j
+        character(len=:), allocatable :: combined_line, current_line, next_line
+        logical :: can_combine, skip_combining
+        
+        allocate(lines(10000))
+        call split_code_into_lines(code, lines, num_lines)
+        
+        result = ""
+        i = 1
+        skip_combining = .false.
+        
+        do while (i <= num_lines)
+            if (i > size(lines)) exit
+            
+            current_line = lines(i)(1:len_trim(lines(i)))
+            
+            ! Check for magic comments
+            if (index(adjustl(current_line), '! fmt: skip') > 0 .or. &
+                index(adjustl(current_line), '! fluff: noqa') > 0) then
+                skip_combining = .true.
+            else if (index(adjustl(current_line), '! fmt: on') > 0 .or. &
+                     index(adjustl(current_line), '! fluff: qa') > 0) then
+                skip_combining = .false.
+            end if
+            
+            ! Try to combine with next line if both are short
+            can_combine = .false.
+            if (i < num_lines .and. .not. skip_combining) then
+                if (i + 1 <= size(lines)) then
+                    next_line = lines(i+1)(1:len_trim(lines(i+1)))
+                    
+                    ! Check if lines can be combined
+                    if (can_combine_lines(current_line, next_line, max_length)) then
+                        combined_line = combine_two_lines(current_line, next_line)
+                        if (len_trim(combined_line) <= max_length) then
+                            if (len_trim(result) > 0) result = result // new_line('a')
+                            result = result // combined_line
+                            i = i + 2  ! Skip both lines
+                            can_combine = .true.
+                        end if
+                    end if
+                end if
+            end if
+            
+            if (.not. can_combine) then
+                if (len_trim(result) > 0) result = result // new_line('a')
+                result = result // current_line
+                i = i + 1
+            end if
+        end do
+        
+        code = result
+        
+    end subroutine combine_short_lines
+    
+    function can_combine_lines(line1, line2, max_length) result(can_combine)
+        character(len=*), intent(in) :: line1, line2
+        integer, intent(in) :: max_length
+        logical :: can_combine
+        
+        character(len=:), allocatable :: trim1, trim2
+        
+        can_combine = .false.
+        trim1 = adjustl(line1)
+        trim2 = adjustl(line2)
+        
+        ! Don't combine if either line is empty or just a comment
+        if (len_trim(trim1) == 0 .or. len_trim(trim2) == 0) return
+        if (trim1(1:1) == '!' .or. trim2(1:1) == '!') return
+        
+        ! Don't combine lines with certain keywords that should stay separate
+        if (is_block_start(trim1) .or. is_block_start(trim2)) return
+        if (is_block_end(trim1) .or. is_block_end(trim2)) return
+        
+        ! Don't combine if first line ends with continuation
+        if (len_trim(line1) > 0) then
+            if (line1(len_trim(line1):len_trim(line1)) == '&') return
+        end if
+        
+        ! Check if combined length would be reasonable
+        if (len_trim(line1) + len_trim(line2) + 1 > max_length) return
+        
+        ! Allow combining for variable declarations on consecutive lines
+        ! But be conservative - only if they're really short
+        if (is_declaration(trim1) .and. is_declaration(trim2)) then
+            if (len_trim(line1) < max_length / 4 .and. len_trim(line2) < max_length / 4) then
+                can_combine = .true.
+                return
+            end if
+        end if
+        
+        ! Allow combining short assignment statements
+        if (is_simple_statement(trim1) .and. is_simple_statement(trim2)) then
+            if (len_trim(line1) < max_length / 3 .and. len_trim(line2) < max_length / 3) then
+                can_combine = .true.
+                return
+            end if
+        end if
+        
+    end function can_combine_lines
+    
+    function combine_two_lines(line1, line2) result(combined)
+        character(len=*), intent(in) :: line1, line2
+        character(len=:), allocatable :: combined
+        
+        character(len=:), allocatable :: trim1, trim2
+        
+        trim1 = trim(line1)
+        trim2 = adjustl(line2)
+        
+        ! For declarations, use semicolon separator
+        if (is_declaration(adjustl(line1)) .and. is_declaration(trim2)) then
+            combined = trim1 // '; ' // trim2
+        else
+            ! For other statements, use semicolon
+            combined = trim1 // '; ' // trim2
+        end if
+        
+    end function combine_two_lines
+    
+    function is_block_start(line) result(is_start)
+        character(len=*), intent(in) :: line
+        logical :: is_start
+        
+        is_start = index(line, 'program ') == 1 .or. &
+                   index(line, 'module ') == 1 .or. &
+                   index(line, 'subroutine ') == 1 .or. &
+                   index(line, 'function ') == 1 .or. &
+                   index(line, 'if ') == 1 .or. &
+                   index(line, 'do ') == 1 .or. &
+                   index(line, 'select ') == 1 .or. &
+                   index(line, 'type ') == 1 .or. &
+                   index(line, 'interface') == 1 .or. &
+                   line == 'contains'
+        
+    end function is_block_start
+    
+    function is_block_end(line) result(is_end)
+        character(len=*), intent(in) :: line
+        logical :: is_end
+        
+        is_end = index(line, 'end ') == 1 .or. &
+                 line == 'end'
+        
+    end function is_block_end
+    
+    function is_declaration(line) result(is_decl)
+        character(len=*), intent(in) :: line
+        logical :: is_decl
+        
+        is_decl = index(line, 'integer') == 1 .or. &
+                  index(line, 'real') == 1 .or. &
+                  index(line, 'logical') == 1 .or. &
+                  index(line, 'character') == 1 .or. &
+                  index(line, 'type(') == 1 .or. &
+                  index(line, 'class(') == 1
+        
+    end function is_declaration
+    
+    function is_simple_statement(line) result(is_simple)
+        character(len=*), intent(in) :: line
+        logical :: is_simple
+        
+        ! Check if it's a simple assignment or call statement
+        is_simple = (index(line, '=') > 0 .and. index(line, '==') == 0) .or. &
+                    index(line, 'call ') == 1
+        
+    end function is_simple_statement
     
     subroutine split_code_into_lines(code, lines, num_lines)
         character(len=*), intent(in) :: code
