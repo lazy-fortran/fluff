@@ -36,9 +36,7 @@ contains
         integer :: i
         logical :: found_f001
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Missing implicit none in program (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         test_code = "program test" // new_line('a') // &
                    "    integer :: x" // new_line('a') // &
@@ -86,9 +84,7 @@ contains
         integer :: i
         logical :: found_f001
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Has implicit none (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
