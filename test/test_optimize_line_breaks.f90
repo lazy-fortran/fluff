@@ -108,6 +108,25 @@ program test_optimize_line_breaks
         print *, "  Got:      '", actual_output, "'"
     end if
     
+    ! Test 6: Magic comment should prevent line breaking
+    test_count = test_count + 1
+    input_code = "    ! fmt: skip" // new_line('a') // &
+                 "    integer :: very_long_var_name_one, very_long_var_name_two, " // &
+                 "very_long_var_name_three, very_long_var_name_four" // new_line('a') // &
+                 "    ! fmt: on"
+    expected_output = input_code  ! Should remain unchanged
+    actual_output = input_code
+    call optimize_line_breaks(actual_output, 88)
+    test_passed = (actual_output == expected_output)
+    if (test_passed) then
+        pass_count = pass_count + 1
+        print *, "Test 6 PASSED: Magic comment prevents line breaking"
+    else
+        print *, "Test 6 FAILED: Magic comment did not prevent line breaking"
+        print *, "  Expected: '", expected_output, "'"
+        print *, "  Got:      '", actual_output, "'"
+    end if
+    
     ! Summary
     print *, ""
     print *, "=== Test Summary ==="
