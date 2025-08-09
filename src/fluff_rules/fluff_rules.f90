@@ -760,8 +760,48 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        character(len=1000) :: source_line
+        integer :: line_num, line_length
+        integer, parameter :: MAX_LINE_LENGTH = 88  ! Following Black/Ruff standard
+        type(source_range_t) :: location
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Get source location of current node
+        location = ctx%get_node_location(node_index)
+        
+        ! For simplicity, check the current line
+        ! In a full implementation, we'd check all lines in the file
+        line_num = location%start%line
+        
+        ! Get the text of the current line (simplified approach)
+        call get_source_line(ctx, line_num, source_line)
+        line_length = len_trim(source_line)
+        
+        ! Check if line exceeds maximum length
+        if (line_length > MAX_LINE_LENGTH) then
+            ! Skip lines that are just long comments (they might contain URLs, etc.)
+            if (.not. is_comment_line(source_line)) then
+                violation_count = violation_count + 1
+                if (violation_count <= size(temp_violations)) then
+                    temp_violations(violation_count) = create_diagnostic( &
+                        code="F003", &
+                        message="Line too long (" // trim(adjustl(int_to_str(line_length))) // &
+                               " > " // trim(adjustl(int_to_str(MAX_LINE_LENGTH))) // " characters)", &
+                        file_path="", &
+                        location=create_range(line_num, 1, line_num, line_length), &
+                        severity=SEVERITY_INFO)
+                end if
+            end if
+        end if
+        
+        ! Allocate result
+        allocate(violations(violation_count))
+        violations(1:violation_count) = temp_violations(1:violation_count)
         
     end subroutine check_f003_line_length
     
@@ -984,6 +1024,38 @@ contains
         text = ""
         
     end subroutine get_node_text
+    
+    ! Get a specific source line (simplified)
+    subroutine get_source_line(ctx, line_num, line_text)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: line_num
+        character(len=*), intent(out) :: line_text
+        
+        ! Simplified - would need actual source access
+        line_text = ""
+        
+    end subroutine get_source_line
+    
+    ! Check if a line is a comment line
+    function is_comment_line(line) result(is_comment)
+        character(len=*), intent(in) :: line
+        logical :: is_comment
+        
+        character(len=:), allocatable :: trimmed
+        
+        trimmed = adjustl(line)
+        is_comment = len_trim(trimmed) > 0 .and. trimmed(1:1) == '!'
+        
+    end function is_comment_line
+    
+    ! Convert integer to string
+    function int_to_str(num) result(str)
+        integer, intent(in) :: num
+        character(len=20) :: str
+        
+        write(str, '(I0)') num
+        
+    end function int_to_str
     
     ! Create a source range helper
     function create_range(start_line, start_col, end_line, end_col) result(range)

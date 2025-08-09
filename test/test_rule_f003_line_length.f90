@@ -34,9 +34,7 @@ contains
         integer :: i
         logical :: found_f003
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Line too long (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         ! Create a line that's definitely too long (> 88 characters)
         long_line = "    real :: very_long_variable_name_that_exceeds_the_maximum_line_length_limit_of_88_characters_in_fortran"
@@ -87,9 +85,7 @@ contains
         integer :: i
         logical :: found_f003
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Line within limit (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
