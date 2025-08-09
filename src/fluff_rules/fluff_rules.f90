@@ -959,12 +959,17 @@ contains
         integer, intent(in) :: node_index
         logical :: is_decl
         
-        ! Simplified: check if parent looks like a declaration
-        ! In a real implementation, we'd check parent node types
-        is_decl = .false.
+        integer :: node_type
         
-        ! For now, use a simple heuristic
-        ! This would need proper implementation based on AST structure
+        ! Check if this node itself is a declaration node
+        node_type = ctx%get_node_type(node_index)
+        
+        ! Check if this is a declaration node type
+        is_decl = node_type == NODE_VARIABLE_DECL
+        
+        ! If not, we'd need more context to determine
+        ! For now, we'll return false for non-declaration nodes
+        ! This is a simplified implementation
         
     end function is_declaration_context
     

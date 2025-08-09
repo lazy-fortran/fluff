@@ -126,18 +126,149 @@ contains
     end subroutine test_has_implicit_none
     
     subroutine test_module_missing_implicit_none()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Module missing implicit none (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f001
+        
+        test_code = "module test_mod" // new_line('a') // &
+                   "    integer :: x" // new_line('a') // &
+                   "    contains" // new_line('a') // &
+                   "    subroutine test_sub()" // new_line('a') // &
+                   "        x = 42" // new_line('a') // &
+                   "    end subroutine test_sub" // new_line('a') // &
+                   "end module test_mod"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f001_mod.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f001_mod.f90", diagnostics, error_msg)
+        
+        ! Check for F001 violation
+        found_f001 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F001") then
+                    found_f001 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f001_mod.f90", status="old")
+        close(99, status="delete")
+        
+        if (.not. found_f001) then
+            error stop "Failed: F001 should be triggered for module missing implicit none"
+        end if
+        
+        print *, "  ✓ Module missing implicit none"
+        
     end subroutine test_module_missing_implicit_none
     
     subroutine test_subroutine_missing_implicit_none()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Subroutine missing implicit none (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f001
+        
+        test_code = "subroutine test_sub(x)" // new_line('a') // &
+                   "    integer :: x" // new_line('a') // &
+                   "    x = x + 1" // new_line('a') // &
+                   "end subroutine test_sub"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f001_sub.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f001_sub.f90", diagnostics, error_msg)
+        
+        ! Check for F001 violation
+        found_f001 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F001") then
+                    found_f001 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f001_sub.f90", status="old")
+        close(99, status="delete")
+        
+        if (.not. found_f001) then
+            error stop "Failed: F001 should be triggered for subroutine missing implicit none"
+        end if
+        
+        print *, "  ✓ Subroutine missing implicit none"
+        
     end subroutine test_subroutine_missing_implicit_none
     
     subroutine test_interface_block()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Interface block handling (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f001
+        
+        ! Interface blocks should NOT trigger F001
+        test_code = "module test_mod" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &
+                   "    interface" // new_line('a') // &
+                   "        subroutine external_sub(x)" // new_line('a') // &
+                   "            integer :: x" // new_line('a') // &
+                   "        end subroutine external_sub" // new_line('a') // &
+                   "    end interface" // new_line('a') // &
+                   "end module test_mod"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f001_interface.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f001_interface.f90", diagnostics, error_msg)
+        
+        ! Check that F001 is NOT triggered for interface blocks
+        found_f001 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F001") then
+                    found_f001 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f001_interface.f90", status="old")
+        close(99, status="delete")
+        
+        if (found_f001) then
+            error stop "Failed: F001 should not be triggered for interface blocks"
+        end if
+        
+        print *, "  ✓ Interface block handling"
+        
     end subroutine test_interface_block
     
 end program test_rule_f001_implicit_none
