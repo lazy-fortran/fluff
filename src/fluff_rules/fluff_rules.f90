@@ -3,11 +3,20 @@ module fluff_rules
     use fluff_core
     use fluff_ast, only: fluff_ast_context_t, NODE_VARIABLE_DECL, NODE_IDENTIFIER, &
                        NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF, NODE_IF_STATEMENT, &
-                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN
+                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN, NODE_ASSIGNMENT
     use fluff_diagnostics
     use fluff_rule_types
+    use fortfront, only: get_identifier_name, get_symbols_in_scope, &
+                        symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
+                        SCOPE_FUNCTION, SCOPE_SUBROUTINE, identifier_node, &
+                        is_identifier_defined_direct, get_unused_variables_direct, &
+                        semantic_context_t
     implicit none
     private
+    
+    ! Module variables to track current file being processed (workaround)
+    character(len=:), allocatable :: current_filename
+    character(len=:), allocatable :: current_source_text
     
     ! Rule categories
     character(len=*), parameter :: CATEGORY_STYLE = "style"
@@ -16,9 +25,10 @@ module fluff_rules
     
     ! Public procedures for rule registration
     public :: get_all_builtin_rules
-    public :: get_style_rules
+    public :: get_style_rules  
     public :: get_performance_rules
     public :: get_correctness_rules
+    public :: set_current_file_context
     
     ! Public constants
     public :: CATEGORY_STYLE, CATEGORY_PERFORMANCE, CATEGORY_CORRECTNESS
@@ -640,18 +650,32 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
+        character(len=:), allocatable :: source_text
+        character(len=1000) :: line
+        integer :: io_status
+        integer :: line_num
+        integer :: indent_levels(1000)
+        integer :: line_count
+        integer :: i, j
+        logical :: has_inconsistency
         type(diagnostic_t), allocatable :: temp_violations(:)
         integer :: violation_count
-        integer :: expected_indent
+        type(source_range_t) :: location
         
         ! Initialize
         allocate(temp_violations(100))
         violation_count = 0
-        expected_indent = 0
+        line_count = 0
+        indent_levels = 0
         
-        ! Traverse AST and check indentation
-        call check_indentation_recursive(ctx, node_index, expected_indent, &
-                                        temp_violations, violation_count)
+        ! Use current_source_text to check indentation
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_indentation_from_text(current_source_text, temp_violations, violation_count)
         
         ! Allocate and copy violations
         allocate(violations(violation_count))
@@ -754,6 +778,1625 @@ contains
         
     end function increases_indent
     
+    ! Helper functions for F002 indentation checking
+    function count_leading_spaces(line) result(count)
+        character(len=*), intent(in) :: line
+        integer :: count
+        integer :: i
+        
+        count = 0
+        do i = 1, len(line)
+            if (line(i:i) == ' ') then
+                count = count + 1
+            else
+                exit
+            end if
+        end do
+    end function count_leading_spaces
+    
+    ! Analyze indentation from source text
+    subroutine analyze_indentation_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        character(len=1000) :: line
+        integer :: pos, next_pos, line_num
+        integer :: indent_levels(1000)
+        integer :: line_count
+        integer :: i, j
+        logical :: has_inconsistency
+        type(source_range_t) :: location
+        
+        pos = 1
+        line_num = 0
+        line_count = 0
+        
+        do while (pos <= len(source_text))
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line = source_text(pos:)
+                pos = len(source_text) + 1
+            else
+                line = source_text(pos:pos+next_pos-2)
+                pos = pos + next_pos
+            end if
+            
+            line_num = line_num + 1
+            if (len_trim(line) > 0 .and. line(1:1) /= '!') then
+                line_count = line_count + 1
+                indent_levels(line_count) = count_leading_spaces(line)
+            end if
+        end do
+        
+        ! Check for inconsistent indentation patterns
+        has_inconsistency = .false.
+        
+        if (line_count >= 2) then
+            do i = 1, line_count - 1
+                do j = i + 1, line_count
+                    if (indent_levels(i) > 0 .and. indent_levels(j) > 0) then
+                        ! Check if indentation levels are inconsistent
+                        ! Look for cases like 2 spaces vs 4 spaces
+                        if (indent_levels(i) /= indent_levels(j)) then
+                            if (mod(indent_levels(i), 4) /= mod(indent_levels(j), 4)) then
+                                has_inconsistency = .true.
+                                exit
+                            end if
+                        end if
+                    end if
+                end do
+                if (has_inconsistency) exit
+            end do
+        end if
+        
+        if (has_inconsistency) then
+            violation_count = violation_count + 1
+            if (violation_count <= size(violations)) then
+                ! Create a basic location
+                location%start%line = 1
+                location%start%column = 1  
+                location%end%line = 1
+                location%end%column = 1
+                violations(violation_count) = create_diagnostic( &
+                    code="F002", &
+                    message="Inconsistent indentation levels detected", &
+                    file_path=current_filename, &
+                    location=location, &
+                    severity=SEVERITY_WARNING)
+            end if
+        end if
+        
+    end subroutine analyze_indentation_from_text
+    
+    ! Analyze line lengths from source text
+    subroutine analyze_line_lengths_from_text(source_text, violations, violation_count, max_length)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        integer, intent(in) :: max_length
+        
+        character(len=1000) :: line
+        integer :: pos, next_pos, line_num
+        integer :: line_length
+        type(source_range_t) :: location
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line = source_text(pos:)
+                pos = len(source_text) + 1
+            else
+                line = source_text(pos:pos+next_pos-2)
+                pos = pos + next_pos
+            end if
+            
+            line_num = line_num + 1
+            line_length = len_trim(line)
+            
+            ! Check if line exceeds maximum length and is not a comment
+            if (line_length > max_length .and. .not. is_comment_line(line)) then
+                violation_count = violation_count + 1
+                if (violation_count <= size(violations)) then
+                    ! Create location for the long line
+                    location%start%line = line_num
+                    location%start%column = max_length + 1  
+                    location%end%line = line_num
+                    location%end%column = line_length
+                    violations(violation_count) = create_diagnostic( &
+                        code="F003", &
+                        message="Line too long (" // trim(adjustl(int_to_str(line_length))) // &
+                               " > " // trim(adjustl(int_to_str(max_length))) // " characters)", &
+                        file_path=current_filename, &
+                        location=location, &
+                        severity=SEVERITY_INFO)
+                end if
+            end if
+        end do
+        
+    end subroutine analyze_line_lengths_from_text
+    
+    ! Helper function to check if line is a comment
+    function is_comment_line(line) result(is_comment)
+        character(len=*), intent(in) :: line
+        logical :: is_comment
+        
+        character(len=:), allocatable :: trimmed_line
+        
+        trimmed_line = adjustl(line)
+        is_comment = len(trimmed_line) > 0 .and. trimmed_line(1:1) == '!'
+        
+    end function is_comment_line
+    
+    ! Helper function to convert integer to string
+    function int_to_str(i) result(str)
+        integer, intent(in) :: i
+        character(len=20) :: str
+        
+        write(str, '(I0)') i
+        
+    end function int_to_str
+    
+    ! Analyze trailing whitespace from source text
+    subroutine analyze_trailing_whitespace_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_length, trimmed_length
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                ! Last line
+                line_start = pos
+                line_end = len(source_text)
+            else
+                ! Regular line
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract actual line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                line_length = line_end - line_start + 1
+                trimmed_length = len_trim(line_content)
+                
+                ! Check if line has trailing whitespace
+                if (trimmed_length > 0 .and. trimmed_length < line_length) then
+                    violation_count = violation_count + 1
+                    if (violation_count <= size(violations)) then
+                        ! Create location for trailing whitespace
+                        location%start%line = line_num
+                        location%start%column = trimmed_length + 1  
+                        location%end%line = line_num
+                        location%end%column = line_length
+                        violations(violation_count) = create_diagnostic( &
+                            code="F004", &
+                            message="Trailing whitespace", &
+                            file_path=current_filename, &
+                            location=location, &
+                            severity=SEVERITY_INFO)
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not already at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_trailing_whitespace_from_text
+    
+    ! Analyze mixed tabs and spaces from source text
+    subroutine analyze_mixed_tabs_spaces_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        integer :: i, spaces, tabs
+        logical :: has_spaces, has_tabs
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                ! Last line
+                line_start = pos
+                line_end = len(source_text)
+            else
+                ! Regular line
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract actual line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Check for mixed tabs and spaces in leading whitespace
+                spaces = 0
+                tabs = 0
+                has_spaces = .false.
+                has_tabs = .false.
+                
+                ! Count leading whitespace characters
+                do i = 1, len(line_content)
+                    if (line_content(i:i) == ' ') then
+                        spaces = spaces + 1
+                        has_spaces = .true.
+                    else if (line_content(i:i) == char(9)) then  ! tab character
+                        tabs = tabs + 1
+                        has_tabs = .true.
+                    else
+                        ! End of leading whitespace
+                        exit
+                    end if
+                end do
+                
+                ! Check if line has both tabs and spaces in indentation
+                if (has_spaces .and. has_tabs .and. len_trim(line_content) > 0) then
+                    violation_count = violation_count + 1
+                    if (violation_count <= size(violations)) then
+                        ! Create location for mixed indentation
+                        location%start%line = line_num
+                        location%start%column = 1
+                        location%end%line = line_num
+                        location%end%column = spaces + tabs
+                        violations(violation_count) = create_diagnostic( &
+                            code="F005", &
+                            message="Mixed tabs and spaces in indentation", &
+                            file_path=current_filename, &
+                            location=location, &
+                            severity=SEVERITY_WARNING)
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not already at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_mixed_tabs_spaces_from_text
+    
+    ! Analyze multiple statements from source text
+    subroutine analyze_multiple_statements_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        integer :: i, semicolon_count, semicolon_pos
+        logical :: in_string
+        character :: quote_char
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                ! Last line
+                line_start = pos
+                line_end = len(source_text)
+            else
+                ! Regular line
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract actual line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    ! Count semicolons not in strings
+                    semicolon_count = 0
+                    semicolon_pos = 0
+                    in_string = .false.
+                    quote_char = ' '
+                    
+                    do i = 1, len(line_content)
+                        ! Handle string literals
+                        if (.not. in_string) then
+                            if (line_content(i:i) == '"' .or. line_content(i:i) == "'") then
+                                in_string = .true.
+                                quote_char = line_content(i:i)
+                            else if (line_content(i:i) == ';') then
+                                semicolon_count = semicolon_count + 1
+                                if (semicolon_pos == 0) semicolon_pos = i
+                            else if (line_content(i:i) == '!' .and. .not. in_string) then
+                                ! Stop at comment
+                                exit
+                            end if
+                        else
+                            if (line_content(i:i) == quote_char) then
+                                ! Check if it's escaped
+                                if (i == 1 .or. line_content(i-1:i-1) /= '\') then
+                                    in_string = .false.
+                                end if
+                            end if
+                        end if
+                    end do
+                    
+                    ! Report if multiple statements found
+                    if (semicolon_count > 0) then
+                        violation_count = violation_count + 1
+                        if (violation_count <= size(violations)) then
+                            ! Create location for semicolon
+                            location%start%line = line_num
+                            location%start%column = semicolon_pos
+                            location%end%line = line_num
+                            location%end%column = semicolon_pos
+                            violations(violation_count) = create_diagnostic( &
+                                code="F013", &
+                                message="Multiple statements per line", &
+                                file_path=current_filename, &
+                                location=location, &
+                                severity=SEVERITY_WARNING)
+                        end if
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not already at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_multiple_statements_from_text
+    
+    ! Analyze obsolete features from source text
+    subroutine analyze_obsolete_features_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_lower
+        integer :: goto_pos, common_pos, equiv_pos
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                ! Last line
+                line_start = pos
+                line_end = len(source_text)
+            else
+                ! Regular line
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract actual line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    ! Convert to lowercase for case-insensitive search
+                    line_lower = to_lower(line_content)
+                    
+                    ! Check for GOTO statement
+                    goto_pos = index(line_lower, 'goto')
+                    if (goto_pos > 0) then
+                        ! Make sure it's not part of a larger word
+                        if (is_keyword_at_position(line_lower, 'goto', goto_pos)) then
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = goto_pos
+                                location%end%line = line_num
+                                location%end%column = goto_pos + 3
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F010", &
+                                    message="Obsolete feature: GOTO statement", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_WARNING)
+                            end if
+                        end if
+                    end if
+                    
+                    ! Check for COMMON blocks
+                    common_pos = index(line_lower, 'common')
+                    if (common_pos > 0) then
+                        if (is_keyword_at_position(line_lower, 'common', common_pos)) then
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = common_pos
+                                location%end%line = line_num
+                                location%end%column = common_pos + 5
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F010", &
+                                    message="Obsolete feature: COMMON block", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_WARNING)
+                            end if
+                        end if
+                    end if
+                    
+                    ! Check for EQUIVALENCE
+                    equiv_pos = index(line_lower, 'equivalence')
+                    if (equiv_pos > 0) then
+                        if (is_keyword_at_position(line_lower, 'equivalence', equiv_pos)) then
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = equiv_pos
+                                location%end%line = line_num
+                                location%end%column = equiv_pos + 10
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F010", &
+                                    message="Obsolete feature: EQUIVALENCE statement", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_WARNING)
+                            end if
+                        end if
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not already at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_obsolete_features_from_text
+    
+    ! Helper to convert string to lowercase
+    function to_lower(str) result(lower_str)
+        character(len=*), intent(in) :: str
+        character(len=:), allocatable :: lower_str
+        integer :: i
+        
+        allocate(character(len=len(str)) :: lower_str)
+        do i = 1, len(str)
+            if (str(i:i) >= 'A' .and. str(i:i) <= 'Z') then
+                lower_str(i:i) = char(ichar(str(i:i)) + 32)
+            else
+                lower_str(i:i) = str(i:i)
+            end if
+        end do
+    end function to_lower
+    
+    ! Check if keyword is at position (not part of larger word)
+    function is_keyword_at_position(line, keyword, pos) result(is_keyword)
+        character(len=*), intent(in) :: line
+        character(len=*), intent(in) :: keyword
+        integer, intent(in) :: pos
+        logical :: is_keyword
+        
+        logical :: start_ok, end_ok
+        integer :: end_pos
+        
+        end_pos = pos + len(keyword) - 1
+        
+        ! Check if keyword starts at word boundary
+        start_ok = (pos == 1) .or. &
+                   (.not. is_alphanumeric(line(pos-1:pos-1)))
+        
+        ! Check if keyword ends at word boundary
+        end_ok = (end_pos == len(line)) .or. &
+                 (.not. is_alphanumeric(line(end_pos+1:end_pos+1)))
+        
+        is_keyword = start_ok .and. end_ok
+        
+    end function is_keyword_at_position
+    
+    ! Check if character is alphanumeric
+    function is_alphanumeric(ch) result(is_alnum)
+        character, intent(in) :: ch
+        logical :: is_alnum
+        
+        is_alnum = (ch >= 'a' .and. ch <= 'z') .or. &
+                   (ch >= 'A' .and. ch <= 'Z') .or. &
+                   (ch >= '0' .and. ch <= '9') .or. &
+                   (ch == '_')
+        
+    end function is_alphanumeric
+    
+    ! Analyze redundant continue from source text
+    subroutine analyze_redundant_continue_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        integer :: continue_pos
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                ! Last line
+                line_start = pos
+                line_end = len(source_text)
+            else
+                ! Regular line
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract actual line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    line_lower = to_lower(line_trimmed)
+                    
+                    ! Check for continue statement
+                    continue_pos = index(line_lower, 'continue')
+                    if (continue_pos > 0) then
+                        ! Check if it's a standalone continue (redundant)
+                        if (is_keyword_at_position(line_lower, 'continue', continue_pos)) then
+                            ! Check if it's just "continue" or labeled continue
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = continue_pos
+                                location%end%line = line_num
+                                location%end%column = continue_pos + 7
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F015", &
+                                    message="Redundant CONTINUE statement", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_INFO)
+                            end if
+                        end if
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not already at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_redundant_continue_from_text
+    
+    ! Analyze missing intent from source text
+    subroutine analyze_missing_intent_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        logical :: in_procedure
+        logical :: in_interface
+        character(len=:), allocatable :: current_proc_name
+        character(len=:), allocatable :: proc_args
+        integer :: proc_start_line
+        integer :: i, arg_start, arg_end
+        character(len=:), allocatable :: arg_name
+        logical, allocatable :: arg_has_intent(:)
+        character(len=:), allocatable :: args_array(:)
+        integer :: num_args
+        
+        pos = 1
+        line_num = 0
+        in_procedure = .false.
+        in_interface = .false.
+        allocate(arg_has_intent(100))
+        num_args = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line_start = pos
+                line_end = len(source_text)
+            else
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    line_lower = to_lower(line_trimmed)
+                    
+                    ! Check for interface block
+                    if (index(line_lower, 'interface') == 1) then
+                        in_interface = .true.
+                    else if (index(line_lower, 'end interface') == 1) then
+                        in_interface = .false.
+                    end if
+                    
+                    ! Skip interface blocks
+                    if (.not. in_interface) then
+                        ! Check for subroutine or function definition
+                        if ((index(line_lower, 'subroutine ') == 1) .or. &
+                            (index(line_lower, 'function ') > 0 .and. index(line_lower, 'function ') <= 20)) then
+                            in_procedure = .true.
+                            proc_start_line = line_num
+                            
+                            ! Extract arguments from procedure declaration
+                            arg_start = index(line_lower, '(')
+                            arg_end = index(line_lower, ')')
+                            if (arg_start > 0 .and. arg_end > arg_start) then
+                                proc_args = line_lower(arg_start+1:arg_end-1)
+                                ! Parse arguments (simplified - just count commas + 1)
+                                num_args = 1
+                                do i = 1, len(proc_args)
+                                    if (proc_args(i:i) == ',') num_args = num_args + 1
+                                end do
+                                ! Initialize intent tracking
+                                arg_has_intent = .false.
+                            else
+                                num_args = 0
+                            end if
+                        else if ((index(line_lower, 'end subroutine') == 1) .or. &
+                                 (index(line_lower, 'end function') == 1)) then
+                            ! Check if any arguments are missing intent
+                            if (in_procedure .and. num_args > 0) then
+                                ! Only report if we found arguments without intent
+                                do i = 1, num_args
+                                    if (.not. arg_has_intent(i)) then
+                                        violation_count = violation_count + 1
+                                        if (violation_count <= size(violations)) then
+                                            location%start%line = proc_start_line
+                                            location%start%column = 1
+                                            location%end%line = proc_start_line
+                                            location%end%column = 1
+                                            violations(violation_count) = create_diagnostic( &
+                                                code="F008", &
+                                                message="Missing intent declaration for procedure arguments", &
+                                                file_path=current_filename, &
+                                                location=location, &
+                                                severity=SEVERITY_WARNING)
+                                        end if
+                                        exit  ! Only report once per procedure
+                                    end if
+                                end do
+                            end if
+                            in_procedure = .false.
+                            num_args = 0
+                        else if (in_procedure) then
+                            ! Check for intent declarations within procedure
+                            if (index(line_lower, 'intent(') > 0) then
+                                ! Mark that at least some arguments have intent
+                                ! (Simplified - would need more complex parsing for real mapping)
+                                do i = 1, num_args
+                                    arg_has_intent(i) = .true.
+                                end do
+                            end if
+                        end if
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_missing_intent_from_text
+    
+    ! Analyze missing end labels from source text
+    subroutine analyze_missing_end_labels_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        character(len=:), allocatable :: stack_names(:)
+        integer :: stack_depth
+        integer :: i, name_start, name_end
+        character(len=:), allocatable :: name
+        
+        pos = 1
+        line_num = 0
+        stack_depth = 0
+        allocate(character(len=64) :: stack_names(100))
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line_start = pos
+                line_end = len(source_text)
+            else
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    line_lower = to_lower(line_trimmed)
+                    
+                    ! Check for program/module/subroutine/function start
+                    if (index(line_lower, 'program ') == 1) then
+                        stack_depth = stack_depth + 1
+                        name_start = 9
+                        name_end = len(line_trimmed)
+                        stack_names(stack_depth) = extract_name(line_trimmed(name_start:name_end))
+                    else if (index(line_lower, 'module ') == 1 .and. index(line_lower, 'module procedure') /= 1) then
+                        stack_depth = stack_depth + 1
+                        name_start = 8
+                        name_end = len(line_trimmed)
+                        stack_names(stack_depth) = extract_name(line_trimmed(name_start:name_end))
+                    else if (index(line_lower, 'subroutine ') == 1) then
+                        stack_depth = stack_depth + 1
+                        name_start = 12
+                        name_end = len(line_trimmed)
+                        stack_names(stack_depth) = extract_name(line_trimmed(name_start:name_end))
+                    else if (index(line_lower, 'function ') > 0 .and. &
+                             (index(line_lower, 'function ') == 1 .or. &
+                              index(line_lower, 'pure function ') == 1 .or. &
+                              index(line_lower, 'elemental function ') == 1)) then
+                        stack_depth = stack_depth + 1
+                        name_start = index(line_lower, 'function ') + 9
+                        name_end = len(line_trimmed)
+                        stack_names(stack_depth) = extract_name(line_trimmed(name_start:name_end))
+                    ! Check for end statements
+                    else if (index(line_lower, 'end program') == 1) then
+                        ! Check if label is missing
+                        if (len_trim(line_lower) == 11) then  ! Just "end program"
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = 1
+                                location%end%line = line_num
+                                location%end%column = 11
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F011", &
+                                    message="Missing end label for program", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_INFO)
+                            end if
+                        end if
+                        if (stack_depth > 0) stack_depth = stack_depth - 1
+                    else if (index(line_lower, 'end module') == 1) then
+                        ! Check if label is missing
+                        if (len_trim(line_lower) == 10) then  ! Just "end module"
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = 1
+                                location%end%line = line_num
+                                location%end%column = 10
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F011", &
+                                    message="Missing end label for module", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_INFO)
+                            end if
+                        end if
+                        if (stack_depth > 0) stack_depth = stack_depth - 1
+                    else if (index(line_lower, 'end subroutine') == 1) then
+                        ! Check if label is missing
+                        if (len_trim(line_lower) == 14) then  ! Just "end subroutine"
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = 1
+                                location%end%line = line_num
+                                location%end%column = 14
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F011", &
+                                    message="Missing end label for subroutine", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_INFO)
+                            end if
+                        end if
+                        if (stack_depth > 0) stack_depth = stack_depth - 1
+                    else if (index(line_lower, 'end function') == 1) then
+                        ! Check if label is missing
+                        if (len_trim(line_lower) == 12) then  ! Just "end function"
+                            violation_count = violation_count + 1
+                            if (violation_count <= size(violations)) then
+                                location%start%line = line_num
+                                location%start%column = 1
+                                location%end%line = line_num
+                                location%end%column = 12
+                                violations(violation_count) = create_diagnostic( &
+                                    code="F011", &
+                                    message="Missing end label for function", &
+                                    file_path=current_filename, &
+                                    location=location, &
+                                    severity=SEVERITY_INFO)
+                            end if
+                        end if
+                        if (stack_depth > 0) stack_depth = stack_depth - 1
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_missing_end_labels_from_text
+    
+    ! Extract name from procedure/program declaration
+    function extract_name(str) result(name)
+        character(len=*), intent(in) :: str
+        character(len=:), allocatable :: name
+        integer :: paren_pos, space_pos
+        character(len=:), allocatable :: trimmed
+        
+        trimmed = adjustl(str)
+        
+        ! Find parenthesis or space
+        paren_pos = index(trimmed, '(')
+        space_pos = index(trimmed, ' ')
+        
+        if (paren_pos > 0) then
+            name = trimmed(1:paren_pos-1)
+        else if (space_pos > 0) then
+            name = trimmed(1:space_pos-1)
+        else
+            name = trimmed
+        end if
+        
+    end function extract_name
+    
+    ! Analyze naming conventions from source text
+    subroutine analyze_naming_conventions_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        character(len=:), allocatable :: var_names(:)
+        integer :: num_vars
+        integer :: i, j, colon_pos, double_colon_pos
+        integer :: snake_count, camel_count, pascal_count, const_count
+        character(len=:), allocatable :: var_name
+        character(len=:), allocatable :: dominant_style
+        
+        allocate(character(len=64) :: var_names(1000))
+        num_vars = 0
+        pos = 1
+        line_num = 0
+        
+        ! First pass: collect all variable names
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line_start = pos
+                line_end = len(source_text)
+            else
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    line_lower = to_lower(line_trimmed)
+                    
+                    ! Check for variable declarations (simplified)
+                    double_colon_pos = index(line_trimmed, '::')
+                    if (double_colon_pos > 0) then
+                        ! Check if it's a declaration (has type keyword before ::)
+                        if (has_type_keyword(line_lower(1:double_colon_pos))) then
+                            ! Extract variable names after ::
+                            call extract_variable_names(line_trimmed(double_colon_pos+2:), &
+                                                       var_names, num_vars)
+                        end if
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not at end
+            if (next_pos == 0) exit
+        end do
+        
+        ! Analyze naming styles if we have variables
+        if (num_vars > 0) then
+            snake_count = 0
+            camel_count = 0
+            pascal_count = 0
+            const_count = 0
+            
+            do i = 1, num_vars
+                var_name = trim(var_names(i))
+                if (is_snake_case(var_name)) snake_count = snake_count + 1
+                if (is_camel_case(var_name)) camel_count = camel_count + 1
+                if (is_pascal_case(var_name)) pascal_count = pascal_count + 1
+                if (is_const_case(var_name)) const_count = const_count + 1
+            end do
+            
+            ! Determine dominant style
+            if (snake_count >= camel_count .and. snake_count >= pascal_count) then
+                dominant_style = "snake_case"
+            else if (camel_count >= pascal_count) then
+                dominant_style = "camelCase"
+            else
+                dominant_style = "PascalCase"
+            end if
+            
+            ! Report if there's inconsistency (more than one style used)
+            if ((snake_count > 0 .and. camel_count > 0) .or. &
+                (snake_count > 0 .and. pascal_count > 0) .or. &
+                (camel_count > 0 .and. pascal_count > 0)) then
+                violation_count = violation_count + 1
+                if (violation_count <= size(violations)) then
+                    location%start%line = 1
+                    location%start%column = 1
+                    location%end%line = 1
+                    location%end%column = 1
+                    violations(violation_count) = create_diagnostic( &
+                        code="F012", &
+                        message="Inconsistent naming convention detected. Consider using " // dominant_style // " consistently", &
+                        file_path=current_filename, &
+                        location=location, &
+                        severity=SEVERITY_INFO)
+                end if
+            end if
+        end if
+        
+    end subroutine analyze_naming_conventions_from_text
+    
+    ! Check if line has type keyword before ::
+    function has_type_keyword(str) result(has_type)
+        character(len=*), intent(in) :: str
+        logical :: has_type
+        character(len=:), allocatable :: trimmed
+        
+        trimmed = adjustl(str)
+        
+        has_type = index(trimmed, 'integer') > 0 .or. &
+                   index(trimmed, 'real') > 0 .or. &
+                   index(trimmed, 'character') > 0 .or. &
+                   index(trimmed, 'logical') > 0 .or. &
+                   index(trimmed, 'complex') > 0 .or. &
+                   index(trimmed, 'type(') > 0 .or. &
+                   index(trimmed, 'class(') > 0 .or. &
+                   index(trimmed, 'double precision') > 0
+        
+    end function has_type_keyword
+    
+    ! Extract variable names from declaration
+    subroutine extract_variable_names(decl_str, var_names, num_vars)
+        character(len=*), intent(in) :: decl_str
+        character(len=*), intent(inout) :: var_names(:)
+        integer, intent(inout) :: num_vars
+        
+        character(len=:), allocatable :: trimmed
+        integer :: i, start_pos, comma_pos, eq_pos, paren_pos
+        character(len=:), allocatable :: var_part
+        
+        trimmed = adjustl(decl_str)
+        start_pos = 1
+        
+        do while (start_pos <= len(trimmed))
+            ! Find next comma
+            comma_pos = index(trimmed(start_pos:), ',')
+            
+            if (comma_pos == 0) then
+                ! Last variable
+                var_part = trimmed(start_pos:)
+            else
+                var_part = trimmed(start_pos:start_pos+comma_pos-2)
+            end if
+            
+            ! Remove initialization part if present
+            eq_pos = index(var_part, '=')
+            if (eq_pos > 0) then
+                var_part = var_part(1:eq_pos-1)
+            end if
+            
+            ! Remove array dimension if present
+            paren_pos = index(var_part, '(')
+            if (paren_pos > 0) then
+                var_part = var_part(1:paren_pos-1)
+            end if
+            
+            ! Add variable name
+            var_part = adjustl(trim(var_part))
+            if (len(var_part) > 0) then
+                num_vars = num_vars + 1
+                if (num_vars <= size(var_names)) then
+                    var_names(num_vars) = var_part
+                end if
+            end if
+            
+            if (comma_pos == 0) exit
+            start_pos = start_pos + comma_pos
+        end do
+        
+    end subroutine extract_variable_names
+    
+    ! Check if name is snake_case
+    function is_snake_case(name) result(is_snake)
+        character(len=*), intent(in) :: name
+        logical :: is_snake
+        integer :: i
+        
+        is_snake = .true.
+        
+        ! Check for underscore and all lowercase
+        do i = 1, len(name)
+            if (name(i:i) >= 'A' .and. name(i:i) <= 'Z') then
+                is_snake = .false.
+                return
+            end if
+        end do
+        
+        ! Must have underscore for multi-word
+        is_snake = index(name, '_') > 0 .or. len(name) <= 4
+        
+    end function is_snake_case
+    
+    ! Check if name is camelCase
+    function is_camel_case(name) result(is_camel)
+        character(len=*), intent(in) :: name
+        logical :: is_camel
+        logical :: has_upper, has_lower
+        integer :: i
+        
+        is_camel = .false.
+        has_upper = .false.
+        has_lower = .false.
+        
+        ! First char should be lowercase
+        if (name(1:1) >= 'A' .and. name(1:1) <= 'Z') return
+        
+        ! Check for mixed case
+        do i = 1, len(name)
+            if (name(i:i) >= 'a' .and. name(i:i) <= 'z') has_lower = .true.
+            if (name(i:i) >= 'A' .and. name(i:i) <= 'Z') has_upper = .true.
+        end do
+        
+        is_camel = has_upper .and. has_lower .and. index(name, '_') == 0
+        
+    end function is_camel_case
+    
+    ! Check if name is PascalCase
+    function is_pascal_case(name) result(is_pascal)
+        character(len=*), intent(in) :: name
+        logical :: is_pascal
+        logical :: has_upper, has_lower
+        integer :: i
+        
+        is_pascal = .false.
+        has_upper = .false.
+        has_lower = .false.
+        
+        ! First char should be uppercase
+        if (name(1:1) < 'A' .or. name(1:1) > 'Z') return
+        
+        ! Check for mixed case
+        do i = 1, len(name)
+            if (name(i:i) >= 'a' .and. name(i:i) <= 'z') has_lower = .true.
+            if (name(i:i) >= 'A' .and. name(i:i) <= 'Z') has_upper = .true.
+        end do
+        
+        is_pascal = has_upper .and. has_lower .and. index(name, '_') == 0
+        
+    end function is_pascal_case
+    
+    ! Check if name is CONST_CASE
+    function is_const_case(name) result(is_const)
+        character(len=*), intent(in) :: name
+        logical :: is_const
+        integer :: i
+        
+        is_const = .true.
+        
+        ! Check for all uppercase
+        do i = 1, len(name)
+            if (name(i:i) >= 'a' .and. name(i:i) <= 'z') then
+                is_const = .false.
+                return
+            end if
+        end do
+        
+    end function is_const_case
+    
+    ! Analyze unnecessary parentheses from source text
+    subroutine analyze_unnecessary_parentheses_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        integer :: i, paren_start, paren_end
+        character(len=:), allocatable :: inner_content
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line_start = pos
+                line_end = len(source_text)
+            else
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    
+                    ! Check for patterns like (10) or ((expr))
+                    i = 1
+                    do while (i <= len(line_trimmed) - 2)
+                        if (line_trimmed(i:i) == '(') then
+                            ! Find matching closing parenthesis
+                            paren_end = find_matching_paren(line_trimmed, i)
+                            if (paren_end > 0) then
+                                inner_content = line_trimmed(i+1:paren_end-1)
+                                inner_content = adjustl(trim(inner_content))
+                                
+                                ! Check if inner content is simple (number or variable)
+                                if (is_simple_expression(inner_content)) then
+                                    ! Check context - not a function call
+                                    if (i == 1 .or. .not. is_alnum_or_underscore(line_trimmed(i-1:i-1))) then
+                                        violation_count = violation_count + 1
+                                        if (violation_count <= size(violations)) then
+                                            location%start%line = line_num
+                                            location%start%column = i
+                                            location%end%line = line_num
+                                            location%end%column = paren_end
+                                            violations(violation_count) = create_diagnostic( &
+                                                code="F014", &
+                                                message="Unnecessary parentheses around simple expression", &
+                                                file_path=current_filename, &
+                                                location=location, &
+                                                severity=SEVERITY_INFO)
+                                        end if
+                                    end if
+                                end if
+                                i = paren_end + 1
+                            else
+                                i = i + 1
+                            end if
+                        else
+                            i = i + 1
+                        end if
+                    end do
+                end if
+            end if
+            
+            ! Move to next line if not at end
+            if (next_pos == 0) exit
+        end do
+        
+    end subroutine analyze_unnecessary_parentheses_from_text
+    
+    ! Find matching closing parenthesis
+    function find_matching_paren(str, start_pos) result(end_pos)
+        character(len=*), intent(in) :: str
+        integer, intent(in) :: start_pos
+        integer :: end_pos
+        integer :: depth, i
+        
+        depth = 1
+        end_pos = 0
+        
+        do i = start_pos + 1, len(str)
+            if (str(i:i) == '(') then
+                depth = depth + 1
+            else if (str(i:i) == ')') then
+                depth = depth - 1
+                if (depth == 0) then
+                    end_pos = i
+                    return
+                end if
+            end if
+        end do
+        
+    end function find_matching_paren
+    
+    ! Check if expression is simple (number or variable)
+    function is_simple_expression(expr) result(is_simple)
+        character(len=*), intent(in) :: expr
+        logical :: is_simple
+        integer :: i
+        logical :: has_operator
+        
+        has_operator = .false.
+        
+        ! Check for operators
+        do i = 1, len(expr)
+            if (expr(i:i) == '+' .or. expr(i:i) == '-' .or. &
+                expr(i:i) == '*' .or. expr(i:i) == '/' .or. &
+                expr(i:i) == '(' .or. expr(i:i) == ')') then
+                has_operator = .true.
+                exit
+            end if
+        end do
+        
+        is_simple = .not. has_operator
+        
+    end function is_simple_expression
+    
+    ! Check if character is alphanumeric or underscore
+    function is_alnum_or_underscore(ch) result(is_alnum)
+        character, intent(in) :: ch
+        logical :: is_alnum
+        
+        is_alnum = (ch >= 'a' .and. ch <= 'z') .or. &
+                   (ch >= 'A' .and. ch <= 'Z') .or. &
+                   (ch >= '0' .and. ch <= '9') .or. &
+                   (ch == '_')
+        
+    end function is_alnum_or_underscore
+    
+    ! Analyze unused variables from source text
+    subroutine analyze_unused_variables_from_text(source_text, violations, violation_count)
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        character(len=:), allocatable :: declared_vars(:)
+        character(len=:), allocatable :: used_vars(:)
+        integer :: declared_count, used_count
+        integer :: pos, next_pos, line_num
+        integer :: line_start, line_end
+        type(source_range_t) :: location
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        integer :: i, j
+        logical :: found
+        logical :: in_procedure
+        
+        allocate(character(len=64) :: declared_vars(500))
+        allocate(character(len=64) :: used_vars(500))
+        declared_count = 0
+        used_count = 0
+        pos = 1
+        line_num = 0
+        in_procedure = .false.
+        
+        ! First pass: collect declarations and usages
+        do while (pos <= len(source_text))
+            line_num = line_num + 1
+            
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line_start = pos
+                line_end = len(source_text)
+            else
+                line_start = pos
+                line_end = pos + next_pos - 2
+                pos = pos + next_pos
+            end if
+            
+            ! Extract line content
+            if (line_end >= line_start) then
+                line_content = source_text(line_start:line_end)
+                
+                ! Skip comment lines
+                if (.not. is_comment_line(line_content)) then
+                    line_trimmed = adjustl(line_content)
+                    line_lower = to_lower(line_trimmed)
+                    
+                    ! Check if entering/leaving procedure
+                    if (index(line_lower, 'subroutine ') == 1 .or. &
+                        index(line_lower, 'function ') == 1 .or. &
+                        index(line_lower, 'program ') == 1) then
+                        in_procedure = .true.
+                    else if (index(line_lower, 'end subroutine') == 1 .or. &
+                             index(line_lower, 'end function') == 1 .or. &
+                             index(line_lower, 'end program') == 1) then
+                        in_procedure = .false.
+                    end if
+                    
+                    ! Check for variable declarations
+                    if (index(line_trimmed, '::') > 0) then
+                        if (has_type_keyword(line_lower(1:index(line_trimmed, '::')))) then
+                            call extract_variable_names(line_trimmed(index(line_trimmed, '::')+2:), &
+                                                       declared_vars, declared_count)
+                        end if
+                    end if
+                    
+                    ! Check for variable usage (simplified - looks for identifiers in assignments and calls)
+                    if (in_procedure) then
+                        call extract_used_variables(line_trimmed, used_vars, used_count, declared_vars, declared_count)
+                    end if
+                end if
+            end if
+            
+            ! Move to next line if not at end
+            if (next_pos == 0) exit
+        end do
+        
+        ! Check for unused variables
+        do i = 1, declared_count
+            found = .false.
+            do j = 1, used_count
+                if (trim(declared_vars(i)) == trim(used_vars(j))) then
+                    found = .true.
+                    exit
+                end if
+            end do
+            
+            if (.not. found) then
+                violation_count = violation_count + 1
+                if (violation_count <= size(violations)) then
+                    location%start%line = 1
+                    location%start%column = 1
+                    location%end%line = 1
+                    location%end%column = 1
+                    violations(violation_count) = create_diagnostic( &
+                        code="F006", &
+                        message="Unused variable: " // trim(declared_vars(i)), &
+                        file_path=current_filename, &
+                        location=location, &
+                        severity=SEVERITY_WARNING)
+                end if
+            end if
+        end do
+        
+    end subroutine analyze_unused_variables_from_text
+    
+    ! Extract used variables from a line
+    subroutine extract_used_variables(line, used_vars, used_count, declared_vars, declared_count)
+        character(len=*), intent(in) :: line
+        character(len=*), intent(inout) :: used_vars(:)
+        integer, intent(inout) :: used_count
+        character(len=*), intent(in) :: declared_vars(:)
+        integer, intent(in) :: declared_count
+        
+        character(len=:), allocatable :: working_line
+        integer :: i, j, start_pos, end_pos
+        character(len=:), allocatable :: token
+        logical :: already_tracked
+        
+        working_line = line
+        
+        ! Remove string literals
+        call remove_string_literals(working_line)
+        
+        ! Look for identifiers that match declared variables
+        do i = 1, declared_count
+            if (index(working_line, trim(declared_vars(i))) > 0) then
+                ! Check if already tracked
+                already_tracked = .false.
+                do j = 1, used_count
+                    if (trim(used_vars(j)) == trim(declared_vars(i))) then
+                        already_tracked = .true.
+                        exit
+                    end if
+                end do
+                
+                if (.not. already_tracked) then
+                    used_count = used_count + 1
+                    if (used_count <= size(used_vars)) then
+                        used_vars(used_count) = declared_vars(i)
+                    end if
+                end if
+            end if
+        end do
+        
+    end subroutine extract_used_variables
+    
+    ! Remove string literals from line
+    subroutine remove_string_literals(line)
+        character(len=:), allocatable, intent(inout) :: line
+        integer :: i, quote_start
+        logical :: in_string
+        character :: quote_char
+        
+        in_string = .false.
+        i = 1
+        
+        do while (i <= len(line))
+            if (.not. in_string) then
+                if (line(i:i) == '"' .or. line(i:i) == "'") then
+                    in_string = .true.
+                    quote_char = line(i:i)
+                    quote_start = i
+                end if
+            else
+                if (line(i:i) == quote_char) then
+                    ! Replace string content with spaces
+                    line(quote_start:i) = repeat(' ', i - quote_start + 1)
+                    in_string = .false.
+                end if
+            end if
+            i = i + 1
+        end do
+        
+    end subroutine remove_string_literals
+    
+    subroutine check_line_indentation(line, line_num, violations, violation_count)
+        character(len=*), intent(in) :: line
+        integer, intent(in) :: line_num
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: spaces, tabs
+        integer :: i
+        type(source_range_t) :: location
+        
+        spaces = 0
+        tabs = 0
+        
+        ! Count leading spaces and tabs
+        do i = 1, len(line)
+            if (line(i:i) == ' ') then
+                spaces = spaces + 1
+            else if (line(i:i) == char(9)) then  ! tab character
+                tabs = tabs + 1
+            else
+                exit
+            end if
+        end do
+        
+        ! Report mixed tabs and spaces
+        if (spaces > 0 .and. tabs > 0) then
+            violation_count = violation_count + 1
+            if (violation_count <= size(violations)) then
+                ! Create a basic location - line info not available in this context
+                ! location = create_source_range(line_num, 1, line_num, spaces + tabs)
+                violations(violation_count) = create_diagnostic( &
+                    code="F002", &
+                    message="Mixed tabs and spaces in indentation", &
+                    file_path="", &
+                    location=location, &
+                    severity=SEVERITY_WARNING)
+            end if
+        end if
+    end subroutine check_line_indentation
+    
+    subroutine check_indentation_consistency(indent_levels, line_count, violations, violation_count)
+        integer, intent(in) :: indent_levels(:)
+        integer, intent(in) :: line_count
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        integer :: i, j
+        integer :: common_indent
+        logical :: has_inconsistency
+        type(source_range_t) :: location
+        
+        if (line_count < 2) return
+        
+        ! Find inconsistent indentation patterns
+        has_inconsistency = .false.
+        
+        ! Check if indentation levels are consistent multiples
+        do i = 1, line_count - 1
+            do j = i + 1, line_count
+                if (indent_levels(i) > 0 .and. indent_levels(j) > 0) then
+                    ! Check if one is not a multiple of the other
+                    if (indent_levels(i) /= indent_levels(j)) then
+                        ! Different levels - check if they're consistent
+                        if (mod(indent_levels(i), 4) /= mod(indent_levels(j), 4)) then
+                            has_inconsistency = .true.
+                            exit
+                        end if
+                    end if
+                end if
+            end do
+            if (has_inconsistency) exit
+        end do
+        
+        if (has_inconsistency) then
+            violation_count = violation_count + 1
+            if (violation_count <= size(violations)) then
+                ! Create a basic location - will be updated later
+                ! location = create_source_range(1, 1, 1, 1)
+                violations(violation_count) = create_diagnostic( &
+                    code="F002", &
+                    message="Inconsistent indentation levels detected", &
+                    file_path="", &
+                    location=location, &
+                    severity=SEVERITY_WARNING)
+            end if
+        end if
+    end subroutine check_indentation_consistency
+    
     ! F003: Check line length
     subroutine check_f003_line_length(ctx, node_index, violations)
         type(fluff_ast_context_t), intent(in) :: ctx
@@ -771,33 +2414,14 @@ contains
         allocate(temp_violations(100))
         violation_count = 0
         
-        ! Get source location of current node
-        location = ctx%get_node_location(node_index)
-        
-        ! For simplicity, check the current line
-        ! In a full implementation, we'd check all lines in the file
-        line_num = location%start%line
-        
-        ! Get the text of the current line (simplified approach)
-        call get_source_line(ctx, line_num, source_line)
-        line_length = len_trim(source_line)
-        
-        ! Check if line exceeds maximum length
-        if (line_length > MAX_LINE_LENGTH) then
-            ! Skip lines that are just long comments (they might contain URLs, etc.)
-            if (.not. is_comment_line(source_line)) then
-                violation_count = violation_count + 1
-                if (violation_count <= size(temp_violations)) then
-                    temp_violations(violation_count) = create_diagnostic( &
-                        code="F003", &
-                        message="Line too long (" // trim(adjustl(int_to_str(line_length))) // &
-                               " > " // trim(adjustl(int_to_str(MAX_LINE_LENGTH))) // " characters)", &
-                        file_path="", &
-                        location=create_range(line_num, 1, line_num, line_length), &
-                        severity=SEVERITY_INFO)
-                end if
-            end if
+        ! Use current_source_text to check line lengths
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
         end if
+        
+        call analyze_line_lengths_from_text(current_source_text, temp_violations, violation_count, MAX_LINE_LENGTH)
         
         ! Allocate result
         allocate(violations(violation_count))
@@ -811,8 +2435,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Use current_source_text to check trailing whitespace
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_trailing_whitespace_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f004_trailing_whitespace
     
@@ -822,8 +2465,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Use current_source_text to check mixed tabs and spaces
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_mixed_tabs_spaces_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f005_mixed_tabs_spaces
     
@@ -833,229 +2495,77 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! Variable tracking arrays
-        character(len=256), allocatable :: declared_vars(:)
-        character(len=256), allocatable :: used_vars(:)
-        logical, allocatable :: var_is_used(:)
-        integer :: declared_count, used_count
-        integer :: i, j
-        type(diagnostic_t), allocatable :: temp_violations(:)
-        integer :: violation_count
+        character(len=:), allocatable :: unused_vars(:)
+        logical :: success
+        integer :: i, violation_count
+        type(source_range_t) :: location
+        type(semantic_context_t) :: ctx_copy
+        logical :: is_intrinsic
         
-        ! Initialize arrays with dynamic sizing based on estimated needs
-        ! Start with reasonable defaults but allow growth
-        integer, parameter :: INITIAL_VAR_CAPACITY = 100
-        integer, parameter :: MAX_VAR_CAPACITY = 10000
-        integer, parameter :: INITIAL_VIOLATION_CAPACITY = 50
-        integer, parameter :: MAX_VIOLATION_CAPACITY = 1000
-        
-        allocate(declared_vars(INITIAL_VAR_CAPACITY))
-        allocate(used_vars(INITIAL_VAR_CAPACITY))
-        allocate(var_is_used(INITIAL_VAR_CAPACITY))
-        allocate(temp_violations(INITIAL_VIOLATION_CAPACITY))
-        declared_count = 0
-        used_count = 0
         violation_count = 0
-        var_is_used = .false.
+        allocate(violations(100))  ! Pre-allocate reasonable size
         
-        ! Traverse AST to collect variable declarations and usage
-        call collect_variable_info(ctx, node_index, declared_vars, declared_count, &
-                                  used_vars, used_count)
+        ! Make a copy of the semantic context to allow modifications
+        ctx_copy = ctx%semantic_ctx
         
-        ! Check which declared variables are unused
-        do i = 1, declared_count
-            var_is_used(i) = .false.
-            do j = 1, used_count
-                if (trim(declared_vars(i)) == trim(used_vars(j))) then
-                    var_is_used(i) = .true.
-                    exit
+        ! Get unused variables in current function/subroutine scope using direct API
+        success = get_unused_variables_direct(ctx%arena, ctx_copy, SCOPE_FUNCTION, unused_vars)
+        if (.not. success) then
+            success = get_unused_variables_direct(ctx%arena, ctx_copy, SCOPE_SUBROUTINE, unused_vars)
+        end if
+        
+        if (success .and. size(unused_vars) > 0) then
+            do i = 1, min(size(unused_vars), size(violations))
+                if (len_trim(unused_vars(i)) > 0) then
+                    ! Skip intrinsic functions
+                    is_intrinsic = .false.
+                    select case(trim(unused_vars(i)))
+                    case ("sin", "cos", "tan", "sqrt", "exp", "log", "abs", &
+                          "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
+                          "int", "real", "nint", "floor", "ceiling", &
+                          "min", "max", "mod", "modulo", "sign", &
+                          "len", "len_trim", "trim", "adjustl", "adjustr", &
+                          "size", "shape", "sum", "product", "maxval", "minval", &
+                          "allocated", "present", "associated")
+                        is_intrinsic = .true.
+                    end select
+                    
+                    if (.not. is_intrinsic) then
+                        violation_count = violation_count + 1
+                        
+                        ! Create basic location (would need node lookup for exact position)
+                        location%start%line = 1
+                        location%start%column = 1
+                        location%end%line = 1
+                        location%end%column = len_trim(unused_vars(i))
+                        
+                        violations(violation_count) = create_diagnostic( &
+                            code="F006", &
+                            message="Unused variable: " // trim(unused_vars(i)), &
+                            file_path=current_filename, &
+                            location=location, &
+                            severity=SEVERITY_WARNING)
+                    end if
                 end if
             end do
-            
-            ! Create violation for unused variable
-            if (.not. var_is_used(i)) then
-                if (violation_count < size(temp_violations)) then
-                    violation_count = violation_count + 1
-                    temp_violations(violation_count) = create_diagnostic( &
-                        code="F006", &
-                        message="Unused variable '" // trim(declared_vars(i)) // "'", &
-                        file_path="", &
-                        location=create_range(1, 1, 1, 1), &
-                        severity=SEVERITY_WARNING)
-                else if (violation_count < MAX_VIOLATION_CAPACITY) then
-                    ! Grow violations array
-                    call grow_violation_array(temp_violations, violation_count + 20)
-                    violation_count = violation_count + 1
-                    temp_violations(violation_count) = create_diagnostic( &
-                        code="F006", &
-                        message="Unused variable '" // trim(declared_vars(i)) // "'", &
-                        file_path="", &
-                        location=create_range(1, 1, 1, 1), &
-                        severity=SEVERITY_WARNING)
-                end if
-            end if
-        end do
+        end if
         
-        ! Allocate and copy violations
-        allocate(violations(violation_count))
-        do i = 1, violation_count
-            violations(i) = temp_violations(i)
-        end do
+        ! Resize violations array to actual count
+        if (violation_count == 0) then
+            deallocate(violations)
+            allocate(violations(0))
+        else
+            block
+                type(diagnostic_t), allocatable :: temp_violations(:)
+                allocate(temp_violations(violation_count))
+                temp_violations = violations(1:violation_count)
+                call move_alloc(temp_violations, violations)
+            end block
+        end if
         
     end subroutine check_f006_unused_variable
     
-    ! Helper subroutine to collect variable declarations and usage
-    recursive subroutine collect_variable_info(ctx, node_index, declared_vars, declared_count, &
-                                    used_vars, used_count)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        character(len=256), intent(inout) :: declared_vars(:)
-        integer, intent(inout) :: declared_count
-        character(len=256), intent(inout) :: used_vars(:)
-        integer, intent(inout) :: used_count
-        
-        ! Define capacity constant locally for this subroutine
-        integer, parameter :: MAX_VAR_CAPACITY = 10000
-        
-        integer, allocatable :: children(:)
-        integer :: node_type
-        integer :: i, num_children
-        character(len=256) :: node_text
-        
-        ! Get node type
-        node_type = ctx%get_node_type(node_index)
-        
-        ! Process based on node type (using generic approach)
-        ! Since we don't have exact node type constants, we'll use a heuristic
-        
-        ! Get node text if it's an identifier (simplified approach)
-        call get_node_text(ctx, node_index, node_text)
-        
-        ! If node text looks like a variable name, track it
-        if (len_trim(node_text) > 0 .and. is_valid_identifier(node_text)) then
-            ! Simple heuristic: if in declaration context, it's declared
-            ! Otherwise, it's used
-            if (is_declaration_context(ctx, node_index)) then
-                if (declared_count < size(declared_vars)) then
-                    declared_count = declared_count + 1
-                    declared_vars(declared_count) = trim(node_text)
-                end if
-                ! Skip if array is full (can't grow non-allocatable arrays)
-            else
-                if (used_count < size(used_vars)) then
-                    used_count = used_count + 1
-                    used_vars(used_count) = trim(node_text)
-                end if
-                ! Skip if array is full (can't grow non-allocatable arrays)
-            end if
-        end if
-        
-        ! Recursively process children
-        children = ctx%get_children(node_index)
-        num_children = size(children)
-        
-        do i = 1, num_children
-            if (children(i) > 0) then
-                call collect_variable_info(ctx, children(i), declared_vars, declared_count, &
-                                         used_vars, used_count)
-            end if
-        end do
-        
-        if (allocated(children)) deallocate(children)
-        
-    end subroutine collect_variable_info
-    
-    ! Check if a string is a valid Fortran identifier
-    function is_valid_identifier(text) result(is_valid)
-        character(len=*), intent(in) :: text
-        logical :: is_valid
-        integer :: i
-        character :: ch
-        
-        is_valid = .false.
-        
-        ! Must start with letter
-        if (len_trim(text) == 0) return
-        ch = text(1:1)
-        if (.not. (ch >= 'a' .and. ch <= 'z') .and. &
-            .not. (ch >= 'A' .and. ch <= 'Z')) return
-        
-        ! Rest can be letters, digits, or underscore
-        do i = 2, len_trim(text)
-            ch = text(i:i)
-            if (.not. (ch >= 'a' .and. ch <= 'z') .and. &
-                .not. (ch >= 'A' .and. ch <= 'Z') .and. &
-                .not. (ch >= '0' .and. ch <= '9') .and. &
-                ch /= '_') return
-        end do
-        
-        is_valid = .true.
-        
-    end function is_valid_identifier
-    
-    ! Check if node is in declaration context (simplified)
-    function is_declaration_context(ctx, node_index) result(is_decl)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        logical :: is_decl
-        
-        integer :: node_type
-        
-        ! Check if this node itself is a declaration node
-        node_type = ctx%get_node_type(node_index)
-        
-        ! Check if this is a declaration node type
-        is_decl = node_type == NODE_VARIABLE_DECL
-        
-        ! If not, we'd need more context to determine
-        ! For now, we'll return false for non-declaration nodes
-        ! This is a simplified implementation
-        
-    end function is_declaration_context
-    
-    ! Get text representation of a node (simplified)
-    subroutine get_node_text(ctx, node_index, text)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        character(len=*), intent(out) :: text
-        
-        ! Simplified implementation
-        ! In reality, we'd extract the actual text from the AST node
-        text = ""
-        
-    end subroutine get_node_text
-    
-    ! Get a specific source line (simplified)
-    subroutine get_source_line(ctx, line_num, line_text)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: line_num
-        character(len=*), intent(out) :: line_text
-        
-        ! Simplified - would need actual source access
-        line_text = ""
-        
-    end subroutine get_source_line
-    
-    ! Check if a line is a comment line
-    function is_comment_line(line) result(is_comment)
-        character(len=*), intent(in) :: line
-        logical :: is_comment
-        
-        character(len=:), allocatable :: trimmed
-        
-        trimmed = adjustl(line)
-        is_comment = len_trim(trimmed) > 0 .and. trimmed(1:1) == '!'
-        
-    end function is_comment_line
-    
-    ! Convert integer to string
-    function int_to_str(num) result(str)
-        integer, intent(in) :: num
-        character(len=20) :: str
-        
-        write(str, '(I0)') num
-        
-    end function int_to_str
+    ! Removed old helper functions - now using fortfront APIs directly
     
     ! Create a source range helper
     function create_range(start_line, start_col, end_line, end_col) result(range)
@@ -1127,79 +2637,115 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! Define capacity constants (same as in check_f006)
-        integer, parameter :: INITIAL_VAR_CAPACITY = 100
-        integer, parameter :: MAX_VAR_CAPACITY = 10000
-        integer, parameter :: INITIAL_VIOLATION_CAPACITY = 50
-        integer, parameter :: MAX_VIOLATION_CAPACITY = 1000
-        
-        ! Variable tracking arrays
-        character(len=256), allocatable :: declared_vars(:)
-        character(len=256), allocatable :: used_vars(:)
-        logical, allocatable :: var_is_declared(:)
-        integer :: declared_count, used_count
-        integer :: i, j, k
-        type(diagnostic_t), allocatable :: temp_violations(:)
+        type(diagnostic_t), allocatable :: temp_violations(:), all_violations(:)
         integer :: violation_count
-        logical :: found
-        logical :: already_reported
         
-        ! Initialize arrays with safe capacity and bounds checking
-        allocate(declared_vars(INITIAL_VAR_CAPACITY))
-        allocate(used_vars(INITIAL_VAR_CAPACITY))
-        allocate(var_is_declared(INITIAL_VAR_CAPACITY))
-        allocate(temp_violations(INITIAL_VIOLATION_CAPACITY))
-        declared_count = 0
-        used_count = 0
+        ! Initialize with reasonable pre-allocation
         violation_count = 0
-        var_is_declared = .false.
+        allocate(all_violations(100))
         
-        ! Traverse AST to collect variable declarations and usage
-        call collect_variable_info(ctx, node_index, declared_vars, declared_count, &
-                                  used_vars, used_count)
+        ! Traverse the AST starting from node_index to find all identifiers
+        call check_identifiers_recursive(ctx, node_index, all_violations, violation_count)
         
-        ! Check which used variables are undefined (not declared)
-        do i = 1, used_count
-            found = .false.
-            do j = 1, declared_count
-                if (trim(used_vars(i)) == trim(declared_vars(j))) then
-                    found = .true.
-                    exit
-                end if
-            end do
-            
-            ! Create violation for undefined variable (check for duplicates first)
-            if (.not. found) then
-                ! Check if we already reported this variable
-                already_reported = .false.
-                do k = 1, violation_count
-                    if (index(temp_violations(k)%message, "'" // trim(used_vars(i)) // "'") > 0) then
-                        already_reported = .true.
-                        exit
-                    end if
-                end do
-                
-                if (.not. already_reported) then
-                    violation_count = violation_count + 1
-                    if (violation_count <= size(temp_violations)) then
-                        temp_violations(violation_count) = create_diagnostic( &
-                            code="F007", &
-                            message="Undefined variable '" // trim(used_vars(i)) // "'", &
-                            file_path="", &
-                            location=create_range(1, 1, 1, 1), &
-                            severity=SEVERITY_ERROR)
-                    end if
-                end if
-            end if
-        end do
+        ! Resize to actual count
+        if (violation_count == 0) then
+            deallocate(all_violations)
+            allocate(all_violations(0))
+        else if (violation_count < size(all_violations)) then
+            allocate(temp_violations(violation_count))
+            temp_violations = all_violations(1:violation_count)
+            call move_alloc(temp_violations, all_violations)
+        end if
         
-        ! Allocate and copy violations
-        allocate(violations(violation_count))
-        do i = 1, violation_count
-            violations(i) = temp_violations(i)
-        end do
+        ! Return violations
+        violations = all_violations
         
     end subroutine check_f007_undefined_variable
+    
+    ! Recursive helper to check all identifiers in the AST
+    recursive subroutine check_identifiers_recursive(ctx, node_index, violations, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        
+        character(len=:), allocatable :: identifier_name
+        logical :: is_defined
+        type(source_range_t) :: location
+        type(semantic_context_t) :: ctx_copy
+        integer, allocatable :: children(:)
+        integer :: i
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        
+        if (node_index <= 0 .or. node_index > ctx%arena%size) return
+        
+        ! Check if this node is an identifier
+        if (ctx%arena%entries(node_index)%node_type == "identifier") then
+            ! Get identifier name
+            select type (node => ctx%arena%entries(node_index)%node)
+            type is (identifier_node)
+                if (allocated(node%name)) then
+                    identifier_name = node%name
+                    
+                    ! Make a copy of the semantic context to allow modifications
+                    ctx_copy = ctx%semantic_ctx
+                    
+                    ! Check if identifier is defined using direct API
+                    is_defined = is_identifier_defined_direct(ctx%arena, ctx_copy, identifier_name)
+                    
+                    if (.not. is_defined) then
+                        ! Skip intrinsic functions
+                        select case(trim(identifier_name))
+                        case ("sin", "cos", "tan", "sqrt", "exp", "log", "abs", &
+                              "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
+                              "int", "real", "nint", "floor", "ceiling", &
+                              "min", "max", "mod", "modulo", "sign", &
+                              "len", "len_trim", "trim", "adjustl", "adjustr", &
+                              "size", "shape", "sum", "product", "maxval", "minval", &
+                              "allocated", "present", "associated", &
+                              "print", "write", "read", "open", "close")
+                            ! Skip intrinsics and I/O statements
+                        case default
+                            ! Add violation
+                            violation_count = violation_count + 1
+                            
+                            ! Create location from node
+                            location%start%line = node%line
+                            location%start%column = node%column
+                            location%end%line = node%line
+                            location%end%column = node%column + len(identifier_name) - 1
+                            
+                            ! Grow violations array if needed
+                            if (violation_count > size(violations)) then
+                                allocate(temp_violations(size(violations) + 10))
+                                temp_violations(1:size(violations)) = violations
+                                call move_alloc(temp_violations, violations)
+                            end if
+                            
+                            violations(violation_count) = create_diagnostic( &
+                                code="F007", &
+                                message="Undefined variable: " // identifier_name, &
+                                file_path=current_filename, &
+                                location=location, &
+                                severity=SEVERITY_ERROR)
+                        end select
+                    end if
+                end if
+            end select
+        end if
+        
+        ! Recursively check children
+        children = ctx%arena%get_children(node_index)
+        if (allocated(children)) then
+            do i = 1, size(children)
+                call check_identifiers_recursive(ctx, children(i), violations, violation_count)
+            end do
+        end if
+        
+    end subroutine check_identifiers_recursive
+    
+    ! Recursively check for undefined identifiers
+    ! Removed helper functions - waiting for semantic_query_t to be exported
     
     ! F008: Check missing intent declarations
     subroutine check_f008_missing_intent(ctx, node_index, violations)
@@ -1210,12 +2756,18 @@ contains
         type(diagnostic_t), allocatable :: temp_violations(:)
         integer :: violation_count
         
+        ! Use source text analysis for now
+        if (.not. allocated(current_source_text)) then
+            allocate(violations(0))
+            return
+        end if
+        
         ! Initialize
         allocate(temp_violations(100))
         violation_count = 0
         
-        ! Traverse AST to find procedure arguments without intent
-        call check_intent_recursive(ctx, node_index, temp_violations, violation_count)
+        ! Analyze source text for missing intent
+        call analyze_missing_intent_from_text(current_source_text, temp_violations, violation_count)
         
         ! Allocate and copy violations
         allocate(violations(violation_count))
@@ -1283,10 +2835,9 @@ contains
                 
                 ! Check if this looks like a variable declaration without intent
                 if (child_type == NODE_VARIABLE_DECL) then
-                    call get_node_text(ctx, children(i), arg_name)
-                    
-                    ! Simple heuristic: if it's a declaration without "intent" keyword
-                    if (len_trim(arg_name) > 0 .and. index(arg_name, "intent") == 0) then
+                    ! TODO: Need API to check if declaration has intent
+                    ! For now, skip this check
+                    if (.false.) then
                         location = ctx%get_node_location(children(i))
                         violation_count = violation_count + 1
                         
@@ -1343,8 +2894,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Use current_source_text to check for obsolete features
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_obsolete_features_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f010_obsolete_features
     
@@ -1354,8 +2924,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Use source text analysis
+        if (.not. allocated(current_source_text)) then
+            allocate(violations(0))
+            return
+        end if
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Analyze source text for missing end labels
+        call analyze_missing_end_labels_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f011_missing_end_labels
     
@@ -1365,8 +2954,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Use source text analysis
+        if (.not. allocated(current_source_text)) then
+            allocate(violations(0))
+            return
+        end if
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Analyze source text for naming conventions
+        call analyze_naming_conventions_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f012_naming_conventions
     
@@ -1376,8 +2984,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Use current_source_text to check for multiple statements
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_multiple_statements_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f013_multiple_statements
     
@@ -1387,8 +3014,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Use source text analysis for simple cases
+        if (.not. allocated(current_source_text)) then
+            allocate(violations(0))
+            return
+        end if
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Analyze source text for unnecessary parentheses
+        call analyze_unnecessary_parentheses_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f014_unnecessary_parentheses
     
@@ -1398,8 +3044,27 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
         
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
+        type(diagnostic_t), allocatable :: temp_violations(:)
+        integer :: violation_count
+        
+        ! Initialize
+        allocate(temp_violations(100))
+        violation_count = 0
+        
+        ! Use current_source_text to check for redundant continue
+        if (.not. allocated(current_source_text)) then
+            ! No source text available
+            allocate(violations(0))
+            return
+        end if
+        
+        call analyze_redundant_continue_from_text(current_source_text, temp_violations, violation_count)
+        
+        ! Allocate and copy violations
+        allocate(violations(violation_count))
+        if (violation_count > 0) then
+            violations(1:violation_count) = temp_violations(1:violation_count)
+        end if
         
     end subroutine check_f015_redundant_continue
     
@@ -1613,13 +3278,9 @@ contains
         integer, intent(in) :: node_index
         logical :: is_implicit
         
-        character(len=256) :: node_text
-        
-        ! For now, use text matching as a fallback
-        ! In a full implementation, we'd check the node type
-        call get_node_text(ctx, node_index, node_text)
-        is_implicit = index(node_text, "implicit") > 0 .and. &
-                     index(node_text, "none") > 0
+        ! TODO: Check node type when fortfront provides NODE_IMPLICIT_NONE checks
+        ! For now, return false
+        is_implicit = .false.
         
     end function is_implicit_none_statement
     
@@ -1849,24 +3510,20 @@ contains
         
         ! Check functions and subroutines for pure/elemental opportunities
         if (node_type == NODE_FUNCTION_DEF .or. node_type == NODE_SUBROUTINE_DEF) then
-            call get_node_text(ctx, node_index, node_text)
-            
-            ! Simple heuristic: if no "pure" or "elemental" keyword found
-            if (index(node_text, "pure") == 0 .and. index(node_text, "elemental") == 0) then
-                ! Check if this procedure could be pure (doesn't modify global state)
-                if (could_be_pure_procedure(ctx, node_index)) then
-                    if (violation_count < size(violations)) then
-                        violation_count = violation_count + 1
-                        violations(violation_count) = create_diagnostic( &
-                            code="P004", &
-                            message="Consider adding 'pure' attribute for optimization", &
-                            file_path="", &
-                            location=ctx%get_node_location(node_index), &
-                            severity=SEVERITY_INFO)
-                        
-                        ! Generate fix suggestion to add pure attribute
-                        call add_pure_attribute_fix(violations(violation_count), ctx%get_node_location(node_index))
-                    end if
+            ! TODO: Need API to check procedure attributes and analyze purity
+            ! For now, skip this check
+            if (.false.) then
+                if (violation_count < size(violations)) then
+                    violation_count = violation_count + 1
+                    violations(violation_count) = create_diagnostic( &
+                        code="P004", &
+                        message="Consider adding 'pure' attribute for optimization", &
+                        file_path="", &
+                        location=ctx%get_node_location(node_index), &
+                        severity=SEVERITY_INFO)
+                    
+                    ! Generate fix suggestion to add pure attribute
+                    call add_pure_attribute_fix(violations(violation_count), ctx%get_node_location(node_index))
                 end if
             end if
         end if
@@ -1889,16 +3546,9 @@ contains
         integer, intent(in) :: proc_node
         logical :: could_be_pure
         
-        character(len=256) :: node_text
-        
-        ! Simplified analysis - check for obvious impure operations
-        call get_node_text(ctx, proc_node, node_text)
-        
-        ! If contains I/O or other side effects, not pure
-        could_be_pure = index(node_text, "print") == 0 .and. &
-                       index(node_text, "write") == 0 .and. &
-                       index(node_text, "read") == 0 .and. &
-                       index(node_text, "stop") == 0
+        ! TODO: Need fortfront API to analyze procedure purity
+        ! For now, return false (conservative)
+        could_be_pure = .false.
         
     end function could_be_pure_procedure
     
@@ -2000,5 +3650,15 @@ contains
         allocate(violations(violation_count))
         
     end subroutine check_f001_implicit_none_text_based
+    
+    ! Helper subroutine to set current file context
+    subroutine set_current_file_context(filename, source_text)
+        character(len=*), intent(in) :: filename
+        character(len=*), intent(in) :: source_text
+        
+        current_filename = filename
+        current_source_text = source_text
+        
+    end subroutine set_current_file_context
     
 end module fluff_rules
