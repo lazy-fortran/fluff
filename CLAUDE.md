@@ -5,8 +5,10 @@ The purpose of this project is to provide a tool like "ruff" for Python in the f
 ## Development
 
 - Build with `fpm build`
-- Test with `fpm test`
+- Test with `fpm test` - **ALWAYS USE FPM TEST FOR TESTING!**
 - Run tests early and often
+- **NEVER compile test programs manually** - use fpm test structure
+- Create test files in `test/` directory with names like `test_*.f90`
 
 ## Fortfront AST API Integration
 
