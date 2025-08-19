@@ -2063,20 +2063,26 @@ contains
                                 
                                 ! Check if inner content is simple (number or variable)
                                 if (is_simple_expression(inner_content)) then
-                                    ! Check context - not a function call
+                                    ! Check context - not a function call and not needed for precedence
                                     if (i == 1 .or. .not. is_alnum_or_underscore(line_trimmed(i-1:i-1))) then
-                                        violation_count = violation_count + 1
-                                        if (violation_count <= size(violations)) then
-                                            location%start%line = line_num
-                                            location%start%column = i
-                                            location%end%line = line_num
-                                            location%end%column = paren_end
-                                            violations(violation_count) = create_diagnostic( &
-                                                code="F014", &
-                                                message="Unnecessary parentheses around simple expression", &
-                                                file_path=current_filename, &
-                                                location=location, &
-                                                severity=SEVERITY_INFO)
+                                        ! Check if it's in an if statement or other control structure
+                                        if (.not. is_in_control_structure(line_trimmed, i)) then
+                                            ! Check if it's part of a larger expression needing precedence
+                                            if (.not. needs_precedence_parentheses(line_trimmed, i, paren_end)) then
+                                                violation_count = violation_count + 1
+                                                if (violation_count <= size(violations)) then
+                                                    location%start%line = line_num
+                                                    location%start%column = i
+                                                    location%end%line = line_num
+                                                    location%end%column = paren_end
+                                                    violations(violation_count) = create_diagnostic( &
+                                                        code="F014", &
+                                                        message="Unnecessary parentheses around simple expression", &
+                                                        file_path=current_filename, &
+                                                        location=location, &
+                                                        severity=SEVERITY_INFO)
+                                                end if
+                                            end if
                                         end if
                                     end if
                                 end if
@@ -2127,20 +2133,32 @@ contains
         logical :: is_simple
         integer :: i
         logical :: has_operator
+        character(len=:), allocatable :: trimmed_expr
         
+        trimmed_expr = adjustl(trim(expr))
         has_operator = .false.
         
-        ! Check for operators
-        do i = 1, len(expr)
-            if (expr(i:i) == '+' .or. expr(i:i) == '-' .or. &
-                expr(i:i) == '*' .or. expr(i:i) == '/' .or. &
-                expr(i:i) == '(' .or. expr(i:i) == ')') then
+        ! Empty expression is not simple
+        if (len(trimmed_expr) == 0) then
+            is_simple = .false.
+            return
+        end if
+        
+        ! Check for operators or complex constructs
+        do i = 1, len(trimmed_expr)
+            if (trimmed_expr(i:i) == '+' .or. trimmed_expr(i:i) == '-' .or. &
+                trimmed_expr(i:i) == '*' .or. trimmed_expr(i:i) == '/' .or. &
+                trimmed_expr(i:i) == '(' .or. trimmed_expr(i:i) == ')' .or. &
+                trimmed_expr(i:i) == '=' .or. trimmed_expr(i:i) == '<' .or. &
+                trimmed_expr(i:i) == '>' .or. trimmed_expr(i:i) == '.' .or. &
+                trimmed_expr(i:i) == '&') then
                 has_operator = .true.
                 exit
             end if
         end do
         
-        is_simple = .not. has_operator
+        ! Only flag as simple if it's truly a single variable or number
+        is_simple = .not. has_operator .and. len(trimmed_expr) > 0
         
     end function is_simple_expression
     
@@ -2155,6 +2173,54 @@ contains
                    (ch == '_')
         
     end function is_alnum_or_underscore
+    
+    ! Check if parentheses are in a control structure
+    function is_in_control_structure(line, pos) result(in_control)
+        character(len=*), intent(in) :: line
+        integer, intent(in) :: pos
+        logical :: in_control
+        character(len=:), allocatable :: line_lower
+        
+        line_lower = to_lower(adjustl(line))
+        
+        ! Check for control structures where parentheses are expected
+        in_control = index(line_lower, "if") > 0 .or. &
+                    index(line_lower, "while") > 0 .or. &
+                    index(line_lower, "select") > 0 .or. &
+                    index(line_lower, "case") > 0
+        
+    end function is_in_control_structure
+    
+    ! Check if parentheses are needed for operator precedence
+    function needs_precedence_parentheses(line, start_pos, end_pos) result(needs_precedence)
+        character(len=*), intent(in) :: line
+        integer, intent(in) :: start_pos, end_pos
+        logical :: needs_precedence
+        integer :: before_pos, after_pos
+        
+        needs_precedence = .false.
+        
+        ! Check character before parentheses
+        before_pos = start_pos - 1
+        if (before_pos >= 1) then
+            if (line(before_pos:before_pos) == '*' .or. line(before_pos:before_pos) == '/' .or. &
+                line(before_pos:before_pos) == '+' .or. line(before_pos:before_pos) == '-') then
+                needs_precedence = .true.
+                return
+            end if
+        end if
+        
+        ! Check character after parentheses
+        after_pos = end_pos + 1
+        if (after_pos <= len(line)) then
+            if (line(after_pos:after_pos) == '*' .or. line(after_pos:after_pos) == '/' .or. &
+                line(after_pos:after_pos) == '+' .or. line(after_pos:after_pos) == '-') then
+                needs_precedence = .true.
+                return
+            end if
+        end if
+        
+    end function needs_precedence_parentheses
     
     ! Analyze unused variables from source text
     subroutine analyze_unused_variables_from_text(source_text, violations, violation_count)
