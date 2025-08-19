@@ -96,7 +96,7 @@ contains
         
         ! Test 4: Report validation errors
         call run_config_test("Report validation errors", &
-            test_report_validation_errors, .false.)
+            test_report_validation_errors, .true.)
         
     end subroutine test_config_validation
     
