@@ -224,7 +224,7 @@ contains
         rule%description = "Unnecessary parentheses"
         rule%category = CATEGORY_STYLE
         rule%subcategory = "simplification"
-        rule%default_enabled = .true.
+        rule%default_enabled = .false.
         rule%fixable = .true.
         rule%severity = SEVERITY_INFO
         rule%check => check_f014_unnecessary_parentheses
