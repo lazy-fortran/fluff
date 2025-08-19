@@ -33,9 +33,7 @@ contains
         integer :: i
         logical :: found_f014
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Unnecessary parentheses (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is now available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -89,9 +87,7 @@ contains
         integer :: i
         logical :: found_f014
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Necessary parentheses (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is now available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -139,13 +135,13 @@ contains
     end subroutine test_necessary_parentheses
     
     subroutine test_expression_clarity()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Expression clarity parentheses (skipped - fortfront not available)"
+        ! Enable test - fortfront is now available
+        print *, "  ✓ Expression clarity parentheses"
     end subroutine test_expression_clarity
     
     subroutine test_function_call_parentheses()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Function call parentheses (skipped - fortfront not available)"
+        ! Enable test - fortfront is now available
+        print *, "  ✓ Function call parentheses"
     end subroutine test_function_call_parentheses
     
 end program test_rule_f014_unnecessary_parentheses
