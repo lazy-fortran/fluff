@@ -967,10 +967,15 @@ contains
                 ! Last line
                 line_start = pos
                 line_end = len(source_text)
+                pos = len(source_text) + 1  ! Exit after this line
             else
                 ! Regular line
                 line_start = pos
                 line_end = pos + next_pos - 2
+                ! Handle carriage return if present
+                if (line_end >= line_start .and. source_text(line_end:line_end) == char(13)) then
+                    line_end = line_end - 1
+                end if
                 pos = pos + next_pos
             end if
             
@@ -980,23 +985,43 @@ contains
                 line_length = line_end - line_start + 1
                 trimmed_length = len_trim(line_content)
                 
-                ! Check if line has trailing whitespace
-                if (trimmed_length > 0 .and. trimmed_length < line_length) then
-                    violation_count = violation_count + 1
-                    if (violation_count <= size(violations)) then
-                        ! Create location for trailing whitespace
-                        location%start%line = line_num
-                        location%start%column = trimmed_length + 1  
-                        location%end%line = line_num
-                        location%end%column = line_length
-                        violations(violation_count) = create_diagnostic( &
-                            code="F004", &
-                            message="Trailing whitespace", &
-                            file_path=current_filename, &
-                            location=location, &
-                            severity=SEVERITY_INFO)
+                
+                ! Check if line has trailing whitespace (spaces or tabs)
+                ! Note: len_trim doesn't trim tabs, so we need to check manually
+                block
+                    integer :: true_trimmed_length, i
+                    logical :: has_trailing_whitespace
+                    
+                    ! Find the actual end of non-whitespace content (excluding trailing spaces AND tabs)
+                    true_trimmed_length = line_length
+                    do i = line_length, 1, -1
+                        if (line_content(i:i) /= ' ' .and. line_content(i:i) /= char(9)) then
+                            true_trimmed_length = i
+                            exit
+                        end if
+                        if (i == 1) true_trimmed_length = 0  ! Line is all whitespace
+                    end do
+                    
+                    has_trailing_whitespace = (line_length > 0 .and. true_trimmed_length > 0 &
+                                              .and. true_trimmed_length < line_length)
+                    
+                    if (has_trailing_whitespace) then
+                        violation_count = violation_count + 1
+                        if (violation_count <= size(violations)) then
+                            ! Create location for trailing whitespace
+                            location%start%line = line_num
+                            location%start%column = true_trimmed_length + 1  
+                            location%end%line = line_num
+                            location%end%column = line_length
+                            violations(violation_count) = create_diagnostic( &
+                                code="F004", &
+                                message="Trailing whitespace", &
+                                file_path=current_filename, &
+                                location=location, &
+                                severity=SEVERITY_INFO)
+                        end if
                     end if
-                end if
+                end block
             end if
             
             ! Move to next line if not already at end
