@@ -3237,10 +3237,12 @@ contains
         node_type = ctx%get_node_type(node_index)
         
         ! Program units that should have implicit none
+        ! Note: The root node might be a declaration that contains a program
         needs = node_type == NODE_PROGRAM .or. &
                node_type == NODE_MODULE .or. &
                node_type == NODE_FUNCTION_DEF .or. &
-               node_type == NODE_SUBROUTINE_DEF
+               node_type == NODE_SUBROUTINE_DEF .or. &
+               node_type == NODE_DECLARATION
         
     end function needs_implicit_none
     
