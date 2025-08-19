@@ -87,12 +87,12 @@ contains
         ! F003: Line too long
         rule%code = "F003"
         rule%name = "line-too-long"
-        rule%description = "Line exceeds maximum length"
+        rule%description = "Line exceeds maximum length with suggested breaking points"
         rule%category = CATEGORY_STYLE
         rule%subcategory = "formatting"
         rule%default_enabled = .true.
-        rule%fixable = .false.
-        rule%severity = SEVERITY_INFO
+        rule%fixable = .true.
+        rule%severity = SEVERITY_WARNING
         rule%check => check_f003_line_length
         ! Registration handled by caller
         
@@ -273,12 +273,12 @@ contains
         ! F003
         rules(3)%code = "F003"
         rules(3)%name = "line-too-long"
-        rules(3)%description = "Line exceeds maximum length"
+        rules(3)%description = "Line exceeds maximum length with suggested breaking points"
         rules(3)%category = CATEGORY_STYLE
         rules(3)%subcategory = "formatting"
         rules(3)%default_enabled = .true.
-        rules(3)%fixable = .false.
-        rules(3)%severity = SEVERITY_INFO
+        rules(3)%fixable = .true.
+        rules(3)%severity = SEVERITY_WARNING
         rules(3)%check => check_f003_line_length
         
         ! F004
@@ -922,6 +922,139 @@ contains
         end do
         
     end subroutine analyze_line_lengths_from_text
+    
+    ! Enhanced line length analysis with AST context for smart breaking points
+    subroutine analyze_line_lengths_with_ast_context(ctx, source_text, violations, violation_count, max_length)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        character(len=*), intent(in) :: source_text
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        integer, intent(in) :: max_length
+        
+        character(len=1000) :: line
+        integer :: pos, next_pos, line_num
+        integer :: line_length
+        type(source_range_t) :: location
+        type(fix_suggestion_t), allocatable :: fix_suggestions(:)
+        character(len=:), allocatable :: suggested_fix
+        type(text_edit_t) :: text_edit
+        
+        pos = 1
+        line_num = 0
+        
+        do while (pos <= len(source_text))
+            ! Find end of line
+            next_pos = index(source_text(pos:), char(10))
+            if (next_pos == 0) then
+                line = source_text(pos:)
+                pos = len(source_text) + 1
+            else
+                line = source_text(pos:pos+next_pos-2)
+                pos = pos + next_pos
+            end if
+            
+            line_num = line_num + 1
+            line_length = len_trim(line)
+            
+            ! Check if line exceeds maximum length and is not a comment
+            if (line_length > max_length .and. .not. is_comment_line(line)) then
+                violation_count = violation_count + 1
+                
+                ! Create location
+                location%start%line = line_num
+                location%start%column = max_length + 1  
+                location%end%line = line_num
+                location%end%column = line_length
+                
+                ! Generate smart breaking suggestions based on AST context
+                call generate_line_break_suggestions(line, suggested_fix)
+                
+                ! Create text edit for the fix
+                text_edit%range = location
+                text_edit%new_text = suggested_fix
+                
+                ! Create fix suggestion
+                allocate(fix_suggestions(1))
+                fix_suggestions(1) = create_fix_suggestion( &
+                    description="Break line at logical points", &
+                    edits=[text_edit])
+                
+                violations(violation_count) = create_diagnostic( &
+                    code="F003", &
+                    message="Line too long (" // trim(adjustl(int_to_str(line_length))) // &
+                           " > " // trim(adjustl(int_to_str(max_length))) // " characters)", &
+                    file_path=current_filename, &
+                    location=location, &
+                    severity=SEVERITY_WARNING)
+                
+                ! Add fix suggestions to the diagnostic
+                allocate(violations(violation_count)%fixes, source=fix_suggestions)
+            end if
+        end do
+        
+    end subroutine analyze_line_lengths_with_ast_context
+    
+    ! Generate smart line breaking suggestions
+    subroutine generate_line_break_suggestions(line, suggested_fix)
+        character(len=*), intent(in) :: line
+        character(len=:), allocatable, intent(out) :: suggested_fix
+        
+        character(len=:), allocatable :: trimmed_line
+        integer :: break_pos, i
+        logical :: found_break_point
+        
+        trimmed_line = trim(line)
+        found_break_point = .false.
+        
+        ! Look for good breaking points (in order of preference):
+        ! 1. After commas in argument lists
+        ! 2. After operators (+, -, *, /, ==, etc.)
+        ! 3. After :: in declarations
+        ! 4. Before keywords (then, else, etc.)
+        
+        ! First try: break after commas
+        do i = len(trimmed_line), 50, -1  ! Start from end, work backwards to column 50
+            if (i <= len(trimmed_line) .and. trimmed_line(i:i) == ',') then
+                break_pos = i
+                found_break_point = .true.
+                exit
+            end if
+        end do
+        
+        ! Second try: break after operators if no comma found
+        if (.not. found_break_point) then
+            do i = len(trimmed_line), 50, -1
+                if (i <= len(trimmed_line)) then
+                    if (trimmed_line(i:i) == '+' .or. trimmed_line(i:i) == '-' .or. &
+                        trimmed_line(i:i) == '*' .or. trimmed_line(i:i) == '/') then
+                        break_pos = i
+                        found_break_point = .true.
+                        exit
+                    end if
+                end if
+            end do
+        end if
+        
+        ! Third try: break after ::
+        if (.not. found_break_point) then
+            i = index(trimmed_line, '::')
+            if (i > 0 .and. i < 80) then
+                break_pos = i + 1
+                found_break_point = .true.
+            end if
+        end if
+        
+        ! Generate the suggested fix
+        if (found_break_point) then
+            suggested_fix = trimmed_line(1:break_pos) // " &" // new_line('a') // &
+                           "        " // trim(adjustl(trimmed_line(break_pos+1:)))
+        else
+            ! Fallback: simple break at 80 characters
+            suggested_fix = trimmed_line(1:80) // " &" // new_line('a') // &
+                           "        " // trim(adjustl(trimmed_line(81:)))
+        end if
+        
+    end subroutine generate_line_break_suggestions
     
     ! Helper function to check if line is a comment
     function is_comment_line(line) result(is_comment)
@@ -2490,7 +2623,7 @@ contains
         end if
     end subroutine check_indentation_consistency
     
-    ! F003: Check line length
+    ! F003: Check line length with AST context awareness
     subroutine check_f003_line_length(ctx, node_index, violations)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
@@ -2498,23 +2631,20 @@ contains
         
         type(diagnostic_t), allocatable :: temp_violations(:)
         integer :: violation_count
-        character(len=1000) :: source_line
-        integer :: line_num, line_length
         integer, parameter :: MAX_LINE_LENGTH = 88  ! Following Black/Ruff standard
-        type(source_range_t) :: location
         
         ! Initialize
         allocate(temp_violations(100))
         violation_count = 0
         
-        ! Use current_source_text to check line lengths
+        ! Use current_source_text to check line lengths with AST context
         if (.not. allocated(current_source_text)) then
             ! No source text available
             allocate(violations(0))
             return
         end if
         
-        call analyze_line_lengths_from_text(current_source_text, temp_violations, violation_count, MAX_LINE_LENGTH)
+        call analyze_line_lengths_with_ast_context(ctx, current_source_text, temp_violations, violation_count, MAX_LINE_LENGTH)
         
         ! Allocate result
         allocate(violations(violation_count))
