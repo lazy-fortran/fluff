@@ -33,9 +33,7 @@ contains
         integer :: i
         logical :: found_f005
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Mixed tabs and spaces (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         ! Note: Using char(9) for tab character
         test_code = "program test" // new_line('a') // &
@@ -85,9 +83,7 @@ contains
         integer :: i
         logical :: found_f005
         
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Only spaces (skipped - fortfront not available)"
-        return
+        ! Enable test - fortfront is available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -129,13 +125,105 @@ contains
     end subroutine test_only_spaces
     
     subroutine test_only_tabs()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Only tabs (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f005
+        
+        ! Enable test - fortfront is available
+        
+        ! Use only tabs for indentation
+        test_code = "program test" // new_line('a') // &
+                   char(9) // "implicit none" // new_line('a') // &
+                   char(9) // "integer :: x" // new_line('a') // &
+                   char(9) // "x = 42" // new_line('a') // &
+                   "end program test"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f005_tabs.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f005_tabs.f90", diagnostics, error_msg)
+        
+        ! Check for F005 violation
+        found_f005 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F005") then
+                    found_f005 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f005_tabs.f90", status="old")
+        close(99, status="delete")
+        
+        if (found_f005) then
+            error stop "Failed: F005 should not be triggered for consistent tabs"
+        end if
+        
+        print *, "  ✓ Only tabs"
+        
     end subroutine test_only_tabs
     
     subroutine test_multiple_mixed()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Multiple mixed indentations (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        integer :: f005_count
+        
+        ! Enable test - fortfront is available
+        
+        ! Multiple lines with mixed indentation
+        test_code = "program test" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &            ! 4 spaces
+                   char(9) // "integer :: x" // new_line('a') // &     ! 1 tab
+                   "  " // char(9) // "real :: y" // new_line('a') // & ! 2 spaces + 1 tab (mixed)
+                   char(9) // "  x = 42" // new_line('a') // &         ! 1 tab + 2 spaces (mixed)
+                   "    y = 3.14" // new_line('a') // &                 ! 4 spaces
+                   "end program test"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f005_multi.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f005_multi.f90", diagnostics, error_msg)
+        
+        ! Count F005 violations
+        f005_count = 0
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F005") then
+                    f005_count = f005_count + 1
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f005_multi.f90", status="old")
+        close(99, status="delete")
+        
+        if (f005_count /= 2) then
+            print *, "Expected 2 F005 violations, found", f005_count
+            error stop "Failed: F005 should be triggered for lines with mixed tabs and spaces"
+        end if
+        
+        print *, "  ✓ Multiple mixed indentations"
+        
     end subroutine test_multiple_mixed
     
 end program test_rule_f005_mixed_tabs_spaces

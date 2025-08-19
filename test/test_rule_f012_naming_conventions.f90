@@ -33,7 +33,7 @@ contains
         integer :: i
         logical :: found_f012
         
-        ! Test inconsistent variable naming patterns
+        ! Test inconsistent variable naming
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -89,7 +89,7 @@ contains
         integer :: i
         logical :: found_f012
         
-        ! Test consistent snake_case naming
+        ! Test consistent snake_case
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -145,7 +145,7 @@ contains
         integer :: i
         logical :: found_f012
         
-        ! Test consistent camelCase naming
+        ! Test consistent camelCase
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -194,8 +194,58 @@ contains
     end subroutine test_consistent_camel_case
     
     subroutine test_mixed_naming_styles()
-        ! Test placeholder for mixed naming styles
-        print *, "  ✓ Mixed naming styles (test placeholder)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f012
+        
+        ! Test mixed naming styles
+        test_code = "program test" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &
+                   "    integer :: snake_case_var" // new_line('a') // &
+                   "    integer :: camelCaseVar" // new_line('a') // &
+                   "    integer :: PascalCaseVar" // new_line('a') // &
+                   "    integer :: UPPERCASE_VAR" // new_line('a') // &
+                   "    " // new_line('a') // &
+                   "    snake_case_var = 10" // new_line('a') // &
+                   "    camelCaseVar = 20" // new_line('a') // &
+                   "    PascalCaseVar = 30" // new_line('a') // &
+                   "    UPPERCASE_VAR = 40" // new_line('a') // &
+                   "end program test"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f012_mixed.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f012_mixed.f90", diagnostics, error_msg)
+        
+        ! Check for F012 violation
+        found_f012 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F012") then
+                    found_f012 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f012_mixed.f90", status="old")
+        close(99, status="delete")
+        
+        if (.not. found_f012) then
+            error stop "Failed: F012 should be triggered for mixed naming styles"
+        end if
+        
+        print *, "  ✓ Mixed naming styles"
+        
     end subroutine test_mixed_naming_styles
     
 end program test_rule_f012_naming_conventions

@@ -97,31 +97,29 @@ contains
         character(len=1000) :: line
         integer :: unit, iostat
         
-        ! Read file contents
-        open(newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        ! Read file contents preserving trailing whitespace
+        open(newunit=unit, file=filename, status='old', action='read', &
+             access='stream', form='unformatted', iostat=iostat)
         if (iostat /= 0) then
             error_msg = "Failed to open file: " // filename
             allocate(diagnostics(0))
             return
         end if
         
-        source_code = ""
-        do
-            read(unit, '(A)', iostat=iostat) line
-            if (iostat == iostat_end) exit
+        ! Get file size and read entire content
+        inquire(unit=unit, size=iostat)
+        if (iostat > 0) then
+            allocate(character(len=iostat) :: source_code)
+            read(unit, iostat=iostat) source_code
             if (iostat /= 0) then
                 close(unit)
                 error_msg = "Failed to read file: " // filename
                 allocate(diagnostics(0))
                 return
             end if
-            
-            if (len(source_code) > 0) then
-                source_code = source_code // new_line('a') // trim(line)
-            else
-                source_code = trim(line)
-            end if
-        end do
+        else
+            source_code = ""
+        end if
         close(unit)
         
         ! Parse AST fresh each time to avoid memory safety issues

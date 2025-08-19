@@ -126,13 +126,107 @@ contains
     end subroutine test_line_within_limit
     
     subroutine test_continuation_lines()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Continuation lines (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f003, has_fix_suggestion
+        
+        test_code = "program test" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &
+                   "    real :: result = very_long_expression_that_exceeds_line_limit + " &
+                   // "another_very_long_term" // new_line('a') // &
+                   "end program test"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f003_continuation.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f003_continuation.f90", diagnostics, error_msg)
+        
+        ! Check for F003 violation with fix suggestions
+        found_f003 = .false.
+        has_fix_suggestion = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F003") then
+                    found_f003 = .true.
+                    if (allocated(diagnostics(i)%fixes)) then
+                        has_fix_suggestion = size(diagnostics(i)%fixes) > 0
+                    end if
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f003_continuation.f90", status="old")
+        close(99, status="delete")
+        
+        if (.not. found_f003) then
+            error stop "Failed: F003 should be triggered for long continuation line"
+        end if
+        
+        if (.not. has_fix_suggestion) then
+            print *, "  ⚠ F003 triggered but no fix suggestions provided"
+        else
+            print *, "  ✓ Continuation lines with fix suggestions"
+        end if
+        
     end subroutine test_continuation_lines
     
     subroutine test_comment_lines()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Comment lines (skipped - fortfront not available)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f003
+        
+        ! Comments should be ignored by F003
+        test_code = "program test" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &
+                   "    ! This is a very long comment line that definitely exceeds " &
+                   // "the 88 character limit but should be ignored by F003" // new_line('a') // &
+                   "    real :: x = 42" // new_line('a') // &
+                   "end program test"
+        
+        linter = create_linter_engine()
+        
+        ! Create temporary file
+        open(unit=99, file="test_f003_comments.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+        
+        ! Lint the file
+        call linter%lint_file("test_f003_comments.f90", diagnostics, error_msg)
+        
+        ! Check that F003 is NOT triggered for comment lines
+        found_f003 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F003") then
+                    found_f003 = .true.
+                    exit
+                end if
+            end do
+        end if
+        
+        ! Clean up
+        open(unit=99, file="test_f003_comments.f90", status="old")
+        close(99, status="delete")
+        
+        if (found_f003) then
+            error stop "Failed: F003 should not be triggered for long comment lines"
+        end if
+        
+        print *, "  ✓ Comment lines correctly ignored"
+        
     end subroutine test_comment_lines
     
 end program test_rule_f003_line_length

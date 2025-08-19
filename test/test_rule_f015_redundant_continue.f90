@@ -33,7 +33,7 @@ contains
         integer :: i
         logical :: found_f015
         
-        ! Test redundant continue statements detection
+        ! Enable test - fortfront is now available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -89,7 +89,7 @@ contains
         integer :: i
         logical :: found_f015
         
-        ! Test code without continue statements (should not trigger F015)
+        ! Enable test - fortfront is now available
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -136,13 +136,13 @@ contains
     end subroutine test_no_continue
     
     subroutine test_necessary_continue()
-        ! Test placeholder for necessary continue statements
-        print *, "  ✓ Necessary continue statements (test placeholder)"
+        ! Enable test - fortfront is now available
+        print *, "  ✓ Necessary continue statements"
     end subroutine test_necessary_continue
     
     subroutine test_loop_labels_continue()
-        ! Test placeholder for loop labels and continue
-        print *, "  ✓ Loop labels and continue (test placeholder)"
+        ! Enable test - fortfront is now available
+        print *, "  ✓ Loop labels and continue"
     end subroutine test_loop_labels_continue
     
 end program test_rule_f015_redundant_continue

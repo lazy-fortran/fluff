@@ -7,7 +7,14 @@ module fluff_ast
                        NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL, &
                        NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL, &
                        NODE_DECLARATION, NODE_PARAMETER_DECLARATION, NODE_IF, NODE_DO_LOOP, &
-                       NODE_DO_WHILE, NODE_SELECT_CASE, NODE_CASE_BLOCK, NODE_MODULE
+                       NODE_DO_WHILE, NODE_SELECT_CASE, NODE_CASE_BLOCK, NODE_MODULE, &
+                       NODE_USE_STATEMENT, NODE_PRINT_STATEMENT, NODE_WRITE_STATEMENT, &
+                       NODE_READ_STATEMENT, NODE_ALLOCATE_STATEMENT, NODE_DEALLOCATE_STATEMENT, &
+                       NODE_STOP, NODE_RETURN, NODE_GOTO, NODE_ERROR_STOP, NODE_CYCLE, NODE_EXIT, &
+                       NODE_WHERE, NODE_INTERFACE_BLOCK, NODE_DERIVED_TYPE, NODE_POINTER_ASSIGNMENT, &
+                       NODE_FORALL, NODE_CASE_RANGE, NODE_CASE_DEFAULT, NODE_COMPLEX_LITERAL, &
+                       NODE_INCLUDE_STATEMENT, NODE_CONTAINS, NODE_FORMAT_DESCRIPTOR, &
+                       NODE_COMMENT, NODE_IMPLICIT_STATEMENT, NODE_UNKNOWN
     implicit none
     private
     
@@ -25,9 +32,7 @@ module fluff_ast
         procedure :: get_node_location => ast_get_node_location
     end type fluff_ast_context_t
     
-    ! Node type constants - now imported from fortfront
-    integer, parameter :: NODE_UNKNOWN = 0
-    ! All other constants imported from fortfront
+    ! Node type constants - all imported from fortfront
     
     ! Public procedures  
     public :: create_ast_context
@@ -38,6 +43,13 @@ module fluff_ast
     public :: NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL
     public :: NODE_DECLARATION, NODE_PARAMETER_DECLARATION, NODE_IF, NODE_DO_LOOP
     public :: NODE_DO_WHILE, NODE_SELECT_CASE, NODE_CASE_BLOCK, NODE_MODULE
+    public :: NODE_USE_STATEMENT, NODE_PRINT_STATEMENT, NODE_WRITE_STATEMENT
+    public :: NODE_READ_STATEMENT, NODE_ALLOCATE_STATEMENT, NODE_DEALLOCATE_STATEMENT
+    public :: NODE_STOP, NODE_RETURN, NODE_GOTO, NODE_ERROR_STOP, NODE_CYCLE, NODE_EXIT
+    public :: NODE_WHERE, NODE_INTERFACE_BLOCK, NODE_DERIVED_TYPE, NODE_POINTER_ASSIGNMENT
+    public :: NODE_FORALL, NODE_CASE_RANGE, NODE_CASE_DEFAULT, NODE_COMPLEX_LITERAL
+    public :: NODE_INCLUDE_STATEMENT, NODE_CONTAINS, NODE_FORMAT_DESCRIPTOR
+    public :: NODE_COMMENT, NODE_IMPLICIT_STATEMENT
     
 contains
     
