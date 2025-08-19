@@ -2,7 +2,12 @@ module fluff_ast
     ! AST manipulation and traversal (fortfront wrapper)
     use fluff_core
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                       get_node_type_id_from_arena
+                       get_node_type_id_from_arena, &
+                       NODE_PROGRAM, NODE_FUNCTION_DEF, NODE_ASSIGNMENT, NODE_BINARY_OP, &
+                       NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL, &
+                       NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL, &
+                       NODE_DECLARATION, NODE_PARAMETER_DECLARATION, NODE_IF, NODE_DO_LOOP, &
+                       NODE_DO_WHILE, NODE_SELECT_CASE, NODE_CASE_BLOCK, NODE_MODULE
     implicit none
     private
     
@@ -20,34 +25,19 @@ module fluff_ast
         procedure :: get_node_location => ast_get_node_location
     end type fluff_ast_context_t
     
-    ! Node type enumeration (mapped to fortfront node types)
-    enum, bind(c)
-        enumerator :: NODE_UNKNOWN = 0
-        enumerator :: NODE_PROGRAM = 1
-        enumerator :: NODE_ASSIGNMENT = 2
-        enumerator :: NODE_BINARY_OP = 3
-        enumerator :: NODE_FUNCTION_DEF = 4
-        enumerator :: NODE_IDENTIFIER = 5
-        enumerator :: NODE_LITERAL = 6
-        enumerator :: NODE_ARRAY_LITERAL = 7
-        enumerator :: NODE_IF_STATEMENT = 8
-        enumerator :: NODE_DO_LOOP = 9
-        enumerator :: NODE_VARIABLE_DECL = 10
-        enumerator :: NODE_SUBROUTINE_DEF = 11
-        enumerator :: NODE_MODULE = 12
-        enumerator :: NODE_USE_STATEMENT = 13
-        enumerator :: NODE_IMPLICIT_NONE = 14
-        enumerator :: NODE_CALL_STATEMENT = 15
-    end enum
+    ! Node type constants - now imported from fortfront
+    integer, parameter :: NODE_UNKNOWN = 0
+    ! All other constants imported from fortfront
     
     ! Public procedures  
     public :: create_ast_context
     
-    ! Public node type constants
+    ! Public node type constants (imported from fortfront)
     public :: NODE_UNKNOWN, NODE_PROGRAM, NODE_ASSIGNMENT, NODE_BINARY_OP
     public :: NODE_FUNCTION_DEF, NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL
-    public :: NODE_IF_STATEMENT, NODE_DO_LOOP, NODE_VARIABLE_DECL, NODE_SUBROUTINE_DEF
-    public :: NODE_MODULE, NODE_USE_STATEMENT, NODE_IMPLICIT_NONE, NODE_CALL_STATEMENT
+    public :: NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL
+    public :: NODE_DECLARATION, NODE_PARAMETER_DECLARATION, NODE_IF, NODE_DO_LOOP
+    public :: NODE_DO_WHILE, NODE_SELECT_CASE, NODE_CASE_BLOCK, NODE_MODULE
     
 contains
     
@@ -172,11 +162,11 @@ contains
         ! Get node type from fortfront with error handling
         fortfront_type = get_node_type_id_from_arena(this%arena, node_index)
         
-        ! Validate returned type
-        if (fortfront_type >= NODE_UNKNOWN .and. fortfront_type <= NODE_CALL_STATEMENT) then
+        ! Accept any valid fortfront node type (they start from 1)
+        if (fortfront_type > 0) then
             node_type = fortfront_type
         else
-            ! Unknown type from fortfront - keep as NODE_UNKNOWN but could log
+            ! Unknown or invalid type from fortfront
             node_type = NODE_UNKNOWN
         end if
         

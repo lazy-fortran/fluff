@@ -6,6 +6,7 @@ module fluff_linter
     use fluff_rule_types
     use fluff_metrics, only: metrics_collector_t, timer_t, create_metrics_collector
     use fluff_cache, only: ast_cache_t, create_ast_cache
+    use fluff_rules, only: set_current_file_context
     implicit none
     private
     
@@ -127,6 +128,9 @@ contains
         ! Note: Caching disabled due to shallow copy issues with AST context
         ! containing fortfront arena and semantic context with pointer components
         call ast_ctx%from_source(source_code, error_msg)
+        
+        ! Set current file context for rules that need source text access
+        call set_current_file_context(filename, source_code)
         
         if (allocated(error_msg) .and. len(error_msg) > 0) then
             print *, "ERROR: fortfront AST parsing failed in linter!"
