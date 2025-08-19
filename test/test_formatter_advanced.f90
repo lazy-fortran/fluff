@@ -42,7 +42,7 @@ contains
         ! The formatter should break this long expression with continuation
         expected = "program test" // new_line('a') // &
                   "    implicit none" // new_line('a') // &
-                  "    real(8) :: result" // new_line('a') // &
+                  "    real :: result" // new_line('a') // &
                   new_line('a') // &
                   "    result = a + b + c + d + e + f + g + h + i + j + k + l + m + n + o + p + q + r + s + &" // new_line('a') // &
                   "        t + u + v + w + x + y + z " // new_line('a') // &
@@ -68,15 +68,15 @@ contains
         ! Test nested parentheses expressions - fortfront correctly preserves them
         expected = "program test" // new_line('a') // &
                   "    implicit none" // new_line('a') // &
-                  "    real(8) :: x" // new_line('a') // &
-                  "    real(8) :: a" // new_line('a') // &
-                  "    real(8) :: b" // new_line('a') // &
-                  "    real(8) :: c" // new_line('a') // &
-                  "    real(8) :: d" // new_line('a') // &
-                  "    real(8) :: e" // new_line('a') // &
-                  "    real(8) :: f" // new_line('a') // &
-                  "    real(8) :: g" // new_line('a') // &
-                  "    real(8) :: h" // new_line('a') // &
+                  "    real :: x" // new_line('a') // &
+                  "    real :: a" // new_line('a') // &
+                  "    real :: b" // new_line('a') // &
+                  "    real :: c" // new_line('a') // &
+                  "    real :: d" // new_line('a') // &
+                  "    real :: e" // new_line('a') // &
+                  "    real :: f" // new_line('a') // &
+                  "    real :: g" // new_line('a') // &
+                  "    real :: h" // new_line('a') // &
                   new_line('a') // &
                   "    x = (a + b) * (c + d * (e + f * (g + h)))" // new_line('a') // &
                   "end program test"
@@ -98,10 +98,10 @@ contains
         expected = "program test" // new_line('a') // &
                   "    implicit none" // new_line('a') // &
                   "    logical :: condition" // new_line('a') // &
-                  "    real(8) :: x" // new_line('a') // &
-                  "    real(8) :: y" // new_line('a') // &
-                  "    real(8) :: z" // new_line('a') // &
-                  "    real(8) :: w" // new_line('a') // &
+                  "    real :: x" // new_line('a') // &
+                  "    real :: y" // new_line('a') // &
+                  "    real :: z" // new_line('a') // &
+                  "    real :: w" // new_line('a') // &
                   new_line('a') // &
                   "    condition = x > 0 .and. y < 10 .or. z == 5 .and. w / = 3" // new_line('a') // &
                   "end program test"
@@ -140,7 +140,7 @@ contains
         
         expected = "program test" // new_line('a') // &
                   "    implicit none" // new_line('a') // &
-                  "    real(8) :: matrix(3,3)" // new_line('a') // &
+                  "    real :: matrix(3,3)" // new_line('a') // &
                   new_line('a') // &
                   "    matrix = reshape([1.0d0, 2.0d0, 3.0d0, 4.0d0, 5.0d0, 6.0d0, 7.0d0, 8.0d0, 9.0d0], &" // new_line('a') // &
                   "        [3, 3])" // new_line('a') // &
