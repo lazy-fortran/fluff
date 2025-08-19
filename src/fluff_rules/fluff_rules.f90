@@ -1,9 +1,10 @@
 module fluff_rules
     ! Built-in rule implementations
     use fluff_core
-    use fluff_ast, only: fluff_ast_context_t, NODE_VARIABLE_DECL, NODE_IDENTIFIER, &
-                       NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF, NODE_IF_STATEMENT, &
-                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN, NODE_ASSIGNMENT
+    use fluff_ast, only: fluff_ast_context_t, NODE_DECLARATION, NODE_IDENTIFIER, &
+                       NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF, NODE_IF, &
+                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN, NODE_ASSIGNMENT, &
+                       NODE_PROGRAM
     use fluff_diagnostics
     use fluff_rule_types
     use fortfront, only: get_identifier_name, get_symbols_in_scope, &
@@ -772,7 +773,7 @@ contains
         ! These node types increase indentation for their children
         increases = node_type == NODE_FUNCTION_DEF .or. &
                    node_type == NODE_SUBROUTINE_DEF .or. &
-                   node_type == NODE_IF_STATEMENT .or. &
+                   node_type == NODE_IF .or. &
                    node_type == NODE_DO_LOOP .or. &
                    node_type == NODE_MODULE
         
@@ -2834,7 +2835,7 @@ contains
                 child_type = ctx%get_node_type(children(i))
                 
                 ! Check if this looks like a variable declaration without intent
-                if (child_type == NODE_VARIABLE_DECL) then
+                if (child_type == NODE_DECLARATION) then
                     ! TODO: Need API to check if declaration has intent
                     ! For now, skip this check
                     if (.false.) then
@@ -3236,11 +3237,10 @@ contains
         node_type = ctx%get_node_type(node_index)
         
         ! Program units that should have implicit none
-        needs = node_type == NODE_MODULE .or. &
+        needs = node_type == NODE_PROGRAM .or. &
+               node_type == NODE_MODULE .or. &
                node_type == NODE_FUNCTION_DEF .or. &
                node_type == NODE_SUBROUTINE_DEF
-        
-        ! Note: program node is handled differently as it's usually the root
         
     end function needs_implicit_none
     
