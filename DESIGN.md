@@ -1,0 +1,487 @@
+# fluff Architecture Design
+
+**MANDATORY REQUIREMENTS**
+- **fortfront Foundation**: All analysis MUST use fortfront AST API - no text-based parsing
+- **fmp Dependency Management**: fmp automatically handles fortfront integration and static linking
+- **Plugin Architecture**: All rules implement via fortfront semantic pipeline plugins
+- **Incremental Analysis**: Support for caching and partial re-analysis
+
+## Table of Contents
+1. [Core Architecture](#core-architecture)
+2. [Rule System Design](#rule-system-design)
+3. [AST-Based Analysis](#ast-based-analysis)
+4. [Formatter Architecture](#formatter-architecture)
+5. [LSP Server Design](#lsp-server-design)
+6. [Performance Optimization](#performance-optimization)
+7. [Configuration System](#configuration-system)
+8. [Plugin Integration](#plugin-integration)
+9. [Implementation Roadmap](#implementation-roadmap)
+
+---
+
+# Core Architecture
+
+## Foundation Layer
+
+fluff is built as a **statically-linked executable** using fmp's automatic dependency management:
+
+```
+fluff (single executable - built by fmp)
+    └── fortfront (managed by fmp dependency system)
+        ├── AST/CST infrastructure
+        ├── Semantic analysis pipeline
+        ├── Type inference system
+        └── Code generation
+```
+
+**Build Architecture Elegance**:
+- **fmp.toml Configuration**: Simple `fortfront = { path = "../fortfront" }` declaration
+- **Automatic Linking**: fmp handles all static linking without manual configuration
+- **Zero Build Complexity**: Single `fpm build` command produces complete executable
+- **Dependency Resolution**: fmp automatically resolves and builds fortfront locally
+
+## Key Design Principles
+
+1. **AST-First Analysis**: ALL rules operate on fortfront's typed AST
+2. **Zero Text Processing**: No regex, no string matching - pure AST traversal
+3. **Plugin-Based Rules**: Each rule is a semantic analyzer plugin
+4. **Incremental by Design**: Cache ASTs and analysis results
+5. **Format Preservation**: Use CST for exact source reconstruction (when available)
+
+## Module Organization
+
+```
+src/
+├── fluff_ast/              # fortfront AST wrapper
+│   └── fluff_ast.f90       # Arena and semantic context management
+├── fluff_rules/            # Rule implementations (plugins)
+│   ├── style_rules.f90     # F001-F015 style checkers
+│   ├── performance_rules.f90 # P001-P007 performance analyzers
+│   └── correctness_rules.f90 # C001+ correctness validators
+├── fluff_formatter/        # AST-based code formatter
+│   ├── formatter_visitor.f90 # AST visitor for formatting
+│   └── format_options.f90  # Configuration and options
+├── fluff_lsp_server/       # Language Server Protocol
+│   ├── lsp_protocol.f90    # LSP message handling
+│   └── lsp_diagnostics.f90 # Real-time analysis
+└── fluff_cli/              # Command-line interface
+    └── fluff_cli.f90       # Main entry point
+```
+
+---
+
+# Rule System Design
+
+## Rule Categories
+
+### Style Rules (F-prefix)
+- **F001-F005**: Basic style (implicit none, indentation, line length)
+- **F006-F009**: Variable and intent analysis
+- **F010-F015**: Code structure and conventions
+
+### Performance Rules (P-prefix)
+- **P001-P003**: Array and loop optimization
+- **P004-P007**: Memory and precision optimization
+
+### Correctness Rules (C-prefix)
+- **C001+**: Type safety and semantic correctness
+
+## Rule Implementation Pattern
+
+Each rule is implemented as a fortfront semantic analyzer plugin:
+
+```fortran
+type, extends(base_analyzer_t) :: rule_f001_analyzer_t
+contains
+    procedure :: analyze_node => check_implicit_none
+    procedure :: get_diagnostics => get_f001_diagnostics
+end type
+
+function check_implicit_none(this, node, context) result(continue)
+    class(rule_f001_analyzer_t), intent(inout) :: this
+    integer, intent(in) :: node
+    type(semantic_context_t), intent(inout) :: context
+    logical :: continue
+    
+    ! Use fortfront AST API to check for implicit none
+    if (ast_node_type(node) == PROGRAM_NODE) then
+        if (.not. has_implicit_none(node, context)) then
+            call this%add_diagnostic(node, "F001", "Missing implicit none")
+        end if
+    end if
+    continue = .true.
+end function
+```
+
+## Rule Registration
+
+Rules register with fortfront's semantic pipeline:
+
+```fortran
+subroutine register_fluff_rules(pipeline)
+    type(semantic_pipeline_t), intent(inout) :: pipeline
+    
+    ! Style rules
+    call pipeline%add_analyzer(rule_f001_analyzer_t())
+    call pipeline%add_analyzer(rule_f002_analyzer_t())
+    ! ... etc
+    
+    ! Performance rules  
+    call pipeline%add_analyzer(rule_p001_analyzer_t())
+    ! ... etc
+end subroutine
+```
+
+---
+
+# AST-Based Analysis
+
+## Leveraging fortfront AST API
+
+All analysis uses fortfront's comprehensive AST infrastructure:
+
+```fortran
+! Example: Detecting unused variables (F006)
+function find_unused_variables(ast_arena, semantic_ctx) result(diagnostics)
+    type(ast_arena_t), intent(in) :: ast_arena
+    type(semantic_context_t), intent(in) :: semantic_ctx
+    type(diagnostic_t), allocatable :: diagnostics(:)
+    
+    ! Use fortfront's usage tracker
+    usage_info = semantic_ctx%get_usage_info()
+    
+    ! Traverse AST for declarations
+    call ast_arena%traverse_depth(check_declaration_usage)
+    
+    ! Report unused variables
+    do i = 1, usage_info%num_symbols
+        if (usage_info%is_declared(i) .and. .not. usage_info%is_used(i)) then
+            call add_diagnostic("F006", "Unused variable", usage_info%location(i))
+        end if
+    end do
+end function
+```
+
+## AST Visitor Pattern
+
+Complex rules use the visitor pattern:
+
+```fortran
+type, extends(ast_visitor_t) :: indentation_checker_t
+    integer :: expected_indent = 0
+contains
+    procedure :: visit_if_node => check_if_indentation
+    procedure :: visit_do_loop_node => check_loop_indentation
+end type
+```
+
+---
+
+# Formatter Architecture
+
+## AST-Based Formatting
+
+The formatter reconstructs code from the AST with style rules applied:
+
+```fortran
+type :: fluff_formatter_t
+    type(format_options_t) :: options
+    type(ast_arena_t), pointer :: arena
+contains
+    procedure :: format_file
+    procedure :: format_ast
+    procedure :: emit_formatted
+end type
+
+function format_ast(this, root_node) result(formatted_code)
+    class(fluff_formatter_t), intent(inout) :: this
+    integer, intent(in) :: root_node
+    character(len=:), allocatable :: formatted_code
+    
+    ! When CST available: preserve user formatting
+    if (has_cst_links(root_node)) then
+        formatted_code = reconstruct_from_cst(root_node, this%options)
+    else
+        ! Otherwise: use AST with formatting rules
+        formatted_code = emit_fortran(root_node, this%options)
+    end if
+end function
+```
+
+## Format Options
+
+```fortran
+type :: format_options_t
+    integer :: line_length = 88
+    integer :: indent_width = 4
+    logical :: use_tabs = .false.
+    logical :: preserve_line_breaks = .true.
+    character(len=32) :: indent_style = "space"
+end type
+```
+
+---
+
+# LSP Server Design
+
+## Protocol Implementation
+
+The LSP server provides real-time analysis and code actions:
+
+```fortran
+type :: lsp_server_t
+    type(ast_cache_t) :: ast_cache
+    type(diagnostic_cache_t) :: diagnostic_cache
+    type(semantic_pipeline_t) :: pipeline
+contains
+    procedure :: handle_request
+    procedure :: on_document_change
+    procedure :: get_diagnostics
+    procedure :: get_code_actions
+end type
+```
+
+## Incremental Analysis
+
+```fortran
+subroutine on_document_change(this, uri, changes)
+    class(lsp_server_t), intent(inout) :: this
+    character(len=*), intent(in) :: uri
+    type(text_change_t), intent(in) :: changes(:)
+    
+    ! Update AST incrementally
+    ast_handle = this%ast_cache%get_or_parse(uri)
+    
+    ! Re-run only affected analyzers
+    call this%pipeline%analyze_incremental(ast_handle, changes)
+    
+    ! Send diagnostics to client
+    call this%send_diagnostics(uri)
+end subroutine
+```
+
+---
+
+# Performance Optimization
+
+## Caching Strategy
+
+### AST Cache
+- Cache parsed ASTs with file modification times
+- Invalidate on file changes
+- Share ASTs across rules
+
+### Analysis Cache
+- Cache rule results per AST node
+- Invalidate selectively on AST changes
+- Reuse results across LSP requests
+
+### Parallel Execution
+```fortran
+!$OMP PARALLEL DO
+do i = 1, num_files
+    call analyze_file(files(i))
+end do
+!$OMP END PARALLEL DO
+```
+
+## Memory Management
+
+- Use fortfront's arena allocators
+- Batch deallocations
+- Minimize temporary allocations
+
+---
+
+# Configuration System
+
+## TOML Configuration
+
+```toml
+# fluff.toml
+[fluff]
+line_length = 88
+indent_width = 4
+target_version = "2018"
+
+[rules]
+select = ["F", "P"]  # Enable style and performance rules
+ignore = ["F003"]    # Ignore specific rules
+
+[rules.F002]
+indent_style = "space"
+indent_width = 4
+
+[formatter]
+preserve_line_breaks = true
+magic_trailing_ampersand = true
+```
+
+## Configuration Priority
+
+1. Command-line arguments (highest)
+2. Project fluff.toml
+3. User ~/.config/fluff/fluff.toml
+4. System defaults (lowest)
+
+---
+
+# Plugin Integration
+
+## External Tool Integration
+
+fluff can be used as a library by other tools:
+
+```fortran
+! Example: Using fluff in a build system
+program build_with_lint
+    use fluff_core
+    use fortfront
+    
+    type(fluff_analyzer_t) :: analyzer
+    type(diagnostic_t), allocatable :: diagnostics(:)
+    
+    ! Initialize with custom rules
+    call analyzer%init(config_file="project.toml")
+    
+    ! Analyze source
+    diagnostics = analyzer%check_file("src/module.f90")
+    
+    ! Handle results
+    if (size(diagnostics) > 0) then
+        call report_diagnostics(diagnostics)
+        if (has_errors(diagnostics)) stop 1
+    end if
+end program
+```
+
+## Custom Rule Development
+
+Users can add custom rules:
+
+```fortran
+module custom_rules
+    use fluff_rule_types
+    use fortfront
+    
+    type, extends(base_rule_t) :: custom_rule_t
+    contains
+        procedure :: check => check_custom_pattern
+    end type
+    
+contains
+    function check_custom_pattern(this, node, context) result(diagnostic)
+        ! Custom analysis logic using fortfront AST
+    end function
+end module
+```
+
+---
+
+# Implementation Roadmap
+
+## Phase 1: Core Infrastructure ✅ COMPLETE
+- fortfront integration
+- AST wrapper
+- Basic rule framework
+
+## Phase 2: Rule Implementation 🔄 IN PROGRESS
+- Complete F001-F015 style rules
+- Implement P001-P007 performance rules
+- Add C001+ correctness rules
+
+## Phase 3: Formatter Development
+- AST-based formatting
+- CST integration (when available)
+- Format preservation options
+
+## Phase 4: LSP Server
+- Protocol implementation
+- Incremental analysis
+- VSCode extension
+
+## Phase 5: Advanced Features
+- Custom rule API
+- Project-wide analysis
+- Fix suggestions and auto-fix
+
+## Success Metrics
+
+### Quality Metrics
+- **Zero false positives**: All diagnostics must be accurate
+- **Performance**: <1s analysis for 10K LOC
+- **Memory**: <100MB for typical projects
+
+### Coverage Metrics
+- **Rule coverage**: 100% of documented rules
+- **Language coverage**: Full Fortran 2018 support
+- **Test coverage**: >90% line coverage
+
+---
+
+# Migration from Text-Based to AST-Based
+
+## Current State
+Some rules still use text-based analysis. These MUST be migrated:
+
+### Text-Based Rules to Migrate
+- F001: implicit none detection → Use AST implicit_statement nodes
+- F003: Line length → Use CST with position information
+- F004: Trailing whitespace → Use CST trivia nodes
+- F005: Mixed tabs/spaces → Use CST whitespace trivia
+
+### Migration Pattern
+```fortran
+! OLD: Text-based
+if (index(line, "implicit none") > 0) then
+
+! NEW: AST-based
+if (ast_node_type(node) == IMPLICIT_STATEMENT_NODE) then
+    if (is_implicit_none(node)) then
+```
+
+## Performance Considerations
+
+### DO
+- Use fortfront's built-in traversal methods
+- Cache analysis results
+- Process nodes once per pass
+
+### DON'T  
+- Parse text with regex
+- Traverse AST multiple times
+- Store redundant information
+
+---
+
+# Appendix: fortfront AST API Usage
+
+## Key Functions Available
+
+```fortran
+! From fortfront
+use fortfront, only: &
+    ast_arena_t, semantic_context_t, &
+    lex_source, parse_tokens, analyze_semantics, &
+    create_ast_arena, create_semantic_context, &
+    emit_fortran, ast_visitor_t
+
+! AST traversal
+call arena%traverse_depth(visitor)
+children = arena%get_children(node)
+node_type = arena%get_node_type(node)
+
+! Semantic queries
+type_info = context%get_type(node)
+scope = context%get_scope(node)
+usage = context%get_usage_info()
+```
+
+## Integration Points
+
+1. **Parsing**: Use fortfront to parse and build AST
+2. **Analysis**: Implement rules as semantic analyzers
+3. **Formatting**: Use fortfront's emit_fortran with options
+4. **Caching**: Store fortfront arena handles
+
+This architecture ensures fluff is a modern, performant linter that fully leverages fortfront's capabilities while maintaining zero external dependencies.
