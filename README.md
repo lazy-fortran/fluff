@@ -3,6 +3,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Fortran](https://img.shields.io/badge/Fortran-2018-brightgreen.svg)](https://fortran-lang.org/)
 
+> **Note**: This project is experimental and subject to major changes. APIs may change without notice.
+
 **fluff** is a comprehensive linting and formatting tool for Fortran, inspired by Python's [ruff](https://github.com/astral-sh/ruff). It provides fast, reliable static analysis, automatic code formatting, and seamless integration with modern development workflows.
 
 ## ✨ Features
