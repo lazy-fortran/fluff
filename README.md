@@ -3,6 +3,8 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Fortran](https://img.shields.io/badge/Fortran-2018-brightgreen.svg)](https://fortran-lang.org/)
 
+> **Note**: This project will be retired in favor of [LFortran](https://lfortran.org/). LFortran's architecture (trivia-preserving AST, semantic analysis via ASR, existing `lfortran fmt` command) supports all fluff features and more. We recommend using `lfortran fmt` for formatting and `lfortran --style-suggestions` for linting. For formatting needs not yet covered by LFortran, use [fprettify](https://github.com/fortran-lang/fprettify).
+
 **fluff** is a comprehensive linting and formatting tool for Fortran, inspired by Python's [ruff](https://github.com/astral-sh/ruff). It provides fast, reliable static analysis, automatic code formatting, and seamless integration with modern development workflows.
 
 ## ✨ Features
