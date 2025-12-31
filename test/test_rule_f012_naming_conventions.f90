@@ -77,7 +77,7 @@ contains
             error stop "Failed: F012 should be triggered for inconsistent naming"
         end if
         
-        print *, "  ✓ Inconsistent variable naming"
+        print *, "  Inconsistent variable naming"
         
     end subroutine test_inconsistent_variable_naming
     
@@ -133,7 +133,7 @@ contains
             error stop "Failed: F012 should not be triggered for consistent snake_case"
         end if
         
-        print *, "  ✓ Consistent snake_case"
+        print *, "  Consistent snake_case"
         
     end subroutine test_consistent_snake_case
     
@@ -189,7 +189,7 @@ contains
             error stop "Failed: F012 should not be triggered for consistent camelCase"
         end if
         
-        print *, "  ✓ Consistent camelCase"
+        print *, "  Consistent camelCase"
         
     end subroutine test_consistent_camel_case
     
@@ -244,7 +244,7 @@ contains
             error stop "Failed: F012 should be triggered for mixed naming styles"
         end if
         
-        print *, "  ✓ Mixed naming styles"
+        print *, "  Mixed naming styles"
         
     end subroutine test_mixed_naming_styles
     

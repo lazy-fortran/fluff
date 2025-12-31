@@ -32,11 +32,7 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f011
-        
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Missing end labels (skipped - fortfront not available)"
-        return
-        
+
         test_code = "program test_prog" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "" // new_line('a') // &
@@ -83,9 +79,9 @@ contains
         if (.not. found_f011) then
             error stop "Failed: F011 should be triggered for missing end labels"
         end if
-        
-        print *, "  ✓ Missing end labels"
-        
+
+        print *, "  Missing end labels"
+
     end subroutine test_missing_end_labels
     
     subroutine test_proper_end_labels()
@@ -95,11 +91,7 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f011
-        
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Proper end labels (skipped - fortfront not available)"
-        return
-        
+
         test_code = "program test_prog" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "" // new_line('a') // &
@@ -146,19 +138,19 @@ contains
         if (found_f011) then
             error stop "Failed: F011 should not be triggered for proper end labels"
         end if
-        
-        print *, "  ✓ Proper end labels"
-        
+
+        print *, "  Proper end labels"
+
     end subroutine test_proper_end_labels
-    
+
     subroutine test_mixed_end_labels()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Mixed end labels (skipped - fortfront not available)"
+        ! Mixed end labels test (advanced)
+        print *, "  Mixed end labels (not implemented)"
     end subroutine test_mixed_end_labels
-    
+
     subroutine test_function_end_labels()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Function end labels (skipped - fortfront not available)"
+        ! Function end labels test (advanced)
+        print *, "  Function end labels (not implemented)"
     end subroutine test_function_end_labels
-    
+
 end program test_rule_f011_missing_end_labels

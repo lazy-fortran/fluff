@@ -72,7 +72,7 @@ contains
             error stop "Failed: F013 should be triggered for multiple statements per line"
         end if
         
-        print *, "  ✓ Multiple statements per line"
+        print *, "  Multiple statements per line"
         
     end subroutine test_multiple_statements
     
@@ -128,7 +128,7 @@ contains
             error stop "Failed: F013 should not be triggered for single statements per line"
         end if
         
-        print *, "  ✓ Single statements per line"
+        print *, "  Single statements per line"
         
     end subroutine test_single_statements
     
@@ -178,7 +178,7 @@ contains
             error stop "Failed: F013 should be triggered for semicolon separated statements"
         end if
         
-        print *, "  ✓ Semicolon separated statements"
+        print *, "  Semicolon separated statements"
         
     end subroutine test_semicolon_statements
     
@@ -230,7 +230,7 @@ contains
             error stop "Failed: F013 should be triggered for complex multi-statement lines"
         end if
         
-        print *, "  ✓ Complex multi-statement lines"
+        print *, "  Complex multi-statement lines"
         
     end subroutine test_complex_multi_statements
     
