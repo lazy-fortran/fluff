@@ -715,23 +715,40 @@ contains
     ! Save cache to disk
     subroutine save_to_disk(this)
         class(analysis_cache_t), intent(inout) :: this
-        
+
         integer :: unit, iostat
-        
+
         ! Actually save cache metadata to disk
         this%persistence_enabled = .true.
-        
+
         ! Write cache metadata
         if (allocated(this%cache_file_path) .and. this%entry_count > 0) then
+            ! Ensure cache directory exists before writing file
+            call ensure_directory_exists(this%cache_dir)
+
             open(newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
             if (iostat == 0) then
                 write(unit, '(A,I0)') "# Fluff Cache - Entry Count: ", this%entry_count
-                write(unit, '(A,I0)') "# Size (bytes): ", this%current_size_bytes  
+                write(unit, '(A,I0)') "# Size (bytes): ", this%current_size_bytes
                 close(unit)
             end if
         end if
-        
+
     end subroutine save_to_disk
+
+    ! Ensure directory exists by creating it if necessary
+    subroutine ensure_directory_exists(dir_path)
+        character(len=*), intent(in) :: dir_path
+
+        logical :: exists
+        integer :: stat
+
+        inquire(file=trim(dir_path) // "/.", exist=exists)
+        if (.not. exists) then
+            call execute_command_line("mkdir -p " // trim(dir_path), wait=.true., exitstat=stat)
+        end if
+
+    end subroutine ensure_directory_exists
     
     ! Load cache from disk
     subroutine load_from_disk(this)
