@@ -7,11 +7,11 @@ module fluff_rules
                        NODE_PROGRAM
     use fluff_diagnostics
     use fluff_rule_types
-    use fortfront, only: get_identifier_name, get_symbols_in_scope, &
-                        symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
+    use fortfront, only: symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
                         SCOPE_FUNCTION, SCOPE_SUBROUTINE, identifier_node, &
-                        is_identifier_defined_direct, get_unused_variables_direct, &
                         semantic_context_t
+    use fortfront_compat, only: get_identifier_name, get_symbols_in_scope, &
+                               is_identifier_defined_direct, get_unused_variables_direct
     implicit none
     private
     
