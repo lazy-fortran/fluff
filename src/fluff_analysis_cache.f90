@@ -722,10 +722,8 @@ contains
         this%persistence_enabled = .true.
 
         ! Write cache metadata
+        ! If directory doesn't exist, file open will fail gracefully
         if (allocated(this%cache_file_path) .and. this%entry_count > 0) then
-            ! Ensure cache directory exists before writing file
-            call ensure_directory_exists(this%cache_dir)
-
             open(newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
             if (iostat == 0) then
                 write(unit, '(A,I0)') "# Fluff Cache - Entry Count: ", this%entry_count
@@ -735,20 +733,6 @@ contains
         end if
 
     end subroutine save_to_disk
-
-    ! Ensure directory exists by creating it if necessary
-    subroutine ensure_directory_exists(dir_path)
-        character(len=*), intent(in) :: dir_path
-
-        logical :: exists
-        integer :: stat
-
-        inquire(file=trim(dir_path) // "/.", exist=exists)
-        if (.not. exists) then
-            call execute_command_line("mkdir -p " // trim(dir_path), wait=.true., exitstat=stat)
-        end if
-
-    end subroutine ensure_directory_exists
     
     ! Load cache from disk
     subroutine load_from_disk(this)
