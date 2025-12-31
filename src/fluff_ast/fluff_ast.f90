@@ -2,7 +2,7 @@ module fluff_ast
     ! AST manipulation and traversal (fortfront wrapper)
     use fluff_core
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                       get_node_type_id_from_arena, &
+                       get_node_type_id_from_arena, get_node_location, &
                        NODE_PROGRAM, NODE_FUNCTION_DEF, NODE_ASSIGNMENT, NODE_BINARY_OP, &
                        NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL, &
                        NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL, &
@@ -228,25 +228,25 @@ contains
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: node_index
         type(source_range_t) :: location
-        
+        integer :: line, column
+
         ! Initialize with invalid location
         location%start%line = 0
         location%start%column = 0
         location%end%line = 0
         location%end%column = 0
-        
+
         ! Check if initialized
         if (.not. this%is_initialized) return
         if (node_index <= 0) return
-        
-        ! For now, we'll need to get location info differently
-        ! fortfront may provide this through a different API
-        ! TODO: Implement proper location retrieval once API is clarified
-        location%start%line = 1
-        location%start%column = 1
-        location%end%line = 1
-        location%end%column = 1
-        
+
+        ! Use fortfront API to get actual location
+        call get_node_location(this%arena, node_index, line, column)
+        location%start%line = line
+        location%start%column = column
+        location%end%line = line  ! For now, end = start (single point)
+        location%end%column = column
+
     end function ast_get_node_location
     
 end module fluff_ast
