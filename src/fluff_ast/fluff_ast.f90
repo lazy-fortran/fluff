@@ -2,7 +2,7 @@ module fluff_ast
     ! AST manipulation and traversal (fortfront wrapper)
     use fluff_core
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                       get_node_type_id_from_arena, &
+                       get_node_type_id_from_arena, get_node_location, &
                        NODE_PROGRAM, NODE_FUNCTION_DEF, NODE_ASSIGNMENT, NODE_BINARY_OP, &
                        NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL, &
                        NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL, &
@@ -225,7 +225,6 @@ contains
     ! Get node location
     function ast_get_node_location(this, node_index) result(location)
         use fluff_core, only: source_range_t, source_location_t
-        use fortfront, only: get_node_location
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: node_index
         type(source_range_t) :: location
