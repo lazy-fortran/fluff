@@ -28,7 +28,7 @@ contains
         
         ! Test basic timing
         call timer%start()
-        call sleep_ms(10)  ! Sleep for 10ms
+        call sleep_ms(1)  ! Sleep for 1ms (reduced from 10ms for speed)
         elapsed = timer%elapsed()
         
         if (elapsed <= 0.0) then
@@ -87,17 +87,17 @@ contains
         
         collector = create_metrics_collector()
         
-        ! Simulate rule executions
+        ! Simulate rule executions (reduced sleep times for speed)
         call collector%start_rule("F001", timer)
-        call sleep_ms(5)
+        call sleep_ms(1)
         call collector%end_rule("F001", timer, 2)
-        
+
         call collector%start_rule("F002", timer)
-        call sleep_ms(3)
+        call sleep_ms(1)
         call collector%end_rule("F002", timer, 0)
-        
+
         call collector%start_rule("F001", timer)
-        call sleep_ms(4)
+        call sleep_ms(1)
         call collector%end_rule("F001", timer, 1)
         
         ! Verify collector state
