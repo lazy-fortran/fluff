@@ -32,11 +32,7 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f010
-        
-        ! Skip test if fortfront not available
-        print *, "  ⚠ GOTO statement (skipped - fortfront not available)"
-        return
-        
+
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: x" // new_line('a') // &
@@ -74,9 +70,9 @@ contains
         if (.not. found_f010) then
             error stop "Failed: F010 should be triggered for GOTO statement"
         end if
-        
-        print *, "  ✓ GOTO statement"
-        
+
+        print *, "  GOTO statement"
+
     end subroutine test_goto_statement
     
     subroutine test_computed_goto()
@@ -86,11 +82,7 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f010
-        
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Computed GOTO (skipped - fortfront not available)"
-        return
-        
+
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: choice" // new_line('a') // &
@@ -133,9 +125,9 @@ contains
         if (.not. found_f010) then
             error stop "Failed: F010 should be triggered for computed GOTO"
         end if
-        
-        print *, "  ✓ Computed GOTO"
-        
+
+        print *, "  Computed GOTO"
+
     end subroutine test_computed_goto
     
     subroutine test_modern_control_flow()
@@ -145,11 +137,7 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f010
-        
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Modern control flow (skipped - fortfront not available)"
-        return
-        
+
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: x, choice" // new_line('a') // &
@@ -198,14 +186,14 @@ contains
         if (found_f010) then
             error stop "Failed: F010 should not be triggered for modern control flow"
         end if
-        
-        print *, "  ✓ Modern control flow"
-        
+
+        print *, "  Modern control flow"
+
     end subroutine test_modern_control_flow
-    
+
     subroutine test_arithmetic_if()
-        ! Skip test if fortfront not available
-        print *, "  ⚠ Arithmetic IF statement (skipped - fortfront not available)"
+        ! Arithmetic IF test placeholder (advanced obsolete feature)
+        print *, "  Arithmetic IF statement (not implemented)"
     end subroutine test_arithmetic_if
-    
+
 end program test_rule_f010_obsolete_features
