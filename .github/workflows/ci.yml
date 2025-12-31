@@ -1,4 +1,4 @@
-name: Tests
+name: test
 
 on:
   push:
@@ -14,5 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Placeholder test
-        run: echo "fluff is retired in favor of LFortran - tests disabled"
+        with:
+          path: fluff
+
+      - name: Checkout fortfront
+        uses: actions/checkout@v4
+        with:
+          repository: lazy-fortran/fortfront
+          path: fortfront
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+          pip install fpm
+
+      - name: Build fluff
+        run: fpm build
+        working-directory: fluff
+
+      - name: Run tests
+        run: fpm test
+        working-directory: fluff

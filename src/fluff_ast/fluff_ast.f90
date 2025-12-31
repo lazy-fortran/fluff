@@ -86,7 +86,7 @@ contains
         if (error_msg /= "") return
         
         ! Semantic analysis
-        this%semantic_ctx = create_semantic_context()
+        call create_semantic_context(this%semantic_ctx)
         call analyze_semantics(this%arena, this%root_index)
         
         ! Mark as initialized

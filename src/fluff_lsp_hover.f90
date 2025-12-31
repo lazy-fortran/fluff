@@ -5,8 +5,8 @@ module fluff_lsp_hover
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
                          lex_source, parse_tokens, analyze_semantics, &
                          create_ast_arena, create_semantic_context, &
-                         get_identifiers_in_subtree, get_identifier_name, &
-                         get_node_type_id
+                         get_identifiers_in_subtree, get_node_type_id
+    use fortfront_compat, only: get_identifier_name
     implicit none
     private
     
@@ -159,9 +159,9 @@ contains
             return
         end if
         
-        semantic_ctx = create_semantic_context()
+        call create_semantic_context(semantic_ctx)
         call analyze_semantics(arena, root_index)
-        
+
         ! Use semantic information to provide rich hover info
         call analyze_token_semantic(token, arena, semantic_ctx, root_index, info)
         

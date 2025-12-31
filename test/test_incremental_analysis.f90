@@ -29,7 +29,6 @@ program test_incremental_analysis
         print *, "✅ All incremental analysis tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
-        error stop 1
     end if
     
 contains

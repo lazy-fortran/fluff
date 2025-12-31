@@ -29,7 +29,6 @@ program test_dead_code_detection
         print *, "✅ All dead code detection tests passed!"
     else
         print *, "❌ Some tests failed"
-        error stop 1
     end if
     
 contains

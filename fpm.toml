@@ -9,7 +9,6 @@ copyright = "Copyright 2025, Christopher Albert"
 [dependencies]
 fortfront = { path = "../fortfront" }
 stdlib = "*"
-json-fortran = { git = "https://github.com/jacobwilliams/json-fortran.git", tag = "8.3.0" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }

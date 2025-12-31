@@ -4,9 +4,9 @@ module fluff_incremental_analyzer
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
                          lex_source, parse_tokens, analyze_semantics, &
                          create_ast_arena, create_semantic_context, &
-                         get_identifiers_in_subtree, control_flow_graph_t, &
-                         build_control_flow_graph, find_unreachable_code, &
-                         get_identifier_name
+                         get_identifiers_in_subtree
+    use fortfront_compat, only: control_flow_graph_t, build_control_flow_graph, &
+                               find_unreachable_code, get_identifier_name
     implicit none
     private
     
@@ -293,9 +293,9 @@ contains
         call parse_tokens(tokens, arena, root_index, error_msg)
         if (error_msg /= "") return
         
-        semantic_ctx = create_semantic_context()
+        call create_semantic_context(semantic_ctx)
         call analyze_semantics(arena, root_index)
-        
+
         ! Extract dependencies using fortfront API
         identifiers = get_identifiers_in_subtree(arena, root_index)
         
@@ -694,9 +694,9 @@ contains
             return
         end if
         
-        semantic_ctx = create_semantic_context()
+        call create_semantic_context(semantic_ctx)
         call analyze_semantics(arena, root_index)
-        
+
         ! Extract interface signatures (simplified - could use more sophisticated analysis)
         current_interface = extract_interface_signatures(arena, root_index)
         

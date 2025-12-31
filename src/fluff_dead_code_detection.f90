@@ -16,20 +16,14 @@ module fluff_dead_code_detection
                          include_statement_node, parameter_declaration_node, &
                          LITERAL_LOGICAL, get_node_type_id_from_arena, &
                          symbol_reference_t, &
-                         ! Control flow node type constants
                          NODE_RETURN, NODE_STOP, NODE_CYCLE, NODE_EXIT, &
-                         ! Control flow analysis
-                         control_flow_graph_t, build_control_flow_graph, &
-                         find_unreachable_code, &
-                         ! Node inspection
                          visit_node_at, get_node_type_id, &
-                         ! Node accessor functions that DO exist
-                         get_assignment_indices, get_binary_op_info, &
-                         get_identifier_name, get_declaration_info, &
-                         get_call_info, get_program_info, &
-                         ! Call graph API for procedure analysis
-                         call_graph_t, build_call_graph_from_arena, &
-                         get_unused_procedures, is_procedure_used
+                         call_graph_t, build_call_graph_from_arena, is_procedure_used
+    use fortfront_compat, only: control_flow_graph_t, build_control_flow_graph, &
+                               find_unreachable_code, get_identifier_name, &
+                               get_declaration_info, get_assignment_indices, &
+                               get_binary_op_info, get_call_info, get_program_info, &
+                               get_unused_procedures
     
     implicit none
     private
@@ -162,7 +156,7 @@ contains
             return
         end if
         
-        this%sem_ctx = create_semantic_context()
+        call create_semantic_context(this%sem_ctx)
         call analyze_semantics(this%arena, prog_index)
         
         ! Clear visitor state

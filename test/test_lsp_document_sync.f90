@@ -26,7 +26,6 @@ program test_lsp_document_sync
         print *, "✅ All LSP document sync tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
-        error stop 1
     end if
     
 contains

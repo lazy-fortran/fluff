@@ -7,11 +7,11 @@ module fluff_rules
                        NODE_PROGRAM
     use fluff_diagnostics
     use fluff_rule_types
-    use fortfront, only: get_identifier_name, get_symbols_in_scope, &
-                        symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
+    use fortfront, only: symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
                         SCOPE_FUNCTION, SCOPE_SUBROUTINE, identifier_node, &
-                        is_identifier_defined_direct, get_unused_variables_direct, &
                         semantic_context_t
+    use fortfront_compat, only: get_identifier_name, get_symbols_in_scope, &
+                               is_identifier_defined_direct, get_unused_variables_direct
     implicit none
     private
     
@@ -1471,22 +1471,32 @@ contains
         character(len=*), intent(in) :: keyword
         integer, intent(in) :: pos
         logical :: is_keyword
-        
+
         logical :: start_ok, end_ok
         integer :: end_pos
-        
+
         end_pos = pos + len(keyword) - 1
-        
+
         ! Check if keyword starts at word boundary
-        start_ok = (pos == 1) .or. &
-                   (.not. is_alphanumeric(line(pos-1:pos-1)))
-        
+        if (pos == 1) then
+            start_ok = .true.
+        else if (pos > 1 .and. pos <= len(line)) then
+            start_ok = .not. is_alphanumeric(line(pos-1:pos-1))
+        else
+            start_ok = .false.
+        end if
+
         ! Check if keyword ends at word boundary
-        end_ok = (end_pos == len(line)) .or. &
-                 (.not. is_alphanumeric(line(end_pos+1:end_pos+1)))
-        
+        if (end_pos == len(line)) then
+            end_ok = .true.
+        else if (end_pos > 0 .and. end_pos < len(line)) then
+            end_ok = .not. is_alphanumeric(line(end_pos+1:end_pos+1))
+        else
+            end_ok = .false.
+        end if
+
         is_keyword = start_ok .and. end_ok
-        
+
     end function is_keyword_at_position
     
     ! Check if character is alphanumeric

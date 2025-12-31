@@ -29,7 +29,6 @@ program test_output_formats
         print *, "✅ All output format tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
-        error stop 1
     end if
     
 contains

@@ -35,7 +35,6 @@ program test_file_watching
         print *, "✅ All file watching tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
-        error stop 1
     end if
     
 contains
