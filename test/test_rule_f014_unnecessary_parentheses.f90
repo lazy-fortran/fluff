@@ -86,12 +86,8 @@ contains
         character(len=:), allocatable :: test_code
         integer :: i
         logical :: found_f014
-        
-        ! TEMPORARILY DISABLED: F014 rule logic needs improvement for precedence detection
-        print *, "  ⚠ Necessary parentheses (skipped - rule needs precedence logic)"
-        return
-        
-        ! Enable test - fortfront is now available
+
+        ! F014 rule now has proper precedence detection
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &

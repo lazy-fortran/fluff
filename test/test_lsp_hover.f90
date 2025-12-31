@@ -170,22 +170,22 @@ contains
     subroutine test_intrinsic_hover()
         print *, ""
         print *, "Testing hover over intrinsic functions..."
-        
+
         ! Test 1: Hover over math intrinsic
         call run_hover_test("Math intrinsic hover", &
             "x = sin(angle)", &
-            1, 4, "intrinsic function sin(x) - Sine function", .true.)
-            
+            1, 4, "elemental real function sin(x)", .true.)
+
         ! Test 2: Hover over array intrinsic
         call run_hover_test("Array intrinsic hover", &
             "n = size(array)", &
-            1, 4, "intrinsic function size(array, dim) - Array size", .true.)
-            
+            1, 4, "integer function size(array, dim, kind)", .true.)
+
         ! Test 3: Hover over type inquiry
         call run_hover_test("Type inquiry hover", &
             "k = kind(1.0)", &
-            1, 4, "intrinsic function kind(x) - Kind parameter", .true.)
-            
+            1, 4, "integer function kind(x)", .true.)
+
     end subroutine test_intrinsic_hover
     
     subroutine test_hover_formatting()
