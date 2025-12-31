@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: fluff
 
       - name: Checkout fortfront
         uses: actions/checkout@v4
@@ -29,6 +31,8 @@ jobs:
 
       - name: Build fluff
         run: fpm build
+        working-directory: fluff
 
       - name: Run tests
         run: fpm test
+        working-directory: fluff
