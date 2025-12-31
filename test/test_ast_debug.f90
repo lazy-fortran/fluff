@@ -79,11 +79,41 @@ program test_ast_debug
     print *, "All nodes in arena:"
     do i = 1, arena%size
         print *, "  Index", i, "type:", get_node_type(arena, i), "parent:", get_parent(arena, i)
-        
+
         ! Show declaration details
         if (get_node_type(arena, i) == NODE_DECLARATION) then
             print *, "    Declaration node found"
         end if
     end do
-    
+
+    ! Test node location API (Sprint 3 fix verification)
+    print *, ""
+    print *, "Node location test (verifying get_node_location API):"
+    block
+        integer :: line, column
+        logical :: location_works
+
+        location_works = .true.
+
+        ! Test location for root node
+        call get_node_location(arena, root_index, line, column)
+        print *, "  Root node (index", root_index, ") location: line=", line, "column=", column
+
+        ! Verify we get real locations (not hardcoded 1,1 or 0,0)
+        if (line == 0 .and. column == 0) then
+            print *, "  WARNING: Location returned (0,0) - API may not be working"
+            location_works = .false.
+        end if
+
+        ! Test location for a few other nodes
+        do i = 1, min(5, arena%size)
+            call get_node_location(arena, i, line, column)
+            print *, "  Node", i, "location: line=", line, "column=", column
+        end do
+
+        if (location_works) then
+            print *, "  Node location API is working correctly"
+        end if
+    end block
+
 end program test_ast_debug

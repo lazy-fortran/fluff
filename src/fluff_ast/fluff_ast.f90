@@ -225,28 +225,29 @@ contains
     ! Get node location
     function ast_get_node_location(this, node_index) result(location)
         use fluff_core, only: source_range_t, source_location_t
+        use fortfront, only: get_node_location
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: node_index
         type(source_range_t) :: location
-        
+        integer :: line, column
+
         ! Initialize with invalid location
         location%start%line = 0
         location%start%column = 0
         location%end%line = 0
         location%end%column = 0
-        
+
         ! Check if initialized
         if (.not. this%is_initialized) return
         if (node_index <= 0) return
-        
-        ! For now, we'll need to get location info differently
-        ! fortfront may provide this through a different API
-        ! TODO: Implement proper location retrieval once API is clarified
-        location%start%line = 1
-        location%start%column = 1
-        location%end%line = 1
-        location%end%column = 1
-        
+
+        ! Use fortfront API to get actual location
+        call get_node_location(this%arena, node_index, line, column)
+        location%start%line = line
+        location%start%column = column
+        location%end%line = line  ! For now, end = start (single point)
+        location%end%column = column
+
     end function ast_get_node_location
     
 end module fluff_ast
