@@ -54,10 +54,9 @@ fluff (single executable - built by fmp)
 src/
 ├── fluff_ast/              # fortfront AST wrapper
 │   └── fluff_ast.f90       # Arena and semantic context management
-├── fluff_rules/            # Rule implementations (plugins)
-│   ├── style_rules.f90     # F001-F015 style checkers
-│   ├── performance_rules.f90 # P001-P007 performance analyzers
-│   └── correctness_rules.f90 # C001+ correctness validators
+├── fluff_rules/            # Rule implementations
+│   ├── fluff_rules.f90     # All F001-F015, P001-P007 rules
+│   └── fluff_rule_types.f90 # Rule type definitions and interfaces
 ├── fluff_formatter/        # AST-based code formatter
 │   ├── formatter_visitor.f90 # AST visitor for formatting
 │   └── format_options.f90  # Configuration and options
@@ -381,29 +380,38 @@ end module
 # Implementation Roadmap
 
 ## Phase 1: Core Infrastructure ✅ COMPLETE
-- fortfront integration
-- AST wrapper
-- Basic rule framework
+- Build system working (fpm with fortfront dependency)
+- fortfront integration via fpm.toml path dependency
+- AST wrapper (fluff_ast.f90) with node location API
+- Basic rule framework operational
 
-## Phase 2: Rule Implementation 🔄 IN PROGRESS
-- Complete F001-F015 style rules
-- Implement P001-P007 performance rules
-- Add C001+ correctness rules
+## Phase 2: Rule Implementation 🔄 PARTIAL
+- ✅ F002: Indentation (AST-based)
+- ✅ F006: Unused variables (AST-based)
+- ✅ F007: Undefined variables (AST-based)
+- ✅ F008: Missing intent (AST-based)
+- ⏳ F001: Implicit none (needs enhanced AST detection)
+- ⏳ F003-F005: Whitespace rules (blocked by fortfront CST trivia API)
+- ⏳ F009-F015: Style rules (stubs exist, need AST implementation)
+- ⏳ P001-P007: Performance rules (stubs exist, need semantic analysis)
 
-## Phase 3: Formatter Development
-- AST-based formatting
-- CST integration (when available)
-- Format preservation options
+## Phase 3: LSP Server ✅ MOSTLY COMPLETE
+- ✅ Document synchronization (open/change/save/close)
+- ✅ Diagnostic publishing
+- ✅ Hover information
+- ✅ Code actions
+- ⏳ Go-to-definition (blocked by fortfront API - issue #2599)
 
-## Phase 4: LSP Server
-- Protocol implementation
-- Incremental analysis
-- VSCode extension
+## Phase 4: Formatter 🔄 PARTIAL
+- ✅ Basic emit_fortran integration working
+- ✅ Indentation and spacing
+- ⏳ CST preservation for comments/whitespace (blocked by fortfront trivia API)
+- ⏳ Advanced expression formatting
 
-## Phase 5: Advanced Features
-- Custom rule API
-- Project-wide analysis
-- Fix suggestions and auto-fix
+## Phase 5: Advanced Features ⏳ PENDING
+- Custom rule API (infrastructure exists)
+- Project-wide analysis (partial)
+- Auto-fix suggestions (stubs exist)
 
 ## Success Metrics
 
@@ -421,10 +429,19 @@ end module
 
 # Migration from Text-Based to AST-Based
 
-## Current State
-Some rules still use text-based analysis. These MUST be migrated:
+## Current State (December 2025)
 
-### Text-Based Rules to Migrate
+**Build**: ✅ Working (json-fortran removed, fpm handles fortfront)
+**Tests**: ✅ All core test suites passing
+**Rules**: 4 fully AST-based (F002, F006-F008), others have stubs
+
+### Completed Migrations
+- F002: Indentation - uses AST node depth
+- F006: Unused variables - uses semantic context
+- F007: Undefined variables - uses semantic context
+- F008: Missing intent - uses AST parameter nodes
+
+### Pending Migrations (Blocked by fortfront)
 - F001: implicit none detection → Use AST implicit_statement nodes
 - F003: Line length → Use CST with position information
 - F004: Trailing whitespace → Use CST trivia nodes
@@ -454,6 +471,33 @@ if (ast_node_type(node) == IMPLICIT_STATEMENT_NODE) then
 
 ---
 
+# Blocking Dependencies
+
+## fortfront API Requirements
+
+Progress on several fluff features is blocked pending fortfront API enhancements:
+
+| fortfront Issue | Required API | Blocks |
+|-----------------|--------------|--------|
+| #2598 | CST trivia traversal | F003 line length, F004-F005 whitespace rules |
+| #2599 | Go-to-definition API | LSP navigation features |
+| #2600 | Enhanced semantic queries | Dead code detection, advanced unused analysis |
+
+## Current Workarounds
+
+Until fortfront APIs are available:
+- F003-F005 rules use stub implementations that skip analysis
+- Go-to-definition returns partial results for local symbols only
+- Dead code detection limited to basic unused variable patterns
+
+## Tracking
+
+- fluff EPIC: #77 (Full MVP Implementation Path)
+- fluff P0: #79 (Expose missing fortfront APIs)
+- fluff P1: #80-83 (Core rule implementations)
+
+---
+
 # Appendix: fortfront AST API Usage
 
 ## Key Functions Available
@@ -461,20 +505,21 @@ if (ast_node_type(node) == IMPLICIT_STATEMENT_NODE) then
 ```fortran
 ! From fortfront
 use fortfront, only: &
-    ast_arena_t, semantic_context_t, &
+    ast_arena_t, semantic_context_t, token_t, &
     lex_source, parse_tokens, analyze_semantics, &
     create_ast_arena, create_semantic_context, &
-    emit_fortran, ast_visitor_t
+    emit_fortran, get_node_type_id_from_arena, &
+    get_node_location, get_children
 
-! AST traversal
-call arena%traverse_depth(visitor)
-children = arena%get_children(node)
-node_type = arena%get_node_type(node)
+! From fluff_ast wrapper
+use fluff_ast, only: fluff_ast_context_t, create_ast_context
 
-! Semantic queries
-type_info = context%get_type(node)
-scope = context%get_scope(node)
-usage = context%get_usage_info()
+! AST operations via context
+call context%from_source(source_code, error_msg)
+call context%traverse(visitor, pre_order)
+node_type = context%get_node_type(node_index)
+children = context%get_children(node_index)
+location = context%get_node_location(node_index)
 ```
 
 ## Integration Points
