@@ -63,7 +63,43 @@ contains
             actions(1) = "Add intent(in)"
             actions(2) = "Add intent(out)"
             actions(3) = "Add intent(inout)"
-            
+
+        case ("F010")
+            ! Obsolete features
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Replace GOTO with modern control flow"
+
+        case ("F011")
+            ! Missing end labels
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Add end label"
+
+        case ("F012")
+            ! Naming conventions
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Apply consistent naming"
+
+        case ("F013")
+            ! Multiple statements per line
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Split statements to separate lines"
+
+        case ("F014")
+            ! Unnecessary parentheses
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Remove unnecessary parentheses"
+
+        case ("F015")
+            ! Redundant continue
+            count = 1
+            allocate(character(len=100) :: actions(count))
+            actions(1) = "Remove redundant CONTINUE"
+
         case ("ALL")
             ! Multiple diagnostics - simplified for RED phase
             count = 2

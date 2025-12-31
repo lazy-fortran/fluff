@@ -2334,35 +2334,268 @@ contains
         
     end function is_in_control_structure
     
+    ! Fortran operator precedence (higher = binds tighter)
+    ! 10: **  (exponentiation)
+    !  9: * /
+    !  8: unary + -
+    !  7: + -
+    !  6: //  (concatenation)
+    !  5: == /= < <= > >= .eq. .ne. .lt. .le. .gt. .ge.
+    !  4: .not.
+    !  3: .and.
+    !  2: .or.
+    !  1: .eqv. .neqv.
+    function get_operator_precedence(op) result(prec)
+        character(len=*), intent(in) :: op
+        integer :: prec
+        character(len=:), allocatable :: op_lower
+
+        op_lower = to_lower(adjustl(trim(op)))
+
+        select case (op_lower)
+        case ("**")
+            prec = 10
+        case ("*", "/")
+            prec = 9
+        case ("+", "-")
+            prec = 7
+        case ("//")
+            prec = 6
+        case ("==", "/=", "<", "<=", ">", ">=", ".eq.", ".ne.", ".lt.", ".le.", &
+              ".gt.", ".ge.")
+            prec = 5
+        case (".not.")
+            prec = 4
+        case (".and.")
+            prec = 3
+        case (".or.")
+            prec = 2
+        case (".eqv.", ".neqv.")
+            prec = 1
+        case default
+            prec = 0
+        end select
+
+    end function get_operator_precedence
+
+    ! Get operator at position (looking backwards or forwards)
+    function get_operator_at(line, pos, direction) result(op)
+        character(len=*), intent(in) :: line
+        integer, intent(in) :: pos
+        integer, intent(in) :: direction  ! -1 = backwards, +1 = forwards
+        character(len=:), allocatable :: op
+        integer :: i, start_i, end_i
+        character(len=:), allocatable :: line_lower
+
+        op = ""
+        line_lower = to_lower(line)
+
+        if (direction < 0) then
+            ! Looking backwards from pos
+            if (pos < 1) return
+            ! Check for two-character operators first
+            if (pos >= 2) then
+                if (line(pos-1:pos) == "**") then
+                    op = "**"
+                    return
+                else if (line(pos-1:pos) == "//" .or. line(pos-1:pos) == "==" .or. &
+                         line(pos-1:pos) == "/=" .or. line(pos-1:pos) == "<=" .or. &
+                         line(pos-1:pos) == ">=") then
+                    op = line(pos-1:pos)
+                    return
+                end if
+            end if
+            ! Check for logical operators (look for .xxx.)
+            start_i = pos
+            do i = pos, 1, -1
+                if (line(i:i) == '.') then
+                    start_i = i
+                    exit
+                else if (line(i:i) == ' ') then
+                    cycle
+                else if (.not. ((line(i:i) >= 'a' .and. line(i:i) <= 'z') .or. &
+                               (line(i:i) >= 'A' .and. line(i:i) <= 'Z'))) then
+                    exit
+                end if
+            end do
+            if (start_i < pos) then
+                end_i = index(line(start_i+1:), '.') + start_i
+                if (end_i > start_i) then
+                    op = line_lower(start_i:end_i)
+                    if (get_operator_precedence(op) > 0) return
+                end if
+            end if
+            ! Single character operator
+            if (line(pos:pos) == '*' .or. line(pos:pos) == '/' .or. &
+                line(pos:pos) == '+' .or. line(pos:pos) == '-' .or. &
+                line(pos:pos) == '<' .or. line(pos:pos) == '>') then
+                op = line(pos:pos)
+            end if
+        else
+            ! Looking forwards from pos
+            if (pos > len(line)) return
+            ! Check for two-character operators first
+            if (pos <= len(line) - 1) then
+                if (line(pos:pos+1) == "**") then
+                    op = "**"
+                    return
+                else if (line(pos:pos+1) == "//" .or. line(pos:pos+1) == "==" .or. &
+                         line(pos:pos+1) == "/=" .or. line(pos:pos+1) == "<=" .or. &
+                         line(pos:pos+1) == ">=") then
+                    op = line(pos:pos+1)
+                    return
+                end if
+            end if
+            ! Check for logical operators
+            if (line(pos:pos) == '.') then
+                end_i = index(line(pos+1:), '.') + pos
+                if (end_i > pos) then
+                    op = line_lower(pos:end_i)
+                    if (get_operator_precedence(op) > 0) return
+                end if
+            end if
+            ! Single character operator
+            if (line(pos:pos) == '*' .or. line(pos:pos) == '/' .or. &
+                line(pos:pos) == '+' .or. line(pos:pos) == '-' .or. &
+                line(pos:pos) == '<' .or. line(pos:pos) == '>') then
+                op = line(pos:pos)
+            end if
+        end if
+
+    end function get_operator_at
+
+    ! Get the primary operator inside parentheses (lowest precedence)
+    function get_inner_operator_precedence(expr) result(prec)
+        character(len=*), intent(in) :: expr
+        integer :: prec
+        integer :: i, depth, min_prec, op_prec
+        character(len=:), allocatable :: expr_lower
+        character(len=10) :: current_op
+
+        prec = 100  ! Default: no operator (highest precedence)
+        min_prec = 100
+        depth = 0
+        expr_lower = to_lower(adjustl(trim(expr)))
+
+        i = 1
+        do while (i <= len(expr_lower))
+            if (expr_lower(i:i) == '(') then
+                depth = depth + 1
+                i = i + 1
+            else if (expr_lower(i:i) == ')') then
+                depth = depth - 1
+                i = i + 1
+            else if (depth == 0) then
+                ! At top level, check for operators
+                current_op = ""
+                ! Check for two-char operators
+                if (i <= len(expr_lower) - 1) then
+                    if (expr_lower(i:i+1) == "**") then
+                        current_op = "**"
+                        op_prec = 10
+                        if (op_prec < min_prec) min_prec = op_prec
+                        i = i + 2
+                        cycle
+                    else if (expr_lower(i:i+1) == "//" .or. expr_lower(i:i+1) == "==" .or. &
+                             expr_lower(i:i+1) == "/=" .or. expr_lower(i:i+1) == "<=" .or. &
+                             expr_lower(i:i+1) == ">=") then
+                        op_prec = get_operator_precedence(expr_lower(i:i+1))
+                        if (op_prec < min_prec) min_prec = op_prec
+                        i = i + 2
+                        cycle
+                    end if
+                end if
+                ! Check for logical operators
+                if (expr_lower(i:i) == '.') then
+                    do while (i <= len(expr_lower))
+                        if (i > 1) then
+                            if (expr_lower(i:i) == '.' .and. &
+                                index(expr_lower(1:i-1), '.') > 0) exit
+                        end if
+                        i = i + 1
+                    end do
+                    cycle
+                end if
+                ! Single char operators
+                if (expr_lower(i:i) == '*' .or. expr_lower(i:i) == '/') then
+                    op_prec = 9
+                    if (op_prec < min_prec) min_prec = op_prec
+                else if (expr_lower(i:i) == '+' .or. expr_lower(i:i) == '-') then
+                    op_prec = 7
+                    if (op_prec < min_prec) min_prec = op_prec
+                else if (expr_lower(i:i) == '<' .or. expr_lower(i:i) == '>') then
+                    op_prec = 5
+                    if (op_prec < min_prec) min_prec = op_prec
+                end if
+                i = i + 1
+            else
+                i = i + 1
+            end if
+        end do
+
+        prec = min_prec
+
+    end function get_inner_operator_precedence
+
     ! Check if parentheses are needed for operator precedence
     function needs_precedence_parentheses(line, start_pos, end_pos) result(needs_precedence)
         character(len=*), intent(in) :: line
         integer, intent(in) :: start_pos, end_pos
         logical :: needs_precedence
-        integer :: before_pos, after_pos
-        
+        integer :: before_pos, after_pos, inner_prec, outer_prec
+        character(len=:), allocatable :: inner_expr, op_before, op_after
+
         needs_precedence = .false.
-        
-        ! Check character before parentheses
+
+        ! Get inner expression
+        if (end_pos > start_pos + 1) then
+            inner_expr = line(start_pos+1:end_pos-1)
+        else
+            inner_expr = ""
+        end if
+
+        ! Get precedence of operators inside parentheses
+        inner_prec = get_inner_operator_precedence(inner_expr)
+
+        ! If inner has no operators, parentheses are never needed for precedence
+        if (inner_prec >= 100) return
+
+        ! Check operator before parentheses
         before_pos = start_pos - 1
+        do while (before_pos >= 1 .and. line(before_pos:before_pos) == ' ')
+            before_pos = before_pos - 1
+        end do
+
         if (before_pos >= 1) then
-            if (line(before_pos:before_pos) == '*' .or. line(before_pos:before_pos) == '/' .or. &
-                line(before_pos:before_pos) == '+' .or. line(before_pos:before_pos) == '-') then
-                needs_precedence = .true.
-                return
+            op_before = get_operator_at(line, before_pos, -1)
+            if (len(op_before) > 0) then
+                outer_prec = get_operator_precedence(op_before)
+                ! Parentheses needed if outer operator has higher precedence
+                if (outer_prec > inner_prec) then
+                    needs_precedence = .true.
+                    return
+                end if
             end if
         end if
-        
-        ! Check character after parentheses
+
+        ! Check operator after parentheses
         after_pos = end_pos + 1
+        do while (after_pos <= len(line) .and. line(after_pos:after_pos) == ' ')
+            after_pos = after_pos + 1
+        end do
+
         if (after_pos <= len(line)) then
-            if (line(after_pos:after_pos) == '*' .or. line(after_pos:after_pos) == '/' .or. &
-                line(after_pos:after_pos) == '+' .or. line(after_pos:after_pos) == '-') then
-                needs_precedence = .true.
-                return
+            op_after = get_operator_at(line, after_pos, 1)
+            if (len(op_after) > 0) then
+                outer_prec = get_operator_precedence(op_after)
+                ! Parentheses needed if outer operator has higher precedence
+                if (outer_prec > inner_prec) then
+                    needs_precedence = .true.
+                    return
+                end if
             end if
         end if
-        
+
     end function needs_precedence_parentheses
     
     ! Analyze unused variables from source text
