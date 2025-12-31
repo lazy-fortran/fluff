@@ -61,7 +61,7 @@ contains
             "    integer :: x" // new_line('a') // &
             "    x = 42" // new_line('a') // &
             "    print *, x" // new_line('a') // &
-            "end program", &
+            "end program test", &
             [""], 0)
             
         ! Test 4: Real diagnostic generation
