@@ -55,14 +55,20 @@ src/
 ├── fluff_ast/              # fortfront AST wrapper
 │   └── fluff_ast.f90       # Arena and semantic context management
 ├── fluff_rules/            # Rule implementations
-│   ├── fluff_rules.f90     # All F001-F015, P001-P007 rules
-│   └── fluff_rule_types.f90 # Rule type definitions and interfaces
+│   └── fluff_rules.f90     # All F001-F015, P001-P007 rules
+├── fluff_rule_types/       # Rule type definitions
+│   └── fluff_rule_types.f90 # Rule interfaces and base types
 ├── fluff_formatter/        # AST-based code formatter
-│   ├── formatter_visitor.f90 # AST visitor for formatting
-│   └── format_options.f90  # Configuration and options
-├── fluff_lsp_server/       # Language Server Protocol
-│   ├── lsp_protocol.f90    # LSP message handling
-│   └── lsp_diagnostics.f90 # Real-time analysis
+│   ├── fluff_formatter_visitor.f90 # AST visitor for formatting
+│   ├── fluff_formatter.f90         # Main formatter engine
+│   ├── fluff_format_quality.f90    # Format quality analysis
+│   └── fluff_user_feedback.f90     # User-facing formatting feedback
+├── fluff_lsp_*.f90         # LSP server components (in src/ root)
+│   ├── fluff_lsp_server.f90        # Main LSP server
+│   ├── fluff_json_rpc.f90          # JSON-RPC protocol
+│   ├── fluff_lsp_code_actions.f90  # Code actions
+│   ├── fluff_lsp_hover.f90         # Hover information
+│   └── fluff_lsp_goto_definition.f90 # Navigation features
 └── fluff_cli/              # Command-line interface
     └── fluff_cli.f90       # Main entry point
 ```
@@ -70,6 +76,8 @@ src/
 ---
 
 # Rule System Design
+
+**NOTE**: This section describes the **target architecture** for full fortfront integration. Current implementation (December 2025) uses procedure pointers in `rule_info_t` rather than the plugin pattern shown below, as fortfront's semantic analyzer plugin system is not yet fully integrated.
 
 ## Rule Categories
 
@@ -479,9 +487,9 @@ Progress on several fluff features is blocked pending fortfront API enhancements
 
 | fortfront Issue | Required API | Blocks |
 |-----------------|--------------|--------|
-| #2598 | CST trivia traversal | F003 line length, F004-F005 whitespace rules |
-| #2599 | Go-to-definition API | LSP navigation features |
-| #2600 | Enhanced semantic queries | Dead code detection, advanced unused analysis |
+| #2598 | Line/column position API (get_node_line, get_node_column) | F003 line length rule |
+| #2599 | CST trivia traversal API | F004-F005 whitespace rules |
+| #2600 | Source text retrieval API | Formatter CST preservation, context in diagnostics |
 
 ## Current Workarounds
 
