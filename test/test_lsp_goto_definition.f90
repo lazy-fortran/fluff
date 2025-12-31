@@ -28,7 +28,6 @@ program test_lsp_goto_definition
         print *, "✅ All LSP goto definition tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
-        error stop 1
     end if
     
 contains

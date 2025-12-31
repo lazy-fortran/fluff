@@ -831,8 +831,13 @@ contains
         ! Defensive programming - handle empty inputs
         clean_text = trim(text)
         clean_pattern = trim(pattern)
-        
+
         if (len(clean_pattern) == 0) then
+            matches = .false.
+            return
+        end if
+
+        if (len(clean_text) == 0) then
             matches = .false.
             return
         end if
@@ -847,9 +852,12 @@ contains
                 suffix = clean_pattern(2:)
                 suffix_len = len(suffix)
                 text_len = len(clean_text)
-                
-                matches = (suffix_len <= text_len) .and. &
-                         (clean_text(text_len - suffix_len + 1:text_len) == suffix)
+
+                if (suffix_len <= text_len) then
+                    matches = clean_text(text_len - suffix_len + 1:text_len) == suffix
+                else
+                    matches = .false.
+                end if
             end if
         else
             ! Exact match

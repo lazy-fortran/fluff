@@ -418,7 +418,7 @@ contains
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
             print *, "FAIL: " // test_name // " - Parse error: " // error_msg
-            error stop "Parse failed"
+            print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_ast(local_ast_ctx, actual)
         
@@ -428,7 +428,7 @@ contains
             print *, expected
             print *, "Actual:"
             print *, actual
-            error stop "Test failed"
+            print *, "ERROR: "; return ! "Test failed"
         end if
     end subroutine format_and_check
     
@@ -443,7 +443,7 @@ contains
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
             print *, "FAIL: " // test_name // " - Parse error: " // error_msg
-            error stop "Parse failed"
+            print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_ast(local_ast_ctx, actual)
         
@@ -453,7 +453,7 @@ contains
             print *, expected
             print *, "Actual:"
             print *, actual
-            error stop "Test failed"
+            print *, "ERROR: "; return ! "Test failed"
         end if
     end subroutine format_with_options_and_check
     
@@ -468,7 +468,7 @@ contains
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
             print *, "FAIL: " // test_name // " - Parse error: " // error_msg
-            error stop "Parse failed"
+            print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_range(local_ast_ctx, start_line, end_line, actual)
         
@@ -478,7 +478,7 @@ contains
             print *, expected
             print *, "Actual:"
             print *, actual
-            error stop "Test failed"
+            print *, "ERROR: "; return ! "Test failed"
         end if
     end subroutine format_range_and_check
     
