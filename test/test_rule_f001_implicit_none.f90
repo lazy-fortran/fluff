@@ -5,6 +5,8 @@ program test_rule_f001_implicit_none
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists
     implicit none
     
     print *, "Testing F001: Missing implicit none rule..."
@@ -33,6 +35,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f001
         
@@ -46,12 +49,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f001.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f001", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f001.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F001 violation
         found_f001 = .false.
@@ -64,9 +66,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f001.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f001) then
             error stop "Failed: F001 should be triggered for missing implicit none"
@@ -81,6 +81,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f001
         
@@ -95,12 +96,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f001_ok.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f001_ok", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f001_ok.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F001 violation
         found_f001 = .false.
@@ -113,12 +113,11 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f001_ok.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (found_f001) then
-            error stop "Failed: F001 should not be triggered when implicit none is present"
+            error stop "Failed: F001 should not be triggered when implicit none " // &
+                       "is present"
         end if
         
         print *, "  ✓ Has implicit none"
@@ -130,6 +129,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f001
         
@@ -144,12 +144,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f001_mod.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f001_mod", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f001_mod.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F001 violation
         found_f001 = .false.
@@ -162,12 +161,11 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f001_mod.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f001) then
-            error stop "Failed: F001 should be triggered for module missing implicit none"
+            error stop "Failed: F001 should be triggered for module missing " // &
+                       "implicit none"
         end if
         
         print *, "  ✓ Module missing implicit none"
@@ -179,6 +177,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f001
         
@@ -190,12 +189,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f001_sub.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f001_sub", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f001_sub.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F001 violation
         found_f001 = .false.
@@ -208,12 +206,11 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f001_sub.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f001) then
-            error stop "Failed: F001 should be triggered for subroutine missing implicit none"
+            error stop "Failed: F001 should be triggered for subroutine missing " // &
+                       "implicit none"
         end if
         
         print *, "  ✓ Subroutine missing implicit none"
@@ -225,6 +222,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f001
         
@@ -241,12 +239,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f001_interface.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f001_interface", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f001_interface.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check that F001 is NOT triggered for interface blocks
         found_f001 = .false.
@@ -259,9 +256,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f001_interface.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (found_f001) then
             error stop "Failed: F001 should not be triggered for interface blocks"

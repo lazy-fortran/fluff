@@ -1,9 +1,12 @@
 module fluff_rule_f010
     use fluff_ast, only: fluff_ast_context_t
+    use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
-    use fortfront, only: comment_node, goto_node
+    use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
+    use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
+                                 TK_WHITESPACE, TK_COMMENT
     implicit none
     private
 
@@ -16,6 +19,9 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
+        character(len=:), allocatable :: source_text
+        logical :: found
+        type(token_t), allocatable :: tokens(:)
         type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
         integer :: i
@@ -37,6 +43,12 @@ contains
                 call check_legacy_comment(ctx, i, n%text, tmp, violation_count)
             end select
         end do
+
+        call ctx%get_source_text(source_text, found)
+        if (found) then
+            call tokenize_core_with_trivia(source_text, tokens)
+            call scan_arithmetic_if(tokens, tmp, violation_count)
+        end if
 
         allocate (violations(violation_count))
         if (violation_count > 0) violations = tmp(1:violation_count)
@@ -86,5 +98,173 @@ contains
         if (len(s) < n) return
         ok = s(1:n) == prefix
     end function starts_with
+
+    subroutine scan_arithmetic_if(tokens, tmp, violation_count)
+        type(token_t), allocatable, intent(in) :: tokens(:)
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        integer :: idx
+        integer :: line
+        integer :: line_start
+        integer :: first_idx
+        integer :: stmt_idx
+        character(len=:), allocatable :: keyword
+
+        if (.not. allocated(tokens)) return
+        if (size(tokens) <= 0) return
+
+        line = -1
+        do idx = 1, size(tokens)
+            if (tokens(idx)%line == line) cycle
+            line = tokens(idx)%line
+            line_start = idx
+
+            first_idx = first_nontrivia_in_line(tokens, line_start)
+            if (first_idx <= 0) cycle
+
+            stmt_idx = first_idx
+            if (tokens(first_idx)%kind == TK_NUMBER) then
+                stmt_idx = next_nontrivia_same_line(tokens, first_idx + 1)
+                if (stmt_idx <= 0) cycle
+            end if
+
+            if (tokens(stmt_idx)%kind /= TK_KEYWORD) cycle
+            if (.not. allocated(tokens(stmt_idx)%text)) cycle
+            keyword = to_lower_ascii(trim(tokens(stmt_idx)%text))
+            if (keyword /= "if") cycle
+
+            if (.not. is_arithmetic_if_tail(tokens, stmt_idx)) cycle
+
+            call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                                 code="F010", &
+                                 message="Obsolete feature: arithmetic IF", &
+                                 file_path=current_filename, &
+                                 location=token_location(tokens(stmt_idx)), &
+                                 severity=SEVERITY_WARNING))
+        end do
+    end subroutine scan_arithmetic_if
+
+    logical function is_arithmetic_if_tail(tokens, stmt_idx) result(ok)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+
+        integer :: line
+        integer :: last_close_paren
+        integer :: idx_label1
+        integer :: idx_comma1
+        integer :: idx_label2
+        integer :: idx_comma2
+        integer :: idx_label3
+        integer :: j
+
+        ok = .false.
+        line = tokens(stmt_idx)%line
+
+        last_close_paren = find_last_close_paren(tokens, stmt_idx, line)
+        if (last_close_paren <= 0) return
+
+        idx_label1 = next_nontrivia_same_line(tokens, last_close_paren + 1)
+        if (idx_label1 <= 0) return
+        if (tokens(idx_label1)%kind /= TK_NUMBER) return
+
+        idx_comma1 = next_nontrivia_same_line(tokens, idx_label1 + 1)
+        if (idx_comma1 <= 0) return
+        if (tokens(idx_comma1)%kind /= TK_OPERATOR) return
+        if (.not. allocated(tokens(idx_comma1)%text)) return
+        if (tokens(idx_comma1)%text /= ",") return
+
+        idx_label2 = next_nontrivia_same_line(tokens, idx_comma1 + 1)
+        if (idx_label2 <= 0) return
+        if (tokens(idx_label2)%kind /= TK_NUMBER) return
+
+        idx_comma2 = next_nontrivia_same_line(tokens, idx_label2 + 1)
+        if (idx_comma2 <= 0) return
+        if (tokens(idx_comma2)%kind /= TK_OPERATOR) return
+        if (.not. allocated(tokens(idx_comma2)%text)) return
+        if (tokens(idx_comma2)%text /= ",") return
+
+        idx_label3 = next_nontrivia_same_line(tokens, idx_comma2 + 1)
+        if (idx_label3 <= 0) return
+        if (tokens(idx_label3)%kind /= TK_NUMBER) return
+
+        do j = idx_label3 + 1, size(tokens)
+            if (tokens(j)%line /= line) exit
+            if (tokens(j)%kind == TK_NEWLINE) cycle
+            if (tokens(j)%kind == TK_WHITESPACE) cycle
+            if (tokens(j)%kind == TK_COMMENT) cycle
+            return
+        end do
+
+        ok = .true.
+    end function is_arithmetic_if_tail
+
+    integer function find_last_close_paren(tokens, stmt_idx, line) result(idx)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+        integer, intent(in) :: line
+
+        integer :: j
+
+        idx = 0
+        do j = stmt_idx + 1, size(tokens)
+            if (tokens(j)%line /= line) exit
+            if (tokens(j)%kind /= TK_OPERATOR) cycle
+            if (.not. allocated(tokens(j)%text)) cycle
+            if (tokens(j)%text == ")") idx = j
+        end do
+    end function find_last_close_paren
+
+    integer function first_nontrivia_in_line(tokens, start_idx) result(idx)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: start_idx
+
+        integer :: line
+        integer :: i
+
+        idx = 0
+        line = tokens(start_idx)%line
+        do i = start_idx, size(tokens)
+            if (tokens(i)%line /= line) exit
+            if (tokens(i)%kind == TK_NEWLINE) cycle
+            if (tokens(i)%kind == TK_WHITESPACE) cycle
+            idx = i
+            return
+        end do
+    end function first_nontrivia_in_line
+
+    integer function next_nontrivia_same_line(tokens, start_idx) result(idx)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: start_idx
+
+        integer :: line
+        integer :: i
+
+        idx = 0
+        if (start_idx <= 0) return
+        if (start_idx > size(tokens)) return
+        line = tokens(start_idx)%line
+
+        do i = start_idx, size(tokens)
+            if (tokens(i)%line /= line) exit
+            if (tokens(i)%kind == TK_NEWLINE) cycle
+            if (tokens(i)%kind == TK_WHITESPACE) cycle
+            idx = i
+            return
+        end do
+    end function next_nontrivia_same_line
+
+    pure function token_location(tok) result(location)
+        type(token_t), intent(in) :: tok
+        type(source_range_t) :: location
+        integer :: end_col
+
+        location%start%line = tok%line
+        location%start%column = tok%column
+        location%end%line = tok%line
+        end_col = tok%column
+        if (allocated(tok%text)) end_col = end_col + len(tok%text) - 1
+        location%end%column = end_col
+    end function token_location
 
 end module fluff_rule_f010

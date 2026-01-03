@@ -5,6 +5,8 @@ program test_rule_f010_obsolete_features
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists
     implicit none
     
     print *, "Testing F010: Obsolete language features rule..."
@@ -30,6 +32,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f010
 
@@ -45,12 +48,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f010.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f010", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f010.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F010 violation
         found_f010 = .false.
@@ -63,9 +65,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f010.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f010) then
             error stop "Failed: F010 should be triggered for GOTO statement"
@@ -80,6 +80,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f010
 
@@ -100,12 +101,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f010_computed.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f010_computed", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f010_computed.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F010 violation
         found_f010 = .false.
@@ -118,9 +118,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f010_computed.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f010) then
             error stop "Failed: F010 should be triggered for computed GOTO"
@@ -135,6 +133,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f010
 
@@ -161,12 +160,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f010_ok.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f010_ok", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f010_ok.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F010 violation
         found_f010 = .false.
@@ -179,9 +177,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f010_ok.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (found_f010) then
             error stop "Failed: F010 should not be triggered for modern control flow"
@@ -192,8 +188,48 @@ contains
     end subroutine test_modern_control_flow
 
     subroutine test_arithmetic_if()
-        ! Arithmetic IF test placeholder (advanced obsolete feature)
-        print *, "  Arithmetic IF statement (not implemented)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+        integer :: i
+        logical :: found_f010
+
+        test_code = "program test" // new_line('a') // &
+                    "    implicit none" // new_line('a') // &
+                    "    integer :: x" // new_line('a') // &
+                    "    x = -1" // new_line('a') // &
+                    "    if (x) 10, 20, 30" // new_line('a') // &
+                    "10  print *, x" // new_line('a') // &
+                    "20  print *, x" // new_line('a') // &
+                    "30  print *, x" // new_line('a') // &
+                    "end program test"
+
+        linter = create_linter_engine()
+
+        call make_temp_fortran_path("fluff_test_f010_arith_if", path)
+        call write_text_file(path, test_code)
+
+        call linter%lint_file(path, diagnostics, error_msg)
+
+        found_f010 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F010") then
+                    found_f010 = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(path)
+
+        if (.not. found_f010) then
+            error stop "Failed: F010 should be triggered for arithmetic IF"
+        end if
+
+        print *, "  Arithmetic IF statement"
     end subroutine test_arithmetic_if
 
 end program test_rule_f010_obsolete_features

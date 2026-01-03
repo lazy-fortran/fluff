@@ -5,6 +5,8 @@ program test_rule_f012_naming_conventions
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists
     implicit none
     
     print *, "Testing F012: Inconsistent naming conventions rule..."
@@ -30,6 +32,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f012
         
@@ -51,12 +54,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f012.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f012", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f012.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F012 violation
         found_f012 = .false.
@@ -69,9 +71,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f012.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f012) then
             error stop "Failed: F012 should be triggered for inconsistent naming"
@@ -86,6 +86,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f012
         
@@ -107,12 +108,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f012_snake.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f012_snake", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f012_snake.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F012 violation
         found_f012 = .false.
@@ -125,9 +125,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f012_snake.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (found_f012) then
             error stop "Failed: F012 should not be triggered for consistent snake_case"
@@ -142,6 +140,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f012
         
@@ -163,12 +162,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f012_camel.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f012_camel", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f012_camel.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F012 violation
         found_f012 = .false.
@@ -181,9 +179,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f012_camel.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (found_f012) then
             error stop "Failed: F012 should not be triggered for consistent camelCase"
@@ -198,6 +194,7 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
         integer :: i
         logical :: found_f012
         
@@ -218,12 +215,11 @@ contains
         linter = create_linter_engine()
         
         ! Create temporary file
-        open(unit=99, file="test_f012_mixed.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
+        call make_temp_fortran_path("fluff_test_f012_mixed", path)
+        call write_text_file(path, test_code)
         
         ! Lint the file
-        call linter%lint_file("test_f012_mixed.f90", diagnostics, error_msg)
+        call linter%lint_file(path, diagnostics, error_msg)
         
         ! Check for F012 violation
         found_f012 = .false.
@@ -236,9 +232,7 @@ contains
             end do
         end if
         
-        ! Clean up
-        open(unit=99, file="test_f012_mixed.f90", status="old")
-        close(99, status="delete")
+        call delete_file_if_exists(path)
         
         if (.not. found_f012) then
             error stop "Failed: F012 should be triggered for mixed naming styles"
