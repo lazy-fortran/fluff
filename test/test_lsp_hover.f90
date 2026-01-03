@@ -1,6 +1,7 @@
 program test_lsp_hover
     use fluff_ast
     use fluff_lsp_hover
+    use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
     
     integer :: total_tests, passed_tests
@@ -22,7 +23,8 @@ program test_lsp_hover
     print *, "=== LSP Hover Test Summary ==="
     print *, "Total tests: ", total_tests
     print *, "Passed tests: ", passed_tests
-    print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
+    print *, "Success rate: ", real(passed_tests, dp)/real(total_tests, dp)* &
+        100.0_dp, "%"
     
     if (passed_tests == total_tests) then
         print *, "✅ All LSP hover tests passed!"

@@ -2,15 +2,16 @@ program test_lsp_code_actions
     use fluff_linter
     use fluff_diagnostics
     use fluff_lsp_code_actions
+    use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
-    
+
     integer :: total_tests, passed_tests
-    
+
     print *, "=== LSP Code Actions Test Suite (RED Phase) ==="
-    
+
     total_tests = 0
     passed_tests = 0
-    
+
     ! Test code action functionality
     call test_quick_fix_generation()
     call test_code_action_formatting()
@@ -18,39 +19,40 @@ program test_lsp_code_actions
     call test_multi_fix_scenarios()
     call test_fix_all_functionality()
     call test_code_action_context()
-    
+
     print *, ""
     print *, "=== LSP Code Actions Test Summary ==="
     print *, "Total tests: ", total_tests
     print *, "Passed tests: ", passed_tests
-    print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
-    
+    print *, "Success rate: ", real(passed_tests, dp)/real(total_tests, dp)* &
+        100.0_dp, "%"
+
     if (passed_tests == total_tests) then
         print *, "✅ All LSP code action tests passed!"
     else
         print *, "❌ Some tests failed (expected in RED phase)"
     end if
-    
+
 contains
-    
+
     subroutine test_quick_fix_generation()
         print *, ""
         print *, "Testing quick fix generation from diagnostics..."
-        
+
         ! Test 1: Generate fix for missing implicit none
         call run_fix_test("Missing implicit none fix", &
             "program test" // new_line('a') // &
             "integer :: x" // new_line('a') // &
             "end program", &
             "F001", "Add implicit none", 1)
-            
+
         ! Test 2: Generate fix for trailing whitespace
         call run_fix_test("Trailing whitespace fix", &
             "program test    " // new_line('a') // &
             "implicit none" // new_line('a') // &
             "end program", &
             "F004", "Remove trailing whitespace", 1)
-            
+
         ! Test 3: Generate fix for inconsistent indentation
         call run_fix_test("Indentation fix", &
             "program test" // new_line('a') // &
