@@ -2,7 +2,7 @@ module fluff_rule_f005
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
-    use fluff_rule_file_context, only: current_filename, current_source_text
+    use fluff_rule_file_context, only: current_filename
     use fluff_rule_trivia_utils, only: location_buffer_t, location_buffer_init, &
                                        location_buffer_push, location_buffer_finish, &
                                        text_has_space_and_tab
@@ -20,16 +20,19 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
+        character(len=:), allocatable :: source_text
+        logical :: found
         type(token_t), allocatable :: tokens(:)
         type(source_range_t), allocatable :: locations(:)
         integer :: i
 
-        if (.not. allocated(current_source_text)) then
+        call ctx%get_source_text(source_text, found)
+        if (.not. found) then
             allocate (violations(0))
             return
         end if
 
-        call tokenize_core_with_trivia(current_source_text, tokens)
+        call tokenize_core_with_trivia(source_text, tokens)
 
         call collect_mixed_indentation(tokens, locations)
         if (size(locations) <= 0) then

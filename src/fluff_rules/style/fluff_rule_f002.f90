@@ -2,7 +2,8 @@ module fluff_rule_f002
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
-    use fluff_rule_file_context, only: current_filename, current_source_text
+    use fluff_rule_file_context, only: current_filename
+    use fluff_rule_diagnostic_utils, only: push_diagnostic
     implicit none
     private
 
@@ -15,112 +16,99 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
+        type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
 
-        if (.not. allocated(current_source_text)) then
-            allocate (violations(0))
-            return
-        end if
-
-        allocate (temp_violations(100))
+        allocate (tmp(0))
         violation_count = 0
 
-        call analyze_indentation_from_text(current_source_text, temp_violations, &
-                                           violation_count)
+        call analyze_indentation(ctx, tmp, violation_count)
 
         allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
-        end if
+        if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f002_indentation
 
-    integer function count_leading_spaces(line) result(count)
-        character(len=*), intent(in) :: line
-        integer :: i
+    subroutine analyze_indentation(ctx, tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
 
-        count = 0
+        integer :: indent_unit
+        integer :: line_num
+        integer :: indent_cols
+        logical :: found
+        character(len=:), allocatable :: line_text
+
+        indent_unit = 0
+        line_num = 1
+        do
+            call ctx%get_source_line(line_num, line_text, found)
+            if (.not. found) exit
+            if (.not. is_code_line(line_text)) then
+                line_num = line_num + 1
+                cycle
+            end if
+
+            indent_cols = count_leading_indent_columns(line_text)
+            if (indent_cols > 0 .and. indent_unit == 0) indent_unit = indent_cols
+
+            if (indent_unit > 0 .and. indent_cols > 0) then
+                if (mod(indent_cols, indent_unit) /= 0) then
+                    call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                                         code="F002", &
+                                   message="Inconsistent indentation levels detected", &
+                                         file_path=current_filename, &
+                                         location=line_location(line_num), &
+                                         severity=SEVERITY_WARNING))
+                    return
+                end if
+            end if
+            line_num = line_num + 1
+        end do
+    end subroutine analyze_indentation
+
+    pure logical function is_code_line(line) result(is_code)
+        character(len=*), intent(in) :: line
+
+        integer :: i
+        character(len=1) :: ch
+
+        is_code = .false.
         do i = 1, len(line)
-            if (line(i:i) == " ") then
-                count = count + 1
+            ch = line(i:i)
+            if (ch == " " .or. ch == achar(9) .or. ch == achar(13)) cycle
+            is_code = (ch /= "!")
+            return
+        end do
+    end function is_code_line
+
+    pure integer function count_leading_indent_columns(line) result(cols)
+        character(len=*), intent(in) :: line
+
+        integer :: i
+        character(len=1) :: ch
+
+        cols = 0
+        do i = 1, len(line)
+            ch = line(i:i)
+            if (ch == " ") then
+                cols = cols + 1
+            else if (ch == achar(9)) then
+                cols = cols + 4
             else
                 exit
             end if
         end do
-    end function count_leading_spaces
+    end function count_leading_indent_columns
 
-    subroutine analyze_indentation_from_text(source_text, violations, violation_count)
-        character(len=*), intent(in) :: source_text
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
-
-        character(len=1000) :: line
-        integer :: pos, next_pos, line_num
-        integer :: indent_levels(1000)
-        integer :: line_count
-        integer :: i, j
-        logical :: has_inconsistency
+    pure function line_location(line_num) result(location)
+        integer, intent(in) :: line_num
         type(source_range_t) :: location
 
-        pos = 1
-        line_num = 0
-        line_count = 0
-
-        do while (pos <= len(source_text))
-            next_pos = index(source_text(pos:), new_line("a"))
-            if (next_pos == 0) then
-                line = source_text(pos:)
-                pos = len(source_text) + 1
-            else
-                line = source_text(pos:pos + next_pos - 2)
-                pos = pos + next_pos
-            end if
-
-            line_num = line_num + 1
-            if (len_trim(line) > 0 .and. line(1:1) /= "!") then
-                line_count = line_count + 1
-                indent_levels(line_count) = count_leading_spaces(line)
-            end if
-        end do
-
-        has_inconsistency = .false.
-        if (line_count >= 2) then
-            do i = 1, line_count - 1
-                do j = i + 1, line_count
-                    if (indent_levels(i) > 0 .and. indent_levels(j) > 0) then
-                        if (indent_levels(i) /= indent_levels(j)) then
-                            if (mod(indent_levels(i), 4) /= &
-                                mod(indent_levels(j), 4)) then
-                                has_inconsistency = .true.
-                                exit
-                            end if
-                        end if
-                    end if
-                end do
-                if (has_inconsistency) exit
-            end do
-        end if
-
-        if (.not. has_inconsistency) then
-            return
-        end if
-
-        violation_count = violation_count + 1
-        if (violation_count <= size(violations)) then
-            location%start%line = 1
-            location%start%column = 1
-            location%end%line = 1
-            location%end%column = 1
-
-            violations(violation_count) = create_diagnostic( &
-                                          code="F002", &
-                                          message="Inconsistent indentation levels "// &
-                                          "detected", &
-                                          file_path=current_filename, &
-                                          location=location, &
-                                          severity=SEVERITY_WARNING &
-                                          )
-        end if
-    end subroutine analyze_indentation_from_text
+        location%start%line = line_num
+        location%start%column = 1
+        location%end%line = line_num
+        location%end%column = 1
+    end function line_location
 
 end module fluff_rule_f002
