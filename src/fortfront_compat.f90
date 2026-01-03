@@ -1,7 +1,16 @@
 module fortfront_compat
-    ! Compatibility layer for missing fortfront APIs
-    ! These are stub implementations that allow fluff to build
-    ! while proper fortfront integration is developed.
+    ! Compatibility layer for fortfront APIs
+    !
+    ! fortfront issues #2612 and #2613 are now FIXED:
+    ! - #2612: get_children() now returns proper child indices
+    ! - #2613: Symbol table API (get_symbols_in_scope, lookup_symbol, etc.) available
+    !
+    ! However, the symbol table API functions take scope_stack_t as input, while
+    ! fluff uses semantic_context_t which wraps different internal state. Full
+    ! integration requires exposing scope_stack_t through semantic_context_t.
+    !
+    ! Current stubs allow fluff to build; implementations will be updated when
+    ! fluff's semantic_context_t is extended to expose the scope stack.
     use, intrinsic :: iso_fortran_env, only: dp => real64
     use fortfront, only: ast_arena_t, semantic_context_t, identifier_node
     implicit none
@@ -61,25 +70,30 @@ contains
     end function get_identifier_name
 
     ! Get symbols defined in a given scope
+    ! NOTE: fortfront now provides get_symbols_in_scope via symbol_table_api,
+    ! but it takes scope_stack_t. This stub remains until fluff semantic_context_t
+    ! exposes scope_stack_t access.
     subroutine get_symbols_in_scope(ctx, scope_type, symbols, count)
         type(semantic_context_t), intent(in) :: ctx
         integer, intent(in) :: scope_type
         type(compat_symbol_info_t), allocatable, intent(out) :: symbols(:)
         integer, intent(out) :: count
 
-        ! Stub implementation - returns empty list
+        ! Stub - returns empty list until scope_stack_t integration
         allocate(symbols(0))
         count = 0
     end subroutine get_symbols_in_scope
 
     ! Check if an identifier is defined in the current context
+    ! NOTE: fortfront now provides is_symbol_defined via symbol_table_api,
+    ! but it takes scope_stack_t. This stub remains until integration.
     function is_identifier_defined_direct(arena, ctx, name) result(is_defined)
         type(ast_arena_t), intent(in) :: arena
         type(semantic_context_t), intent(in) :: ctx
         character(len=*), intent(in) :: name
         logical :: is_defined
 
-        ! Stub implementation - assume all identifiers are defined
+        ! Stub - assume all identifiers are defined until scope_stack_t integration
         is_defined = .true.
     end function is_identifier_defined_direct
 
