@@ -2,7 +2,7 @@
 
 **MANDATORY REQUIREMENTS**
 - **fortfront Foundation**: All analysis MUST use fortfront AST API - no text-based parsing
-- **fmp Dependency Management**: fmp automatically handles fortfront integration and static linking
+- **fpm Dependency Management**: fpm handles fortfront integration and static linking
 - **Plugin Architecture**: All rules implement via fortfront semantic pipeline plugins
 - **Incremental Analysis**: Support for caching and partial re-analysis
 
@@ -23,11 +23,11 @@
 
 ## Foundation Layer
 
-fluff is built as a **statically-linked executable** using fmp's automatic dependency management:
+fluff is built as a **statically-linked executable** using fpm's automatic dependency management:
 
 ```
-fluff (single executable - built by fmp)
-    └── fortfront (managed by fmp dependency system)
+fluff (single executable - built by fpm)
+    └── fortfront (managed by fpm dependency system)
         ├── AST/CST infrastructure
         ├── Semantic analysis pipeline
         ├── Type inference system
@@ -35,10 +35,10 @@ fluff (single executable - built by fmp)
 ```
 
 **Build Architecture Elegance**:
-- **fmp.toml Configuration**: Simple `fortfront = { path = "../fortfront" }` declaration
-- **Automatic Linking**: fmp handles all static linking without manual configuration
+- **fpm.toml Configuration**: fortfront is declared as a git dependency
+- **Automatic Linking**: fpm handles all static linking without manual configuration
 - **Zero Build Complexity**: Single `fpm build` command produces complete executable
-- **Dependency Resolution**: fmp automatically resolves and builds fortfront locally
+- **Dependency Resolution**: fpm automatically resolves and builds fortfront
 
 ## Key Design Principles
 
@@ -449,9 +449,9 @@ end module
 - F007: Undefined variables - uses semantic context
 - F008: Missing intent - uses AST parameter nodes
 
-### Pending Migrations (Blocked by fortfront)
+### Pending Migrations (Unblocked Upstream)
 - F001: implicit none detection → Use AST implicit_statement nodes
-- F003: Line length → Use CST with position information
+- F003: Line length → Use CST with position information + source spans
 - F004: Trailing whitespace → Use CST trivia nodes
 - F005: Mixed tabs/spaces → Use CST whitespace trivia
 
@@ -479,24 +479,14 @@ if (ast_node_type(node) == IMPLICIT_STATEMENT_NODE) then
 
 ---
 
-# Blocking Dependencies
+# Upstream Dependencies
 
-## fortfront API Requirements
+The core upstream APIs fluff needed are now available in fortfront:
 
-Progress on several fluff features is blocked pending fortfront API enhancements:
-
-| fortfront Issue | Required API | Blocks |
-|-----------------|--------------|--------|
-| #2598 | Line/column position API (get_node_line, get_node_column) | F003 line length rule |
-| #2599 | CST trivia traversal API | F004-F005 whitespace rules |
-| #2600 | Source text retrieval API | Formatter CST preservation, context in diagnostics |
-
-## Current Workarounds
-
-Until fortfront APIs are available:
-- F003-F005 rules use stub implementations that skip analysis
-- Go-to-definition returns partial results for local symbols only
-- Dead code detection limited to basic unused variable patterns
+- #2599 (CLOSED): CST trivia traversal API
+- #2600 (CLOSED): source text retrieval API
+- #2612 (CLOSED): parent_index propagation (enables real AST child traversal)
+- #2613 (CLOSED): symbol table query API
 
 ## Tracking
 

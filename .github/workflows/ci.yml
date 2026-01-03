@@ -17,12 +17,6 @@ jobs:
         with:
           path: fluff
 
-      - name: Checkout fortfront
-        uses: actions/checkout@v4
-        with:
-          repository: lazy-fortran/fortfront
-          path: fortfront
-
       - name: Install dependencies
         run: |
           sudo apt-get update

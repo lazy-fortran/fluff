@@ -1,10 +1,10 @@
 # fluff Development Roadmap
 
 **MANDATORY FOUNDATION REQUIREMENTS**
-- **fortfront FIRST**: Must wait for fortfront API stabilization (Issues #416-418)
+- **fortfront FIRST**: Use fortfront public APIs for all analysis (no text parsing)
 - **AST-Based Analysis**: All rules must use fortfront AST API - NO text-based parsing
 - **Clean Architecture**: Separate rule engine from fortfront integration cleanly
-- **fmp Dependency Management**: fmp automatically handles fortfront integration and linking
+- **fpm Dependency Management**: fpm handles fortfront integration and linking
 
 This roadmap ensures fluff leverages fortfront's AST infrastructure properly.
 
@@ -12,13 +12,11 @@ This roadmap ensures fluff leverages fortfront's AST infrastructure properly.
 
 **CRITICAL**: Wait for fortfront static library, then integrate properly
 
-### Step 1: Wait for fortfront Foundation
-- **fortfront #416**: Wait for stable API availability (fmp already handles linking)
-- **fortfront #417**: Wait for pure Fortran module interfaces
-- **fortfront #418**: Wait for validation tests completion
-- **Verify**: fortfront CST/AST split implementation status
+### Step 1: fortfront Foundation
+- Keep fortfront integration on the public API surface.
+- Track remaining glue work in fluff issue #79.
 
-**Build Architecture Already Complete**: fmp.toml already includes `fortfront = { path = "../fortfront" }` which automatically handles all build and linking complexity.
+**Build Architecture**: fpm.toml declares fortfront as a git dependency, which handles build and linking.
 
 ### Step 2: Remove ALL Text-Based Analysis (#64)
 - **#64**: Remove all text-based analysis from fluff (Technical Debt)
@@ -146,9 +144,9 @@ Each phase completion should achieve:
 
 ### Build Configuration (Already Complete)
 ```toml
-# fluff/fpm.toml (CURRENT STATE - NO CHANGES NEEDED)
+# fluff/fpm.toml (CURRENT STATE)
 [dependencies]
-fortfront = { path = "../fortfront" }
+fortfront = { git = "ssh://git@github.com/lazy-fortran/fortfront.git", branch = "main" }
 stdlib = "*"
 
 [[executable]]
@@ -157,7 +155,7 @@ source-dir = "app"
 main = "main.f90"
 ```
 
-**fmp Automatically Handles**:
+**fpm Automatically Handles**:
 - Static linking of fortfront dependency
 - All compilation flags and optimization
 - Dependency resolution and building

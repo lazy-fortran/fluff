@@ -448,7 +448,7 @@ gfortran --version
 
 # Clean and rebuild
 fpm clean
-fmp build
+fpm build
 ```
 
 **Problem**: Missing dependencies

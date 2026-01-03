@@ -2,7 +2,7 @@
 
 **MANDATORY REQUIREMENTS**
 - **fortfront AST Only**: ALL analysis MUST use fortfront AST API - NO text processing
-- **fmp Dependency Management**: fmp automatically handles fortfront dependency and static linking
+- **fpm Dependency Management**: fpm handles the fortfront dependency and static linking
 - **Incremental Changes**: Every PR must leave fluff in working state
 - **Clean Legacy**: Remove old code in same PR that adds replacement
 
@@ -17,8 +17,8 @@ fluff is a Fortran linter and formatter inspired by Python's ruff, providing:
 ## Architecture Overview
 
 ```
-fluff (static executable - built by fmp)
-    └── fortfront (managed by fmp as dependency)
+fluff (static executable - built by fpm)
+    └── fortfront (managed by fpm as dependency)
         ├── AST/CST infrastructure
         ├── Semantic analysis pipeline  
         ├── Type inference
@@ -26,8 +26,8 @@ fluff (static executable - built by fmp)
 ```
 
 **Key Architectural Simplifications**:
-- **fmp Dependency Management**: fmp.toml declares `fortfront = { path = "../fortfront" }` 
-- **Automatic Static Linking**: fmp handles all compilation and linking automatically
+- **fpm Dependency Management**: fpm.toml declares fortfront as a git dependency
+- **Automatic Static Linking**: fpm handles all compilation and linking automatically
 - **Zero Build Complexity**: No manual build configuration required
 - **Single Command Build**: `fpm build` produces the complete static executable
 
