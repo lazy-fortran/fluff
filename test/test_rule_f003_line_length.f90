@@ -3,7 +3,7 @@ program test_rule_f003_line_length
     use fluff_config, only: create_default_config, fluff_config_t
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
-    use fluff_rule_f003, only: f003_visual_columns
+    use fluff_visual_columns, only: visual_columns
     implicit none
 
     print *, "Testing F003: Line too long rule..."
@@ -318,7 +318,7 @@ contains
         logical :: found_f003, found_location
 
         long_line = achar(9)//"real :: x = 0.0 ! "//repeat("a", 90)
-        expected_end_col = f003_visual_columns(long_line)
+        expected_end_col = visual_columns(long_line)
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
