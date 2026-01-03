@@ -146,7 +146,7 @@ Each phase completion should achieve:
 ```toml
 # fluff/fpm.toml (CURRENT STATE)
 [dependencies]
-fortfront = { git = "ssh://git@github.com/lazy-fortran/fortfront.git", branch = "main" }
+fortfront = { git = "https://github.com/lazy-fortran/fortfront.git", branch = "main" }
 stdlib = "*"
 
 [[executable]]
