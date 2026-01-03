@@ -7,7 +7,7 @@ program test_lsp_diagnostics
     
     integer :: total_tests, passed_tests
     
-    print *, "=== LSP Diagnostic Publishing Test Suite (RED Phase) ==="
+    print *, "=== LSP Diagnostic Publishing Test Suite ==="
     
     total_tests = 0
     passed_tests = 0
@@ -27,10 +27,12 @@ program test_lsp_diagnostics
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All LSP diagnostic tests passed!"
-    else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "All LSP diagnostic tests passed!"
+        stop 0
     end if
+
+    print *, "Some LSP diagnostic tests failed!"
+    error stop 1
     
 contains
     
@@ -52,7 +54,7 @@ contains
             "integer :: x, y" // new_line('a') // &
             "x = 1" // new_line('a') // &
             "end program", &
-            [""], 2)  ! Adjust to actual count from real linter
+            [""], 3)
             
         ! Test 3: Clean code with no diagnostics
         call run_real_diagnostic_test("Clean code", &
@@ -146,7 +148,8 @@ contains
         
         ! Test 1: Track diagnostics across multiple files
         call run_multifile_test("Multiple file tracking", &
-            ["file:///src/main.f90 ", "file:///src/utils.f90", "file:///src/types.f90"], &
+            ["file:///src/main.f90 ", "file:///src/utils.f90", &
+             "file:///src/types.f90"], &
             [2, 1, 3], 3)
             
         ! Test 2: Cross-file dependency diagnostics
@@ -186,7 +189,8 @@ contains
     ! Helper subroutines for testing
     ! Old mock test functions removed - using run_real_diagnostic_test instead
     
-    subroutine run_real_diagnostic_test(test_name, code_content, expected_codes, expected_count)
+    subroutine run_real_diagnostic_test(test_name, code_content, expected_codes, &
+                                        expected_count)
         character(len=*), intent(in) :: test_name, code_content
         character(len=*), intent(in) :: expected_codes(:)
         integer, intent(in) :: expected_count
@@ -194,14 +198,19 @@ contains
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg, temp_file
+        character(len=128) :: temp_path
         integer :: unit, iostat, i, actual_count
+        integer :: clock_count, clock_rate, clock_max
         logical :: found_expected
         
         total_tests = total_tests + 1
         
-        ! Create temporary file with test code
-        temp_file = "temp_test.f90"
-        open(newunit=unit, file=temp_file, status='replace', action='write', iostat=iostat)
+        call system_clock(count=clock_count, count_rate=clock_rate, count_max=clock_max)
+        write(temp_path, '(A,I0,A)') "/tmp/fluff_lsp_diag_", clock_count, ".f90"
+        temp_file = trim(temp_path)
+
+        open(newunit=unit, file=temp_file, status='replace', action='write', &
+             iostat=iostat)
         if (iostat /= 0) then
             print *, "  FAIL: ", test_name, " - Could not create temp file"
             return
@@ -238,7 +247,8 @@ contains
         
         ! Check if we have the expected number of diagnostics
         if (actual_count /= expected_count) then
-            print *, "  FAIL: ", test_name, " - Expected ", expected_count, ", got ", actual_count
+            print *, "  FAIL: ", test_name, " - Expected ", expected_count, ", got ", &
+                actual_count
             return
         end if
         
@@ -247,7 +257,8 @@ contains
         if (expected_count > 0 .and. len_trim(expected_codes(1)) > 0) then
             ! Just check that we got some diagnostics with codes
             do i = 1, size(diagnostics)
-                if (.not. allocated(diagnostics(i)%code) .or. len_trim(diagnostics(i)%code) == 0) then
+                if (.not. allocated(diagnostics(i)%code) .or. &
+                    len_trim(diagnostics(i)%code) == 0) then
                     found_expected = .false.
                     exit
                 end if
@@ -255,7 +266,8 @@ contains
         end if
         
         if (found_expected) then
-            print *, "  PASS: ", test_name, " - Generated ", actual_count, " diagnostics"
+            print *, "  PASS: ", test_name, " - Generated ", actual_count, &
+                " diagnostics"
             passed_tests = passed_tests + 1
         else
             print *, "  FAIL: ", test_name, " - Missing expected diagnostic codes"
@@ -263,7 +275,8 @@ contains
         
     end subroutine run_real_diagnostic_test
     
-    subroutine run_format_test(test_name, severity, start_line, start_char, end_line, end_char, message, code, severity_name)
+    subroutine run_format_test(test_name, severity, start_line, start_char, end_line, &
+                               end_char, message, code, severity_name)
         character(len=*), intent(in) :: test_name, message, code, severity_name
         integer, intent(in) :: severity, start_line, start_char, end_line, end_char
         
@@ -272,9 +285,9 @@ contains
         
         total_tests = total_tests + 1
         
-        ! Format diagnostic for LSP (placeholder)
-        call format_lsp_diagnostic(severity, start_line, start_char, end_line, end_char, &
-                                  message, code, formatted_diagnostic, success)
+        call format_lsp_diagnostic(severity, start_line, start_char, end_line, &
+                                   end_char, message, code, formatted_diagnostic, &
+                                   success)
         
         if (success .and. len(formatted_diagnostic) > 0) then
             print *, "  PASS: ", test_name, " - Formatted as ", severity_name
@@ -357,8 +370,8 @@ contains
         
         total_tests = total_tests + 1
         
-        ! Test real-time diagnostic updates (placeholder)
-        call test_realtime_diagnostics(uri, operation, before_count, actual_after, success)
+        call test_realtime_diagnostics(uri, operation, before_count, actual_after, &
+                                       success)
         
         if (success .and. actual_after == after_count) then
             print *, "  PASS: ", test_name, " - ", before_count, " -> ", actual_after
@@ -372,8 +385,8 @@ contains
     ! Diagnostic-related JSON-RPC implementations directly in test
     ! Mock diagnostic generation removed - using real linter engine instead
     
-    subroutine format_lsp_diagnostic(severity, start_line, start_char, end_line, end_char, &
-                                    message, code, formatted, success)
+    subroutine format_lsp_diagnostic(severity, start_line, start_char, end_line, &
+                                     end_char, message, code, formatted, success)
         integer, intent(in) :: severity, start_line, start_char, end_line, end_char
         character(len=*), intent(in) :: message, code
         character(len=:), allocatable, intent(out) :: formatted
@@ -469,7 +482,8 @@ contains
         
     end subroutine test_multifile_diagnostics
     
-    subroutine test_realtime_diagnostics(uri, operation, before_count, after_count, success)
+    subroutine test_realtime_diagnostics(uri, operation, before_count, after_count, &
+                                         success)
         character(len=*), intent(in) :: uri, operation
         integer, intent(in) :: before_count
         integer, intent(out) :: after_count
