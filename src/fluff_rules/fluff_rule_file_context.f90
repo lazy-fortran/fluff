@@ -21,7 +21,11 @@ contains
         current_filename = filename
         current_source_text = source_text
         if (present(line_length)) then
-            if (line_length > 0) current_line_length = line_length
+            if (line_length > 0) then
+                current_line_length = line_length
+            else
+                current_line_length = 88
+            end if
         else
             current_line_length = 88
         end if
