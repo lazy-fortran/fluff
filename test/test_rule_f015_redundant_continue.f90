@@ -48,7 +48,7 @@ contains
                    "        print *, i" // new_line('a') // &
                    "    end do" // new_line('a') // &
                    "    " // new_line('a') // &
-                   "10  continue" // new_line('a') // &           ! Redundant labeled continue
+                   "10  continue" // new_line('a') // &
                    "end program test"
         
         linter = create_linter_engine()
@@ -126,7 +126,8 @@ contains
         call delete_file_if_exists(path)
         
         if (found_f015) then
-            error stop "Failed: F015 should not be triggered when no continue statements"
+            error stop "Failed: F015 should not be triggered when no continue " // &
+                       "statements"
         end if
         
         print *, "  ✓ No continue statements"

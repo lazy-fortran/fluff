@@ -37,12 +37,16 @@ contains
         logical :: found_f013
         
         ! Test multiple statements per line
-        
+
+        ! Multiple statements:
+        ! - assignment chain with semicolons
+        ! - single-line IF with semicolons
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: x, y, z" // new_line('a') // &
-                   "    x = 10; y = 20; z = 30" // new_line('a') // &  ! Multiple statements
-                   "    if (x > 5) print *, x; print *, y" // new_line('a') // &  ! Multiple statements
+                   "    x = 10; y = 20; z = 30" // new_line('a') // &
+                   "    if (x > 5) print *, x; " // &
+                   "print *, y" // new_line('a') // &
                    "    print *, z" // new_line('a') // &
                    "end program test"
         
@@ -69,7 +73,8 @@ contains
         call delete_file_if_exists(path)
         
         if (.not. found_f013) then
-            error stop "Failed: F013 should be triggered for multiple statements per line"
+            error stop "Failed: F013 should be triggered for multiple statements " // &
+                       "per line"
         end if
         
         print *, "  Multiple statements per line"
@@ -123,7 +128,8 @@ contains
         call delete_file_if_exists(path)
         
         if (found_f013) then
-            error stop "Failed: F013 should not be triggered for single statements per line"
+            error stop "Failed: F013 should not be triggered for " // &
+                       "single statements per line"
         end if
         
         print *, "  Single statements per line"
@@ -140,11 +146,15 @@ contains
         logical :: found_f013
         
         ! Test semicolon separated statements
+        ! Multiple statements:
+        ! - assignment chain with semicolons
+        ! - repeated print with semicolons
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: a, b, c" // new_line('a') // &
-                   "    a = 1; b = 2; c = 3" // new_line('a') // &  ! Multiple statements
-                   "    print *, a; print *, b" // new_line('a') // &  ! Multiple statements
+                   "    a = 1; b = 2; c = 3" // new_line('a') // &
+                   "    print *, a; " // &
+                   "print *, b" // new_line('a') // &
                    "    print *, c" // new_line('a') // &
                    "end program test"
         
@@ -171,7 +181,8 @@ contains
         call delete_file_if_exists(path)
         
         if (.not. found_f013) then
-            error stop "Failed: F013 should be triggered for semicolon separated statements"
+            error stop "Failed: F013 should be triggered for semicolon separated " // &
+                       "statements"
         end if
         
         print *, "  Semicolon separated statements"
@@ -191,9 +202,9 @@ contains
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
                    "    integer :: i, j, sum" // new_line('a') // &
-                   "    i = 0; j = 0; sum = 0" // new_line('a') // &  ! Multiple statements
+                   "    i = 0; j = 0; sum = 0" // new_line('a') // &
                    "    do i = 1, 10" // new_line('a') // &
-                   "        j = i * 2; sum = sum + j" // new_line('a') // &  ! Multiple statements
+                   "        j = i * 2; sum = sum + j" // new_line('a') // &
                    "    end do" // new_line('a') // &
                    "    print *, sum" // new_line('a') // &
                    "end program test"
@@ -221,7 +232,8 @@ contains
         call delete_file_if_exists(path)
         
         if (.not. found_f013) then
-            error stop "Failed: F013 should be triggered for complex multi-statement lines"
+            error stop "Failed: F013 should be triggered for " // &
+                       "complex multi-statement lines"
         end if
         
         print *, "  Complex multi-statement lines"

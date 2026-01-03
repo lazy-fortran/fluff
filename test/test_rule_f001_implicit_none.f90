@@ -116,7 +116,8 @@ contains
         call delete_file_if_exists(path)
         
         if (found_f001) then
-            error stop "Failed: F001 should not be triggered when implicit none is present"
+            error stop "Failed: F001 should not be triggered when implicit none " // &
+                       "is present"
         end if
         
         print *, "  ✓ Has implicit none"
@@ -163,7 +164,8 @@ contains
         call delete_file_if_exists(path)
         
         if (.not. found_f001) then
-            error stop "Failed: F001 should be triggered for module missing implicit none"
+            error stop "Failed: F001 should be triggered for module missing " // &
+                       "implicit none"
         end if
         
         print *, "  ✓ Module missing implicit none"
@@ -207,7 +209,8 @@ contains
         call delete_file_if_exists(path)
         
         if (.not. found_f001) then
-            error stop "Failed: F001 should be triggered for subroutine missing implicit none"
+            error stop "Failed: F001 should be triggered for subroutine missing " // &
+                       "implicit none"
         end if
         
         print *, "  ✓ Subroutine missing implicit none"

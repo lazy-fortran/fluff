@@ -6,7 +6,7 @@ module fluff_rule_f010
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
     use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
-                                 TK_WHITESPACE
+                                 TK_WHITESPACE, TK_COMMENT
     implicit none
     private
 
@@ -109,10 +109,6 @@ contains
         integer :: line_start
         integer :: first_idx
         integer :: stmt_idx
-        integer :: last_close_paren
-        integer :: commas_found
-        integer :: labels_found
-        integer :: j
         character(len=:), allocatable :: keyword
 
         if (.not. allocated(tokens)) return
@@ -138,29 +134,7 @@ contains
             keyword = to_lower_ascii(trim(tokens(stmt_idx)%text))
             if (keyword /= "if") cycle
 
-            last_close_paren = 0
-            do j = stmt_idx + 1, size(tokens)
-                if (tokens(j)%line /= line) exit
-                if (tokens(j)%kind /= TK_OPERATOR) cycle
-                if (.not. allocated(tokens(j)%text)) cycle
-                if (tokens(j)%text == ")") last_close_paren = j
-            end do
-            if (last_close_paren <= 0) cycle
-
-            commas_found = 0
-            labels_found = 0
-            do j = last_close_paren + 1, size(tokens)
-                if (tokens(j)%line /= line) exit
-                if (tokens(j)%kind == TK_OPERATOR) then
-                    if (allocated(tokens(j)%text)) then
-                        if (tokens(j)%text == ",") commas_found = commas_found + 1
-                    end if
-                else if (tokens(j)%kind == TK_NUMBER) then
-                    labels_found = labels_found + 1
-                end if
-            end do
-
-            if (labels_found < 3 .or. commas_found < 2) cycle
+            if (.not. is_arithmetic_if_tail(tokens, stmt_idx)) cycle
 
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
                                  code="F010", &
@@ -170,6 +144,76 @@ contains
                                  severity=SEVERITY_WARNING))
         end do
     end subroutine scan_arithmetic_if
+
+    logical function is_arithmetic_if_tail(tokens, stmt_idx) result(ok)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+
+        integer :: line
+        integer :: last_close_paren
+        integer :: idx_label1
+        integer :: idx_comma1
+        integer :: idx_label2
+        integer :: idx_comma2
+        integer :: idx_label3
+        integer :: j
+
+        ok = .false.
+        line = tokens(stmt_idx)%line
+
+        last_close_paren = find_last_close_paren(tokens, stmt_idx, line)
+        if (last_close_paren <= 0) return
+
+        idx_label1 = next_nontrivia_same_line(tokens, last_close_paren + 1)
+        if (idx_label1 <= 0) return
+        if (tokens(idx_label1)%kind /= TK_NUMBER) return
+
+        idx_comma1 = next_nontrivia_same_line(tokens, idx_label1 + 1)
+        if (idx_comma1 <= 0) return
+        if (tokens(idx_comma1)%kind /= TK_OPERATOR) return
+        if (.not. allocated(tokens(idx_comma1)%text)) return
+        if (tokens(idx_comma1)%text /= ",") return
+
+        idx_label2 = next_nontrivia_same_line(tokens, idx_comma1 + 1)
+        if (idx_label2 <= 0) return
+        if (tokens(idx_label2)%kind /= TK_NUMBER) return
+
+        idx_comma2 = next_nontrivia_same_line(tokens, idx_label2 + 1)
+        if (idx_comma2 <= 0) return
+        if (tokens(idx_comma2)%kind /= TK_OPERATOR) return
+        if (.not. allocated(tokens(idx_comma2)%text)) return
+        if (tokens(idx_comma2)%text /= ",") return
+
+        idx_label3 = next_nontrivia_same_line(tokens, idx_comma2 + 1)
+        if (idx_label3 <= 0) return
+        if (tokens(idx_label3)%kind /= TK_NUMBER) return
+
+        do j = idx_label3 + 1, size(tokens)
+            if (tokens(j)%line /= line) exit
+            if (tokens(j)%kind == TK_NEWLINE) cycle
+            if (tokens(j)%kind == TK_WHITESPACE) cycle
+            if (tokens(j)%kind == TK_COMMENT) cycle
+            return
+        end do
+
+        ok = .true.
+    end function is_arithmetic_if_tail
+
+    integer function find_last_close_paren(tokens, stmt_idx, line) result(idx)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+        integer, intent(in) :: line
+
+        integer :: j
+
+        idx = 0
+        do j = stmt_idx + 1, size(tokens)
+            if (tokens(j)%line /= line) exit
+            if (tokens(j)%kind /= TK_OPERATOR) cycle
+            if (.not. allocated(tokens(j)%text)) cycle
+            if (tokens(j)%text == ")") idx = j
+        end do
+    end function find_last_close_paren
 
     integer function first_nontrivia_in_line(tokens, start_idx) result(idx)
         type(token_t), intent(in) :: tokens(:)
