@@ -22,6 +22,12 @@ program test_rule_f015_redundant_continue
     
     ! Test 4: Loop labels and continue
     call test_loop_labels_continue()
+
+    ! Test 5: I/O label targets and continue
+    call test_io_label_targets_continue()
+
+    ! Test 6: Positional FORMAT label and continue
+    call test_positional_format_label_continue()
     
     print *, "All F015 tests passed!"
     
@@ -223,5 +229,104 @@ contains
 
         print *, "  ✓ Loop labels and continue"
     end subroutine test_loop_labels_continue
-    
+
+    subroutine test_io_label_targets_continue()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+        integer :: i
+        logical :: found_f015
+
+        test_code = "program test" // new_line('a') // &
+                    "    implicit none" // new_line('a') // &
+                    "    integer :: x" // new_line('a') // &
+                    "    read(10, *, end=20) x" // new_line('a') // &
+                    "    x = x + 1" // new_line('a') // &
+                    "20  continue" // new_line('a') // &
+                    "    print *, x" // new_line('a') // &
+                    "end program test"
+
+        linter = create_linter_engine()
+
+        call make_temp_fortran_path("fluff_test_f015_io_end", path)
+        call write_text_file(path, test_code)
+
+        call linter%lint_file(path, diagnostics, error_msg)
+        if (allocated(error_msg)) then
+            if (len_trim(error_msg) > 0) then
+                call delete_file_if_exists(path)
+                error stop error_msg
+            end if
+        end if
+
+        found_f015 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F015") then
+                    found_f015 = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(path)
+
+        if (found_f015) then
+            error stop "Failed: F015 should not flag I/O label target CONTINUE"
+        end if
+
+        print *, "  ✓ I/O label targets and continue"
+    end subroutine test_io_label_targets_continue
+
+    subroutine test_positional_format_label_continue()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+        integer :: i
+        logical :: found_f015
+
+        test_code = "program test" // new_line('a') // &
+                    "    implicit none" // new_line('a') // &
+                    "    integer :: x" // new_line('a') // &
+                    "    x = 1" // new_line('a') // &
+                    "    write(6, 20) x" // new_line('a') // &
+                    "20  continue" // new_line('a') // &
+                    "end program test"
+
+        linter = create_linter_engine()
+
+        call make_temp_fortran_path("fluff_test_f015_positional_fmt", path)
+        call write_text_file(path, test_code)
+
+        call linter%lint_file(path, diagnostics, error_msg)
+        if (allocated(error_msg)) then
+            if (len_trim(error_msg) > 0) then
+                call delete_file_if_exists(path)
+                error stop error_msg
+            end if
+        end if
+
+        found_f015 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F015") then
+                    found_f015 = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(path)
+
+        if (found_f015) then
+            error stop "Failed: F015 should not flag positional FORMAT label CONTINUE"
+        end if
+
+        print *, "  ✓ Positional FORMAT label and continue"
+    end subroutine test_positional_format_label_continue
+
 end program test_rule_f015_redundant_continue

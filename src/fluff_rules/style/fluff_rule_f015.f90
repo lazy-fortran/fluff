@@ -70,6 +70,14 @@ contains
                 call collect_do_label(tokens, i, referenced_labels)
             else if (keyword == "if") then
                 call collect_arithmetic_if_targets(tokens, i, referenced_labels)
+            else if (keyword == "read" .or. keyword == "write") then
+                call collect_io_label_targets(tokens, i, referenced_labels, &
+                                              include_format=.true.)
+            else if (keyword == "open" .or. keyword == "close" .or. &
+                     keyword == "inquire" .or. keyword == "backspace" .or. &
+                     keyword == "rewind" .or. keyword == "endfile") then
+                call collect_io_label_targets(tokens, i, referenced_labels, &
+                                              include_format=.false.)
             end if
         end do
     end subroutine collect_label_references
@@ -195,6 +203,195 @@ contains
             end do
         end if
     end subroutine collect_arithmetic_if_targets
+
+    subroutine collect_io_label_targets(tokens, stmt_idx, referenced_labels, &
+                                        include_format)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+        integer, allocatable, intent(inout) :: referenced_labels(:)
+        logical, intent(in) :: include_format
+
+        integer :: i
+        integer :: open_paren
+        integer :: depth
+        integer :: item_start
+        integer :: item_end
+        integer :: positional_count
+        character(len=:), allocatable :: keyword
+
+        open_paren = 0
+        i = next_nontrivia(tokens, stmt_idx + 1)
+        if (i <= 0) return
+
+        if (tokens(i)%kind == TK_OPERATOR) then
+            if (allocated(tokens(i)%text)) then
+                if (tokens(i)%text == "(") open_paren = i
+            end if
+        end if
+
+        if (open_paren <= 0) then
+            keyword = ""
+            if (allocated(tokens(stmt_idx)%text)) keyword = &
+                to_lower_ascii(trim(tokens(stmt_idx)%text))
+            if (.not. include_format) return
+            if (keyword /= "read" .and. keyword /= "write") return
+            call collect_positional_format_label(tokens, stmt_idx, referenced_labels)
+            return
+        end if
+
+        depth = 1
+        positional_count = 0
+        item_start = next_nontrivia(tokens, open_paren + 1)
+        if (item_start <= 0) return
+
+        i = item_start
+        do while (i <= size(tokens))
+            if (tokens(i)%kind == TK_OPERATOR) then
+                if (allocated(tokens(i)%text)) then
+                    if (tokens(i)%text == "(") then
+                        depth = depth + 1
+                    else if (tokens(i)%text == ")") then
+                        depth = depth - 1
+                        if (depth == 0) then
+                            item_end = i - 1
+                            call parse_io_control_item(tokens, item_start, &
+                                                       item_end, positional_count, &
+                                                       referenced_labels, &
+                                                       include_format)
+                            exit
+                        end if
+                    else if (tokens(i)%text == "," .and. depth == 1) then
+                        item_end = i - 1
+                        call parse_io_control_item(tokens, item_start, &
+                                                   item_end, positional_count, &
+                                                   referenced_labels, &
+                                                   include_format)
+                        item_start = next_nontrivia(tokens, i + 1)
+                        if (item_start <= 0) exit
+                    end if
+                end if
+            end if
+            i = i + 1
+        end do
+    end subroutine collect_io_label_targets
+
+    subroutine collect_positional_format_label(tokens, stmt_idx, referenced_labels)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: stmt_idx
+        integer, allocatable, intent(inout) :: referenced_labels(:)
+
+        integer :: i
+        integer :: line
+        integer :: comma_idx
+        integer :: fmt_idx
+        integer :: label
+        logical :: ok
+
+        line = tokens(stmt_idx)%line
+        comma_idx = 0
+
+        do i = stmt_idx + 1, size(tokens)
+            if (tokens(i)%line /= line) exit
+            if (tokens(i)%kind /= TK_OPERATOR) cycle
+            if (.not. allocated(tokens(i)%text)) cycle
+            if (tokens(i)%text == ",") then
+                comma_idx = i
+                exit
+            end if
+        end do
+        if (comma_idx <= 0) return
+
+        fmt_idx = next_nontrivia_same_line(tokens, comma_idx + 1)
+        if (fmt_idx <= 0) return
+        if (tokens(fmt_idx)%kind /= TK_NUMBER) return
+        if (.not. allocated(tokens(fmt_idx)%text)) return
+        call parse_label(tokens(fmt_idx)%text, label, ok)
+        if (.not. ok) return
+        call push_int_unique(referenced_labels, label)
+    end subroutine collect_positional_format_label
+
+    subroutine parse_io_control_item(tokens, item_start, item_end, &
+                                     positional_count, referenced_labels, &
+                                     include_format)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: item_start
+        integer, intent(in) :: item_end
+        integer, intent(inout) :: positional_count
+        integer, allocatable, intent(inout) :: referenced_labels(:)
+        logical, intent(in) :: include_format
+
+        integer :: eq_idx
+        integer :: name_idx
+        integer :: value_idx
+        integer :: label
+        integer :: depth
+        integer :: i
+        logical :: ok
+        character(len=:), allocatable :: name
+
+        if (item_end < item_start) return
+
+        eq_idx = 0
+        depth = 0
+        do i = item_start, item_end
+            if (tokens(i)%kind == TK_OPERATOR) then
+                if (allocated(tokens(i)%text)) then
+                    if (tokens(i)%text == "(") then
+                        depth = depth + 1
+                    else if (tokens(i)%text == ")") then
+                        if (depth > 0) depth = depth - 1
+                    else if (tokens(i)%text == "=" .and. depth == 0) then
+                        eq_idx = i
+                        exit
+                    end if
+                end if
+            end if
+        end do
+
+        if (eq_idx > 0) then
+            name_idx = next_nontrivia(tokens, item_start)
+            if (name_idx <= 0) return
+            if (name_idx >= eq_idx) return
+            if (.not. allocated(tokens(name_idx)%text)) return
+            name = to_lower_ascii(trim(tokens(name_idx)%text))
+
+            if (name == "err" .or. name == "end" .or. name == "eor") then
+                value_idx = next_nontrivia(tokens, eq_idx + 1)
+                if (value_idx <= 0) return
+                if (value_idx > item_end) return
+                if (tokens(value_idx)%kind /= TK_NUMBER) return
+                if (.not. allocated(tokens(value_idx)%text)) return
+                call parse_label(tokens(value_idx)%text, label, ok)
+                if (.not. ok) return
+                call push_int_unique(referenced_labels, label)
+            else if (include_format) then
+                if (name == "fmt" .or. name == "format") then
+                    value_idx = next_nontrivia(tokens, eq_idx + 1)
+                    if (value_idx <= 0) return
+                    if (value_idx > item_end) return
+                    if (tokens(value_idx)%kind /= TK_NUMBER) return
+                    if (.not. allocated(tokens(value_idx)%text)) return
+                    call parse_label(tokens(value_idx)%text, label, ok)
+                    if (.not. ok) return
+                    call push_int_unique(referenced_labels, label)
+                end if
+            end if
+            return
+        end if
+
+        positional_count = positional_count + 1
+        if (.not. include_format) return
+        if (positional_count /= 2) return
+
+        value_idx = next_nontrivia(tokens, item_start)
+        if (value_idx <= 0) return
+        if (value_idx > item_end) return
+        if (tokens(value_idx)%kind /= TK_NUMBER) return
+        if (.not. allocated(tokens(value_idx)%text)) return
+        call parse_label(tokens(value_idx)%text, label, ok)
+        if (.not. ok) return
+        call push_int_unique(referenced_labels, label)
+    end subroutine parse_io_control_item
 
     subroutine scan_continue_statements(tokens, referenced_labels, tmp, &
                                         violation_count)
@@ -326,6 +523,24 @@ contains
             return
         end do
     end function next_nontrivia_same_line
+
+    integer function next_nontrivia(tokens, start_idx) result(idx)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: start_idx
+
+        integer :: i
+
+        idx = 0
+        if (start_idx <= 0) return
+        if (start_idx > size(tokens)) return
+
+        do i = start_idx, size(tokens)
+            if (tokens(i)%kind == TK_NEWLINE) cycle
+            if (tokens(i)%kind == TK_WHITESPACE) cycle
+            idx = i
+            return
+        end do
+    end function next_nontrivia
 
     subroutine parse_label(text, label, ok)
         character(len=*), intent(in) :: text
