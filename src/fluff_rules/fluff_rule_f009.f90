@@ -2,6 +2,7 @@ module fluff_rule_f009
     use fluff_ast, only: fluff_ast_context_t, NODE_ASSIGNMENT, NODE_DECLARATION
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_core, only: source_range_t
+    use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fortfront, only: assignment_node, call_or_subscript_node, declaration_node, &
                          identifier_node
     implicit none
@@ -147,12 +148,14 @@ contains
             if (intents(i)%name == target) then
                 intents(i)%was_assigned = .true.
                 if (intents(i)%intent == "in") then
-                    call push_violation(tmp, violation_count, create_diagnostic( &
+                    call push_diagnostic(tmp, violation_count, create_diagnostic( &
                                         code="F009", &
-                                 message="Do not assign to intent(in) dummy argument", &
+                                        message= &
+                                        "Do not assign to intent(in) dummy argument", &
                                         file_path="", &
                                         location=location, &
-                                        severity=SEVERITY_WARNING))
+                                        severity=SEVERITY_WARNING &
+                                        ))
                 end if
                 exit
             end if
@@ -168,12 +171,14 @@ contains
 
         do i = 1, size(intents)
             if (intents(i)%intent == "out" .and. .not. intents(i)%was_assigned) then
-                call push_violation(tmp, violation_count, create_diagnostic( &
+                call push_diagnostic(tmp, violation_count, create_diagnostic( &
                                     code="F009", &
-                               message="intent(out) dummy argument is never assigned", &
+                                    message= &
+                                    "intent(out) dummy argument is never assigned", &
                                     file_path="", &
                                     location=intents(i)%decl_location, &
-                                    severity=SEVERITY_WARNING))
+                                    severity=SEVERITY_WARNING &
+                                    ))
             end if
         end do
     end subroutine add_unassigned_out
@@ -197,37 +202,5 @@ contains
         intents = [intents, intent_var_t(name=name, intent=intent, &
                                          decl_location=decl_location)]
     end subroutine upsert_intent
-
-    subroutine push_violation(tmp, count, diag)
-        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
-        integer, intent(inout) :: count
-        type(diagnostic_t), intent(in) :: diag
-
-        type(diagnostic_t), allocatable :: grown(:)
-
-        if (count >= size(tmp)) then
-            allocate (grown(max(2*size(tmp), 8)))
-            if (count > 0) grown(1:count) = tmp(1:count)
-            call move_alloc(grown, tmp)
-        end if
-
-        count = count + 1
-        tmp(count) = diag
-    end subroutine push_violation
-
-    pure function to_lower_ascii(s) result(out)
-        character(len=*), intent(in) :: s
-        character(len=len(s)) :: out
-
-        integer :: i, c
-
-        out = s
-        do i = 1, len(s)
-            c = iachar(s(i:i))
-            if (c >= iachar("A") .and. c <= iachar("Z")) then
-                out(i:i) = achar(c + 32)
-            end if
-        end do
-    end function to_lower_ascii
 
 end module fluff_rule_f009
