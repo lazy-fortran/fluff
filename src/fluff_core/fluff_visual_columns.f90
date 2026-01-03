@@ -6,7 +6,7 @@ module fluff_visual_columns
 
 contains
 
-    integer function visual_columns(line_text, tab_width) result(cols)
+    pure integer function visual_columns(line_text, tab_width) result(cols)
         character(len=*), intent(in) :: line_text
         integer, intent(in), optional :: tab_width
 
@@ -17,7 +17,9 @@ contains
         character(len=1) :: ch
 
         width = 4
-        if (present(tab_width)) width = tab_width
+        if (present(tab_width)) then
+            if (tab_width > 0) width = tab_width
+        end if
 
         col = 0
         do i = 1, len(line_text)
