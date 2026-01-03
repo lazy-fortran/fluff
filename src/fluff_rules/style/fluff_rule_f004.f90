@@ -1,8 +1,11 @@
 module fluff_rule_f004
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
-    use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
+    use fluff_diagnostics, only: diagnostic_t, create_diagnostic, &
+                                 create_fix_suggestion, SEVERITY_INFO, text_edit_t
     use fluff_rule_file_context, only: current_filename, current_source_text
+    use fortfront, only: token_t, tokenize_core_with_trivia, trivia_token_t
+    use lexer_token_types, only: TK_NEWLINE, TK_WHITESPACE
     implicit none
     private
 
@@ -15,101 +18,106 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
-        integer :: violation_count
+        type(token_t), allocatable :: tokens(:)
+        type(source_range_t), allocatable :: locations(:)
+        integer :: i
 
         if (.not. allocated(current_source_text)) then
             allocate (violations(0))
             return
         end if
 
-        allocate (temp_violations(100))
-        violation_count = 0
+        call tokenize_core_with_trivia(current_source_text, tokens)
 
-        call analyze_trailing_whitespace_from_text(current_source_text, &
-                                                   temp_violations, violation_count)
-
-        allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
+        call collect_trailing_whitespace(tokens, locations)
+        if (size(locations) <= 0) then
+            allocate (violations(0))
+            return
         end if
+
+        allocate (violations(size(locations)))
+        do i = 1, size(locations)
+            violations(i) = make_f004_diagnostic(locations(i))
+        end do
     end subroutine check_f004_trailing_whitespace
 
-    subroutine analyze_trailing_whitespace_from_text(source_text, violations, &
-                                                     violation_count)
-        character(len=*), intent(in) :: source_text
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
+    subroutine collect_trailing_whitespace(tokens, locations)
+        type(token_t), allocatable, intent(in) :: tokens(:)
+        type(source_range_t), allocatable, intent(out) :: locations(:)
+        integer :: i
 
-        integer :: pos, next_pos, line_num
-        integer :: line_length, line_start, line_end
-        integer :: true_trimmed_length, i
-        logical :: has_trailing_whitespace
-        type(source_range_t) :: location
-        character(len=:), allocatable :: line_content
+        allocate (locations(0))
+        if (.not. allocated(tokens)) return
+        if (size(tokens) <= 0) return
 
-        pos = 1
-        line_num = 0
-
-        do while (pos <= len(source_text))
-            line_num = line_num + 1
-
-            next_pos = index(source_text(pos:), new_line("a"))
-            if (next_pos == 0) then
-                line_start = pos
-                line_end = len(source_text)
-                pos = len(source_text) + 1
-            else
-                line_start = pos
-                line_end = pos + next_pos - 2
-                if (line_end >= line_start) then
-                    if (source_text(line_end:line_end) == achar(13)) then
-                        line_end = line_end - 1
-                    end if
-                end if
-                pos = pos + next_pos
-            end if
-
-            if (line_end < line_start) then
-                if (next_pos == 0) exit
-                cycle
-            end if
-
-            line_content = source_text(line_start:line_end)
-            line_length = line_end - line_start + 1
-
-            true_trimmed_length = line_length
-            do i = line_length, 1, -1
-                if (line_content(i:i) /= " " .and. line_content(i:i) /= achar(9)) then
-                    true_trimmed_length = i
-                    exit
-                end if
-                if (i == 1) true_trimmed_length = 0
-            end do
-
-            has_trailing_whitespace = (line_length > 0 .and. &
-                                       true_trimmed_length > 0 .and. &
-                                       true_trimmed_length < line_length)
-
-            if (has_trailing_whitespace) then
-                violation_count = violation_count + 1
-                if (violation_count <= size(violations)) then
-                    location%start%line = line_num
-                    location%start%column = true_trimmed_length + 1
-                    location%end%line = line_num
-                    location%end%column = line_length
-
-                    violations(violation_count) = create_diagnostic( &
-                                                  code="F004", &
-                                                  message="Trailing whitespace", &
-                                                  file_path=current_filename, &
-                                                  location=location, &
-                                                  severity=SEVERITY_INFO)
-                end if
-            end if
-
-            if (next_pos == 0) exit
+        do i = 1, size(tokens)
+            call collect_from_trivia(tokens(i)%leading_trivia, locations)
         end do
-    end subroutine analyze_trailing_whitespace_from_text
+        call collect_from_trivia(tokens(size(tokens))%trailing_trivia, locations)
+    end subroutine collect_trailing_whitespace
+
+    subroutine collect_from_trivia(trivia, locations)
+        type(trivia_token_t), allocatable, intent(in) :: trivia(:)
+        type(source_range_t), allocatable, intent(inout) :: locations(:)
+
+        integer :: i
+        integer :: start_col, end_col
+        type(source_range_t) :: location
+
+        if (.not. allocated(trivia)) return
+        if (size(trivia) <= 0) return
+
+        do i = 2, size(trivia)
+            if (trivia(i)%kind /= TK_NEWLINE) cycle
+            if (trivia(i - 1)%kind /= TK_WHITESPACE) cycle
+            if (.not. allocated(trivia(i - 1)%text)) cycle
+            if (len(trivia(i - 1)%text) <= 0) cycle
+
+            start_col = trivia(i - 1)%column
+            end_col = start_col + len(trivia(i - 1)%text) - 1
+
+            location%start%line = trivia(i - 1)%line
+            location%start%column = start_col
+            location%end%line = trivia(i - 1)%line
+            location%end%column = end_col
+
+            call append_location(locations, location)
+        end do
+    end subroutine collect_from_trivia
+
+    subroutine append_location(locations, location)
+        type(source_range_t), allocatable, intent(inout) :: locations(:)
+        type(source_range_t), intent(in) :: location
+        type(source_range_t), allocatable :: tmp(:)
+        integer :: n
+
+        if (.not. allocated(locations)) then
+            allocate (locations(1))
+            locations(1) = location
+            return
+        end if
+
+        n = size(locations)
+        allocate (tmp(n + 1))
+        if (n > 0) tmp(1:n) = locations
+        tmp(n + 1) = location
+        call move_alloc(tmp, locations)
+    end subroutine append_location
+
+    function make_f004_diagnostic(location) result(diag)
+        type(source_range_t), intent(in) :: location
+        type(diagnostic_t) :: diag
+        type(text_edit_t) :: edits(1)
+
+        diag = create_diagnostic(code="F004", message="Trailing whitespace", &
+                                 file_path=current_filename, location=location, &
+                                 severity=SEVERITY_INFO)
+
+        edits(1)%range = location
+        edits(1)%new_text = ""
+
+        allocate (diag%fixes(1))
+        diag%fixes(1) = create_fix_suggestion("Remove trailing whitespace", edits)
+    end function make_f004_diagnostic
 
 end module fluff_rule_f004
