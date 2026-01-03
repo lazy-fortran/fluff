@@ -85,20 +85,35 @@ contains
         location%end%column = line_length
 
         diag = create_diagnostic( &
-            code="F003", &
-            message="Line too long ("//trim(int_to_str(line_length))//" > "// &
-                    trim(int_to_str(max_length))//" characters)", &
-            file_path=current_filename, &
-            location=location, &
-            severity=SEVERITY_WARNING)
+               code="F003", &
+               message="Line too long ("//trim(int_to_str(line_length))//" > "// &
+               trim(int_to_str(max_length))//" characters)", &
+               file_path=current_filename, &
+               location=location, &
+               severity=SEVERITY_WARNING)
     end function create_f003_diagnostic
 
     integer function physical_line_length(line_text) result(length)
         character(len=*), intent(in) :: line_text
+        integer, parameter :: tab_width = 4
+        integer :: i, col, next_stop
+        character(len=1) :: ch
 
-        length = len(line_text)
-        if (length <= 0) return
-        if (line_text(length:length) == achar(13)) length = length - 1
+        col = 0
+        do i = 1, len(line_text)
+            ch = line_text(i:i)
+            if (i == len(line_text) .and. ch == achar(13)) exit
+
+            select case (ch)
+            case (achar(9))
+                next_stop = ((col/tab_width) + 1)*tab_width
+                col = next_stop
+            case default
+                col = col + 1
+            end select
+        end do
+
+        length = col
     end function physical_line_length
 
     logical function is_comment_only_line(line_text) result(is_comment)
