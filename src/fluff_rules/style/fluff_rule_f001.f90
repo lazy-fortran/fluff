@@ -5,9 +5,10 @@ module fluff_rule_f001
                                  create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_diagnostic_utils, only: push_diagnostic
-    use fortfront, only: function_def_node, implicit_statement_node, &
-                         interface_block_node, &
-                         module_node, program_node, subroutine_def_node
+    use fortfront, only: comment_node, directive_node, function_def_node, &
+                         implicit_statement_node, interface_block_node, &
+                         module_node, program_node, subroutine_def_node, &
+                         use_statement_node
     implicit none
     private
 
@@ -87,7 +88,11 @@ contains
         type(fix_suggestion_t) :: fix
         type(text_edit_t) :: edit
         type(source_range_t) :: location
+        type(source_range_t) :: child_location
         logical :: has_implicit_none
+        integer, allocatable :: children(:)
+        integer :: i
+        integer :: insert_line
 
         has_implicit_none = scope_has_implicit_none(ctx, scope_index, scope_index)
         if (has_implicit_none) return
@@ -103,9 +108,29 @@ contains
         fix%description = "Add implicit none statement"
         fix%is_safe = .true.
 
-        edit%range%start%line = location%start%line + 1
+        insert_line = location%start%line + 1
+        children = ctx%get_children(scope_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            if (.not. allocated(ctx%arena%entries(children(i))%node)) cycle
+
+            select type (n => ctx%arena%entries(children(i))%node)
+            type is (use_statement_node)
+                child_location = ctx%get_node_location(children(i))
+                insert_line = max(insert_line, child_location%end%line + 1)
+            type is (comment_node)
+                cycle
+            type is (directive_node)
+                cycle
+            class default
+                exit
+            end select
+        end do
+        if (allocated(children)) deallocate (children)
+
+        edit%range%start%line = insert_line
         edit%range%start%column = 1
-        edit%range%end%line = location%start%line + 1
+        edit%range%end%line = insert_line
         edit%range%end%column = 1
         edit%new_text = "    implicit none"//new_line('a')
 

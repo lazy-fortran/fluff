@@ -5,7 +5,8 @@ module fluff_rule_f014
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: token_t, tokenize_core_with_trivia
-    use lexer_token_types, only: TK_IDENTIFIER, TK_NUMBER, TK_OPERATOR, TK_STRING
+    use lexer_token_types, only: TK_IDENTIFIER, TK_KEYWORD, TK_NUMBER, TK_OPERATOR, &
+                                 TK_STRING
     implicit none
     private
 
@@ -110,6 +111,7 @@ contains
             if (tokens(open_idx)%line /= tokens(close_idx)%line) cycle
             if (open_idx > 1) then
                 if (tokens(open_idx - 1)%kind == TK_IDENTIFIER) cycle
+                if (tokens(open_idx - 1)%kind == TK_KEYWORD) cycle
             end if
             if (is_double_parens(tokens, close_for_open, open_idx, close_idx)) then
                 call push_diagnostic(tmp, violation_count, create_diagnostic( &
