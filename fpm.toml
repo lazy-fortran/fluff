@@ -7,7 +7,7 @@ license = "MIT"
 copyright = "Copyright 2025, Christopher Albert"
 
 [dependencies]
-fortfront = { path = "../fortfront" }
+fortfront = { git = "https://github.com/lazy-fortran/fortfront.git", branch = "main" }
 stdlib = "*"
 
 [dev-dependencies]
@@ -27,5 +27,3 @@ library = false
 implicit-typing = false
 implicit-external = false
 source-form = "free"
-
-
