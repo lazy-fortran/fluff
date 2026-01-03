@@ -42,105 +42,147 @@ contains
         type(diagnostic_t), intent(inout) :: violations(:)
         integer, intent(inout) :: violation_count
 
-        integer :: pos, next_pos, line_num
-        integer :: line_start, line_end
-        type(source_range_t) :: location
-        character(len=:), allocatable :: line_content
-        character(len=:), allocatable :: line_trimmed
-        character(len=:), allocatable :: line_lower
         character(len=64) :: var_names(1000)
         integer :: num_vars
-        integer :: i, double_colon_pos
         integer :: snake_count, camel_count, pascal_count
-        character(len=64) :: var_name
-        character(len=16) :: dominant_style
 
         var_names = ""
         num_vars = 0
+        call collect_declared_variable_names(source_text, var_names, num_vars)
+        if (num_vars <= 0) return
+
+        call count_naming_styles(var_names, num_vars, snake_count, camel_count, &
+                                 pascal_count)
+
+        if (has_mixed_naming_styles(snake_count, camel_count, pascal_count)) then
+            call push_inconsistent_naming_violation(violations, violation_count)
+        end if
+    end subroutine analyze_naming_conventions_from_text
+
+    subroutine collect_declared_variable_names(source_text, var_names, num_vars)
+        character(len=*), intent(in) :: source_text
+        character(len=*), intent(inout) :: var_names(:)
+        integer, intent(inout) :: num_vars
+
+        integer :: pos, line_num
+        logical :: done
+        character(len=:), allocatable :: line_content
+        character(len=:), allocatable :: line_trimmed
+        character(len=:), allocatable :: line_lower
+        integer :: double_colon_pos
+
         pos = 1
         line_num = 0
 
-        do while (pos <= len(source_text))
-            line_num = line_num + 1
-
-            next_pos = index(source_text(pos:), new_line("a"))
-            if (next_pos == 0) then
-                line_start = pos
-                line_end = len(source_text)
-                pos = len(source_text) + 1
-            else
-                line_start = pos
-                line_end = pos + next_pos - 2
-                pos = pos + next_pos
-            end if
-
-            if (line_end < line_start) then
-                if (next_pos == 0) exit
-                cycle
-            end if
-
-            line_content = source_text(line_start:line_end)
-            if (is_comment_line(line_content)) then
-                if (next_pos == 0) exit
-                cycle
-            end if
+        do
+            call next_source_line(source_text, pos, line_num, line_content, done)
+            if (done) exit
+            if (is_comment_line(line_content)) cycle
 
             line_trimmed = adjustl(line_content)
             line_lower = to_lower(line_trimmed)
-
             double_colon_pos = index(line_trimmed, "::")
-            if (double_colon_pos > 0) then
-                if (has_type_keyword(line_lower(1:double_colon_pos))) then
-                    call extract_variable_names(line_trimmed(double_colon_pos + 2:), &
-                                                var_names, num_vars)
-                end if
+            if (double_colon_pos <= 0) cycle
+
+            if (has_type_keyword(line_lower(1:double_colon_pos))) then
+                call extract_variable_names(line_trimmed(double_colon_pos + 2:), &
+                                            var_names, num_vars)
             end if
-
-            if (next_pos == 0) exit
         end do
+    end subroutine collect_declared_variable_names
 
-        if (num_vars <= 0) then
+    subroutine next_source_line(source_text, pos, line_num, line_content, done)
+        character(len=*), intent(in) :: source_text
+        integer, intent(inout) :: pos
+        integer, intent(inout) :: line_num
+        character(len=:), allocatable, intent(out) :: line_content
+        logical, intent(out) :: done
+
+        integer :: next_pos
+        integer :: line_start, line_end
+
+        if (pos > len(source_text)) then
+            done = .true.
+            line_content = ""
             return
         end if
+
+        line_num = line_num + 1
+        next_pos = index(source_text(pos:), new_line("a"))
+        if (next_pos == 0) then
+            line_start = pos
+            line_end = len(source_text)
+            pos = len(source_text) + 1
+        else
+            line_start = pos
+            line_end = pos + next_pos - 2
+            pos = pos + next_pos
+        end if
+
+        if (line_end < line_start) then
+            line_content = ""
+        else
+            line_content = source_text(line_start:line_end)
+        end if
+
+        done = .false.
+    end subroutine next_source_line
+
+    subroutine count_naming_styles(var_names, num_vars, snake_count, camel_count, &
+                                   pascal_count)
+        character(len=*), intent(in) :: var_names(:)
+        integer, intent(in) :: num_vars
+        integer, intent(out) :: snake_count
+        integer, intent(out) :: camel_count
+        integer, intent(out) :: pascal_count
+
+        integer :: i
+        character(len=64) :: var_name
 
         snake_count = 0
         camel_count = 0
         pascal_count = 0
 
-        do i = 1, num_vars
+        do i = 1, min(num_vars, size(var_names))
             var_name = trim(var_names(i))
+            if (len_trim(var_name) == 0) cycle
             if (is_snake_case(var_name)) snake_count = snake_count + 1
             if (is_camel_case(var_name)) camel_count = camel_count + 1
             if (is_pascal_case(var_name)) pascal_count = pascal_count + 1
         end do
+    end subroutine count_naming_styles
 
-        if (snake_count >= camel_count .and. snake_count >= pascal_count) then
-            dominant_style = "snake_case"
-        else if (camel_count >= pascal_count) then
-            dominant_style = "camelCase"
-        else
-            dominant_style = "PascalCase"
-        end if
+    logical function has_mixed_naming_styles(snake_count, camel_count, &
+                                            pascal_count) result(has_mixed)
+        integer, intent(in) :: snake_count
+        integer, intent(in) :: camel_count
+        integer, intent(in) :: pascal_count
 
-        if ((snake_count > 0 .and. camel_count > 0) .or. &
-            (snake_count > 0 .and. pascal_count > 0) .or. &
-            (camel_count > 0 .and. pascal_count > 0)) then
-            violation_count = violation_count + 1
-            if (violation_count <= size(violations)) then
-                location%start%line = 1
-                location%start%column = 1
-                location%end%line = 1
-                location%end%column = 1
-                violations(violation_count) = create_diagnostic( &
-                                              code="F012", &
-                                             message="Inconsistent naming convention", &
-                                              file_path=current_filename, &
-                                              location=location, &
-                                              severity=SEVERITY_INFO &
-                                              )
-            end if
+        has_mixed = (snake_count > 0 .and. camel_count > 0) .or. &
+                    (snake_count > 0 .and. pascal_count > 0) .or. &
+                    (camel_count > 0 .and. pascal_count > 0)
+    end function has_mixed_naming_styles
+
+    subroutine push_inconsistent_naming_violation(violations, violation_count)
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+
+        type(source_range_t) :: location
+
+        violation_count = violation_count + 1
+        if (violation_count <= size(violations)) then
+            location%start%line = 1
+            location%start%column = 1
+            location%end%line = 1
+            location%end%column = 1
+            violations(violation_count) = create_diagnostic( &
+                                          code="F012", &
+                                          message="Inconsistent naming convention", &
+                                          file_path=current_filename, &
+                                          location=location, &
+                                          severity=SEVERITY_INFO)
         end if
-    end subroutine analyze_naming_conventions_from_text
+    end subroutine push_inconsistent_naming_violation
 
     logical function has_type_keyword(str) result(has_type)
         character(len=*), intent(in) :: str
@@ -273,7 +315,11 @@ contains
         character(len=:), allocatable :: trimmed
 
         trimmed = adjustl(line)
-        is_comment = len_trim(trimmed) > 0 .and. trimmed(1:1) == "!"
+        if (len_trim(trimmed) == 0) then
+            is_comment = .false.
+        else
+            is_comment = trimmed(1:1) == "!"
+        end if
     end function is_comment_line
 
 end module fluff_rule_f012

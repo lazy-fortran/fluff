@@ -162,7 +162,11 @@ contains
         character(len=:), allocatable :: trimmed
 
         trimmed = adjustl(line)
-        is_comment = len_trim(trimmed) > 0 .and. trimmed(1:1) == "!"
+        if (len_trim(trimmed) == 0) then
+            is_comment = .false.
+        else
+            is_comment = trimmed(1:1) == "!"
+        end if
     end function is_comment_line
 
 end module fluff_rule_f015

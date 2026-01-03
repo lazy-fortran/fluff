@@ -62,110 +62,7 @@ contains
 
         allocate (rules(15))
 
-        rules(1) = rule_info_t(code="F001", name="missing-implicit-none", &
-                               description="Missing implicit none statement", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f001_implicit_none)
-
-        rules(2) = rule_info_t(code="F002", name="inconsistent-indentation", &
-                               description="Inconsistent indentation detected", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f002_indentation)
-
-        rules(3) = rule_info_t(code="F003", name="line-too-long", &
-                               description="Line exceeds maximum length", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f003_line_length)
-
-        rules(4) = rule_info_t(code="F004", name="trailing-whitespace", &
-                               description="Trailing whitespace detected", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f004_trailing_whitespace)
-
-        rules(5) = rule_info_t(code="F005", name="mixed-tabs-spaces", &
-                               description="Mixed tabs and spaces in indentation", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f005_mixed_tabs_spaces)
-
-        rules(6) = rule_info_t(code="F006", name="unused-variable", &
-                               description="Unused variable declaration", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f006_unused_variable)
-
-        rules(7) = rule_info_t(code="F007", name="undefined-variable", &
-                               description="Undefined variable usage", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_ERROR, &
-                               check=check_f007_undefined_variable)
-
-        rules(8) = rule_info_t(code="F008", name="missing-intent", &
-                               description="Missing intent declarations", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f008_missing_intent)
-
-        rules(9) = rule_info_t(code="F009", name="inconsistent-intent", &
-                               description="Inconsistent intent usage", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_ERROR, &
-                               check=check_f009_inconsistent_intent_impl)
-
-        rules(10) = rule_info_t(code="F010", name="obsolete-features", &
-                                description="Obsolete language features", &
-                                category=CATEGORY_STYLE, subcategory="modernization", &
-                                default_enabled=.true., fixable=.false., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f010_obsolete_features)
-
-        rules(11) = rule_info_t(code="F011", name="missing-end-labels", &
-                                description="Missing end statement labels", &
-                                category=CATEGORY_STYLE, subcategory="clarity", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f011_missing_end_labels)
-
-        rules(12) = rule_info_t(code="F012", name="inconsistent-naming", &
-                                description="Inconsistent naming conventions", &
-                                category=CATEGORY_STYLE, subcategory="consistency", &
-                                default_enabled=.true., fixable=.false., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f012_naming_conventions)
-
-        rules(13) = rule_info_t(code="F013", name="multiple-statements", &
-                                description="Multiple statements per line", &
-                                category=CATEGORY_STYLE, subcategory="formatting", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f013_multiple_statements)
-
-        rules(14) = rule_info_t(code="F014", name="unnecessary-parentheses", &
-                                description="Unnecessary parentheses", &
-                                category=CATEGORY_STYLE, subcategory="simplification", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f014_unnecessary_parentheses)
-
-        rules(15) = rule_info_t(code="F015", name="redundant-continue", &
-                                description="Redundant continue statements", &
-                                category=CATEGORY_STYLE, subcategory="simplification", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f015_redundant_continue)
+        call populate_style_rules(rules)
     end function get_style_rules
 
     function get_performance_rules() result(rules)
@@ -236,5 +133,130 @@ contains
                                severity=SEVERITY_ERROR, &
                                check=check_c001_undefined_var)
     end function get_correctness_rules
+
+    subroutine populate_style_rules(rules)
+        type(rule_info_t), intent(inout) :: rules(:)
+
+        call populate_style_rules_1_5(rules)
+        call populate_style_rules_6_10(rules)
+        call populate_style_rules_11_15(rules)
+    end subroutine populate_style_rules
+
+    subroutine populate_style_rules_1_5(rules)
+        type(rule_info_t), intent(inout) :: rules(:)
+
+        rules(1) = rule_info_t(code="F001", name="missing-implicit-none", &
+                               description="Missing implicit none statement", &
+                               category=CATEGORY_STYLE, subcategory="best-practices", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f001_implicit_none)
+
+        rules(2) = rule_info_t(code="F002", name="inconsistent-indentation", &
+                               description="Inconsistent indentation detected", &
+                               category=CATEGORY_STYLE, subcategory="formatting", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f002_indentation)
+
+        rules(3) = rule_info_t(code="F003", name="line-too-long", &
+                               description="Line exceeds maximum length", &
+                               category=CATEGORY_STYLE, subcategory="formatting", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f003_line_length)
+
+        rules(4) = rule_info_t(code="F004", name="trailing-whitespace", &
+                               description="Trailing whitespace detected", &
+                               category=CATEGORY_STYLE, subcategory="formatting", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f004_trailing_whitespace)
+
+        rules(5) = rule_info_t(code="F005", name="mixed-tabs-spaces", &
+                               description="Mixed tabs and spaces in indentation", &
+                               category=CATEGORY_STYLE, subcategory="formatting", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f005_mixed_tabs_spaces)
+    end subroutine populate_style_rules_1_5
+
+    subroutine populate_style_rules_6_10(rules)
+        type(rule_info_t), intent(inout) :: rules(:)
+
+        rules(6) = rule_info_t(code="F006", name="unused-variable", &
+                               description="Unused variable declaration", &
+                               category=CATEGORY_STYLE, subcategory="best-practices", &
+                               default_enabled=.true., fixable=.false., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f006_unused_variable)
+
+        rules(7) = rule_info_t(code="F007", name="undefined-variable", &
+                               description="Undefined variable usage", &
+                               category=CATEGORY_STYLE, subcategory="best-practices", &
+                               default_enabled=.true., fixable=.false., &
+                               severity=SEVERITY_ERROR, &
+                               check=check_f007_undefined_variable)
+
+        rules(8) = rule_info_t(code="F008", name="missing-intent", &
+                               description="Missing intent declarations", &
+                               category=CATEGORY_STYLE, subcategory="best-practices", &
+                               default_enabled=.true., fixable=.true., &
+                               severity=SEVERITY_WARNING, &
+                               check=check_f008_missing_intent)
+
+        rules(9) = rule_info_t(code="F009", name="inconsistent-intent", &
+                               description="Inconsistent intent usage", &
+                               category=CATEGORY_STYLE, subcategory="best-practices", &
+                               default_enabled=.true., fixable=.false., &
+                               severity=SEVERITY_ERROR, &
+                               check=check_f009_inconsistent_intent_impl)
+
+        rules(10) = rule_info_t(code="F010", name="obsolete-features", &
+                                description="Obsolete language features", &
+                                category=CATEGORY_STYLE, subcategory="modernization", &
+                                default_enabled=.true., fixable=.false., &
+                                severity=SEVERITY_WARNING, &
+                                check=check_f010_obsolete_features)
+    end subroutine populate_style_rules_6_10
+
+    subroutine populate_style_rules_11_15(rules)
+        type(rule_info_t), intent(inout) :: rules(:)
+
+        rules(11) = rule_info_t(code="F011", name="missing-end-labels", &
+                                description="Missing end statement labels", &
+                                category=CATEGORY_STYLE, subcategory="clarity", &
+                                default_enabled=.true., fixable=.true., &
+                                severity=SEVERITY_INFO, &
+                                check=check_f011_missing_end_labels)
+
+        rules(12) = rule_info_t(code="F012", name="inconsistent-naming", &
+                                description="Inconsistent naming conventions", &
+                                category=CATEGORY_STYLE, subcategory="consistency", &
+                                default_enabled=.true., fixable=.false., &
+                                severity=SEVERITY_WARNING, &
+                                check=check_f012_naming_conventions)
+
+        rules(13) = rule_info_t(code="F013", name="multiple-statements", &
+                                description="Multiple statements per line", &
+                                category=CATEGORY_STYLE, subcategory="formatting", &
+                                default_enabled=.true., fixable=.true., &
+                                severity=SEVERITY_WARNING, &
+                                check=check_f013_multiple_statements)
+
+        rules(14) = rule_info_t(code="F014", name="unnecessary-parentheses", &
+                                description="Unnecessary parentheses", &
+                                category=CATEGORY_STYLE, subcategory="simplification", &
+                                default_enabled=.true., fixable=.true., &
+                                severity=SEVERITY_INFO, &
+                                check=check_f014_unnecessary_parentheses)
+
+        rules(15) = rule_info_t(code="F015", name="redundant-continue", &
+                                description="Redundant continue statements", &
+                                category=CATEGORY_STYLE, subcategory="simplification", &
+                                default_enabled=.true., fixable=.true., &
+                                severity=SEVERITY_INFO, &
+                                check=check_f015_redundant_continue)
+    end subroutine populate_style_rules_11_15
 
 end module fluff_rules

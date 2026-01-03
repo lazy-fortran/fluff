@@ -41,106 +41,113 @@ contains
         type(diagnostic_t), intent(inout) :: violations(:)
         integer, intent(inout) :: violation_count
 
-        integer :: pos, next_pos, line_num
-        integer :: line_start, line_end
-        type(source_range_t) :: location
+        integer :: pos, line_num
+        logical :: done
         character(len=:), allocatable :: line_content
         character(len=:), allocatable :: line_lower
-        integer :: goto_pos, common_pos, equiv_pos
 
         pos = 1
         line_num = 0
 
-        do while (pos <= len(source_text))
-            line_num = line_num + 1
-
-            next_pos = index(source_text(pos:), new_line("a"))
-            if (next_pos == 0) then
-                line_start = pos
-                line_end = len(source_text)
-                pos = len(source_text) + 1
-            else
-                line_start = pos
-                line_end = pos + next_pos - 2
-                pos = pos + next_pos
-            end if
-
-            if (line_end < line_start) then
-                if (next_pos == 0) exit
-                cycle
-            end if
-
-            line_content = source_text(line_start:line_end)
-            if (is_comment_line(line_content)) then
-                if (next_pos == 0) exit
-                cycle
-            end if
+        do
+            call next_source_line(source_text, pos, line_num, line_content, done)
+            if (done) exit
+            if (is_comment_line(line_content)) cycle
 
             line_lower = to_lower(line_content)
-
-            goto_pos = index(line_lower, "goto")
-            if (goto_pos > 0) then
-                if (is_keyword_at_position(line_lower, "goto", goto_pos)) then
-                    violation_count = violation_count + 1
-                    if (violation_count <= size(violations)) then
-                        location%start%line = line_num
-                        location%start%column = goto_pos
-                        location%end%line = line_num
-                        location%end%column = goto_pos + 3
-                        violations(violation_count) = create_diagnostic( &
-                                                      code="F010", &
-                                                     message="Obsolete feature: GOTO", &
-                                                      file_path=current_filename, &
-                                                      location=location, &
-                                                      severity=SEVERITY_WARNING &
-                                                      )
-                    end if
-                end if
-            end if
-
-            common_pos = index(line_lower, "common")
-            if (common_pos > 0) then
-                if (is_keyword_at_position(line_lower, "common", common_pos)) then
-                    violation_count = violation_count + 1
-                    if (violation_count <= size(violations)) then
-                        location%start%line = line_num
-                        location%start%column = common_pos
-                        location%end%line = line_num
-                        location%end%column = common_pos + 5
-                        violations(violation_count) = create_diagnostic( &
-                                                      code="F010", &
-                                                   message="Obsolete feature: COMMON", &
-                                                      file_path=current_filename, &
-                                                      location=location, &
-                                                      severity=SEVERITY_WARNING &
-                                                      )
-                    end if
-                end if
-            end if
-
-            equiv_pos = index(line_lower, "equivalence")
-            if (equiv_pos > 0) then
-                if (is_keyword_at_position(line_lower, "equivalence", equiv_pos)) then
-                    violation_count = violation_count + 1
-                    if (violation_count <= size(violations)) then
-                        location%start%line = line_num
-                        location%start%column = equiv_pos
-                        location%end%line = line_num
-                        location%end%column = equiv_pos + 10
-                        violations(violation_count) = create_diagnostic( &
-                                                      code="F010", &
-                                              message="Obsolete feature: EQUIVALENCE", &
-                                                      file_path=current_filename, &
-                                                      location=location, &
-                                                      severity=SEVERITY_WARNING &
-                                                      )
-                    end if
-                end if
-            end if
-
-            if (next_pos == 0) exit
+            call check_obsolete_feature(line_lower, line_num, "goto", &
+                                        "Obsolete feature: GOTO", violations, &
+                                        violation_count)
+            call check_obsolete_feature(line_lower, line_num, "common", &
+                                        "Obsolete feature: COMMON", violations, &
+                                        violation_count)
+            call check_obsolete_feature(line_lower, line_num, "equivalence", &
+                                        "Obsolete feature: EQUIVALENCE", violations, &
+                                        violation_count)
         end do
     end subroutine analyze_obsolete_features_from_text
+
+    subroutine next_source_line(source_text, pos, line_num, line_content, done)
+        character(len=*), intent(in) :: source_text
+        integer, intent(inout) :: pos
+        integer, intent(inout) :: line_num
+        character(len=:), allocatable, intent(out) :: line_content
+        logical, intent(out) :: done
+
+        integer :: next_pos
+        integer :: line_start, line_end
+
+        if (pos > len(source_text)) then
+            done = .true.
+            line_content = ""
+            return
+        end if
+
+        line_num = line_num + 1
+        next_pos = index(source_text(pos:), new_line("a"))
+        if (next_pos == 0) then
+            line_start = pos
+            line_end = len(source_text)
+            pos = len(source_text) + 1
+        else
+            line_start = pos
+            line_end = pos + next_pos - 2
+            pos = pos + next_pos
+        end if
+
+        if (line_end < line_start) then
+            line_content = ""
+        else
+            line_content = source_text(line_start:line_end)
+        end if
+
+        done = .false.
+    end subroutine next_source_line
+
+    subroutine check_obsolete_feature(line_lower, line_num, keyword, message, &
+                                      violations, violation_count)
+        character(len=*), intent(in) :: line_lower
+        integer, intent(in) :: line_num
+        character(len=*), intent(in) :: keyword
+        character(len=*), intent(in) :: message
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+
+        integer :: pos
+
+        pos = index(line_lower, keyword)
+        if (pos <= 0) return
+        if (.not. is_keyword_at_position(line_lower, keyword, pos)) return
+
+        call push_obsolete_violation(violations, violation_count, line_num, &
+                                     pos, len(keyword), message)
+    end subroutine check_obsolete_feature
+
+    subroutine push_obsolete_violation(violations, violation_count, line_num, &
+                                       pos, keyword_len, message)
+        type(diagnostic_t), intent(inout) :: violations(:)
+        integer, intent(inout) :: violation_count
+        integer, intent(in) :: line_num
+        integer, intent(in) :: pos
+        integer, intent(in) :: keyword_len
+        character(len=*), intent(in) :: message
+
+        type(source_range_t) :: location
+
+        violation_count = violation_count + 1
+        if (violation_count <= size(violations)) then
+            location%start%line = line_num
+            location%start%column = pos
+            location%end%line = line_num
+            location%end%column = pos + keyword_len - 1
+            violations(violation_count) = create_diagnostic( &
+                                          code="F010", &
+                                          message=message, &
+                                          file_path=current_filename, &
+                                          location=location, &
+                                          severity=SEVERITY_WARNING)
+        end if
+    end subroutine push_obsolete_violation
 
     function to_lower(str) result(lower_str)
         character(len=*), intent(in) :: str
@@ -200,7 +207,11 @@ contains
         character(len=:), allocatable :: trimmed
 
         trimmed = adjustl(line)
-        is_comment = len_trim(trimmed) > 0 .and. trimmed(1:1) == "!"
+        if (len_trim(trimmed) == 0) then
+            is_comment = .false.
+        else
+            is_comment = trimmed(1:1) == "!"
+        end if
     end function is_comment_line
 
 end module fluff_rule_f010
