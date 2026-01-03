@@ -86,7 +86,6 @@ contains
         integer, allocatable :: children(:)
         integer :: i
         integer :: j
-
         if (node_index <= 0) return
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
