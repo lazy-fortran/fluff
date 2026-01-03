@@ -1,7 +1,9 @@
 module test_core_basics
     use testdrive, only: new_unittest, unittest_type, error_type, check
     use fluff_core
-    use fluff_diagnostics, only: SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO, SEVERITY_HINT
+    use fluff_diagnostics, only: SEVERITY_ERROR, SEVERITY_WARNING, SEVERITY_INFO, &
+        SEVERITY_HINT
+    use fluff_rules, only: CATEGORY_STYLE, CATEGORY_PERFORMANCE, CATEGORY_CORRECTNESS
     implicit none
     private
     
@@ -70,10 +72,20 @@ contains
     
     subroutine test_rule_categories(error)
         type(error_type), allocatable, intent(out) :: error
-        
-        ! TODO: Test rule categories when constants are properly exposed
-        ! For now, just pass the test
-        call check(error, .true., "Rule categories test placeholder")
+
+        call check(error, CATEGORY_STYLE == "style", "Style category constant")
+        if (allocated(error)) return
+
+        call check(error, CATEGORY_PERFORMANCE == "performance", &
+            "Performance category constant")
+        if (allocated(error)) return
+
+        call check(error, CATEGORY_CORRECTNESS == "correctness", &
+            "Correctness category constant")
+        if (allocated(error)) return
+
+        call check(error, CATEGORY_STYLE /= CATEGORY_PERFORMANCE, &
+            "Category constants should be distinct")
         
     end subroutine test_rule_categories
     
