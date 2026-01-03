@@ -1,518 +1,259 @@
 program test_lsp_document_sync
+    use fluff_json, only: json_array_length, json_get_member_json, &
+                          json_get_string_member, &
+                          json_parse
+    use fluff_lsp_server, only: fluff_lsp_server_t
+    use fluff_lsp_uri, only: uri_to_path
+    use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
-    
+
     integer :: total_tests, passed_tests
-    
-    print *, "=== LSP Document Synchronization Test Suite (RED Phase) ==="
-    
+
+    print *, "=== LSP Document Synchronization Test Suite ==="
+
     total_tests = 0
     passed_tests = 0
-    
-    ! Test document lifecycle management
+
     call test_document_lifecycle()
-    call test_document_versioning()
-    call test_document_content_tracking()
-    call test_incremental_changes()
-    call test_workspace_management()
-    call test_file_system_integration()
-    
+    call test_workspace_multiple_documents()
+    call test_uri_parsing()
+
     print *, ""
     print *, "=== LSP Document Sync Test Summary ==="
     print *, "Total tests: ", total_tests
     print *, "Passed tests: ", passed_tests
-    print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
-    
-    if (passed_tests == total_tests) then
-        print *, "✅ All LSP document sync tests passed!"
-    else
-        print *, "❌ Some tests failed (expected in RED phase)"
-    end if
-    
+    print *, "Success rate: ", real(passed_tests, dp)/real(total_tests, dp)*100.0_dp, &
+        "%"
+
+    if (passed_tests /= total_tests) error stop 1
+    stop 0
+
 contains
-    
+
     subroutine test_document_lifecycle()
-        print *, ""
-        print *, "Testing document lifecycle management..."
-        
-        ! Test 1: Document open
-        call run_lifecycle_test("Document open", &
-            "open", "file:///test.f90", 1, &
-            "program test" // new_line('a') // "  implicit none" // new_line('a') // "end program")
-            
-        ! Test 2: Document change
-        call run_lifecycle_test("Document change", &
-            "change", "file:///test.f90", 2, &
-            "program modified" // new_line('a') // "  implicit none" // new_line('a') // "end program")
-            
-        ! Test 3: Document save
-        call run_lifecycle_test("Document save", &
-            "save", "file:///test.f90", 2, "")
-            
-        ! Test 4: Document close
-        call run_lifecycle_test("Document close", &
-            "close", "file:///test.f90", -1, "")
-            
-        ! Test 5: Multiple documents
-        call run_lifecycle_test("Multiple documents", &
-            "open", "file:///module.f90", 1, &
-            "module test_mod" // new_line('a') // "  implicit none" // new_line('a') // "end module")
-            
-    end subroutine test_document_lifecycle
-    
-    subroutine test_document_versioning()
-        print *, ""
-        print *, "Testing document version tracking..."
-        
-        ! Test 1: Version increment on change
-        call run_version_test("Version increment", &
-            "file:///test.f90", [1, 2, 3, 4], 4)
-            
-        ! Test 2: Version consistency check
-        call run_version_test("Version consistency", &
-            "file:///consistent.f90", [1, 1, 1], 1)  ! Should detect version mismatch
-            
-        ! Test 3: Version reset on close/reopen
-        ! Sequence: open v1, change v2, close, reopen v1
-        call run_version_test("Version reset", &
-            "file:///reset.f90", [1, 2, 1], 1)  ! Close and reopen resets to v1
-            
-    end subroutine test_document_versioning
-    
-    subroutine test_document_content_tracking()
-        print *, ""
-        print *, "Testing document content synchronization..."
-        
-        ! Test 1: Full content replacement
-        call run_content_test("Full content replacement", &
-            "file:///content.f90", "full", &
-            "original content", "completely new content")
-            
-        ! Test 2: Partial content update
-        call run_content_test("Partial content update", &
-            "file:///partial.f90", "partial", &
-            "line 1" // new_line('a') // "line 2" // new_line('a') // "line 3", &
-            "line 1" // new_line('a') // "modified line 2" // new_line('a') // "line 3")
-            
-        ! Test 3: Content insertion
-        call run_content_test("Content insertion", &
-            "file:///insert.f90", "insert", &
-            "line 1" // new_line('a') // "line 2", &
-            "line 1" // new_line('a') // "inserted line" // new_line('a') // "line 2")
-            
-        ! Test 4: Content deletion
-        call run_content_test("Content deletion", &
-            "file:///delete.f90", "delete", &
-            "line 1" // new_line('a') // "line 2" // new_line('a') // "line 3", &
-            "line 1" // new_line('a') // "line 3")
-            
-    end subroutine test_document_content_tracking
-    
-    subroutine test_incremental_changes()
-        print *, ""
-        print *, "Testing incremental document changes..."
-        
-        ! Test 1: Single character insertion
-        call run_incremental_test("Single char insert", &
-            "file:///inc.f90", 0, 5, 0, 5, "x", "insert")
-            
-        ! Test 2: Single character deletion
-        call run_incremental_test("Single char delete", &
-            "file:///inc.f90", 0, 5, 0, 6, "", "delete")
-            
-        ! Test 3: Multi-line change
-        call run_incremental_test("Multi-line change", &
-            "file:///inc.f90", 1, 0, 3, 0, &
-            "new line 2" // new_line('a') // "new line 3", "replace")
-            
-        ! Test 4: Range replacement
-        call run_incremental_test("Range replacement", &
-            "file:///inc.f90", 0, 8, 0, 15, "new_name", "replace")
-            
-    end subroutine test_incremental_changes
-    
-    subroutine test_workspace_management()
-        print *, ""
-        print *, "Testing workspace document management..."
-        
-        ! Test 1: Workspace initialization
-        call run_workspace_test("Workspace init", &
-            "init", "/project/root", 0)
-            
-        ! Test 2: Add document to workspace
-        call run_workspace_test("Add document", &
-            "add", "file:///project/src/main.f90", 1)
-            
-        ! Test 3: Remove document from workspace
-        call run_workspace_test("Remove document", &
-            "remove", "file:///project/src/main.f90", 0)
-            
-        ! Test 4: Workspace folder changes
-        call run_workspace_test("Folder changes", &
-            "folder_change", "/new/project/root", 0)
-            
-        ! Test 5: Multiple workspaces
-        call run_workspace_test("Multiple workspaces", &
-            "multi", "/workspace1,/workspace2", 2)
-            
-    end subroutine test_workspace_management
-    
-    subroutine test_file_system_integration()
-        print *, ""
-        print *, "Testing file system integration..."
-        
-        ! Test 1: File URI parsing
-        call run_filesystem_test("URI parsing", &
-            "file:///home/user/project/main.f90", "/home/user/project/main.f90")
-            
-        ! Test 2: Windows path handling
-        call run_filesystem_test("Windows paths", &
-            "file:///C:/Users/user/project/main.f90", "C:/Users/user/project/main.f90")
-            
-        ! Test 3: Relative path resolution
-        call run_filesystem_test("Relative paths", &
-            "file:///../relative/path.f90", "../relative/path.f90")
-            
-        ! Test 4: Special characters in paths
-        call run_filesystem_test("Special characters", &
-            "file:///path%20with%20spaces/file.f90", "/path with spaces/file.f90")
-            
-    end subroutine test_file_system_integration
-    
-    ! Helper subroutines for testing
-    subroutine run_lifecycle_test(test_name, operation, uri, version, content)
-        character(len=*), intent(in) :: test_name, operation, uri, content
-        integer, intent(in) :: version
-        
-        logical :: success
-        
-        total_tests = total_tests + 1
-        
-        ! Perform document lifecycle operation (placeholder)
-        call handle_document_lifecycle(operation, uri, version, content, success)
-        
-        if (success) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Operation failed: ", operation
-        end if
-        
-    end subroutine run_lifecycle_test
-    
-    subroutine run_version_test(test_name, uri, versions, expected_final)
-        character(len=*), intent(in) :: test_name, uri
-        integer, intent(in) :: versions(:), expected_final
-        
-        logical :: success
-        integer :: final_version
-        
-        total_tests = total_tests + 1
-        
-        ! Test version tracking (placeholder)
-        call test_version_tracking(uri, versions, final_version, success)
-        
-        if (success .and. final_version == expected_final) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Version tracking failed"
-        end if
-        
-    end subroutine run_version_test
-    
-    subroutine run_content_test(test_name, uri, change_type, original, expected)
-        character(len=*), intent(in) :: test_name, uri, change_type, original, expected
-        
-        logical :: success
-        character(len=:), allocatable :: result
-        
-        total_tests = total_tests + 1
-        
-        ! Test content synchronization (placeholder)
-        call test_content_sync(uri, change_type, original, result, success)
-        
-        if (success .and. result == expected) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Content sync failed"
-        end if
-        
-    end subroutine run_content_test
-    
-    subroutine run_incremental_test(test_name, uri, start_line, start_char, end_line, end_char, text, operation)
-        character(len=*), intent(in) :: test_name, uri, text, operation
-        integer, intent(in) :: start_line, start_char, end_line, end_char
-        
-        logical :: success
-        
-        total_tests = total_tests + 1
-        
-        ! Test incremental changes (placeholder)
-        call test_incremental_change(uri, start_line, start_char, end_line, end_char, text, success)
-        
-        if (success) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Incremental change failed"
-        end if
-        
-    end subroutine run_incremental_test
-    
-    subroutine run_workspace_test(test_name, operation, path, expected_count)
-        character(len=*), intent(in) :: test_name, operation, path
-        integer, intent(in) :: expected_count
-        
-        logical :: success
-        integer :: actual_count
-        
-        total_tests = total_tests + 1
-        
-        ! Test workspace management (placeholder)
-        call test_workspace_operation(operation, path, actual_count, success)
-        
-        if (success .and. actual_count == expected_count) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Workspace operation failed"
-        end if
-        
-    end subroutine run_workspace_test
-    
-    subroutine run_filesystem_test(test_name, uri, expected_path)
-        character(len=*), intent(in) :: test_name, uri, expected_path
-        
-        logical :: success
-        character(len=:), allocatable :: actual_path
-        
-        total_tests = total_tests + 1
-        
-        ! Test filesystem integration (placeholder)
-        call test_uri_to_path(uri, actual_path, success)
-        
-        if (success .and. actual_path == expected_path) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - URI conversion failed"
-        end if
-        
-    end subroutine run_filesystem_test
-    
-    ! Document sync JSON-RPC implementations directly in test
-    subroutine handle_document_lifecycle(operation, uri, version, content, success)
-        character(len=*), intent(in) :: operation, uri, content
-        integer, intent(in) :: version
-        logical, intent(out) :: success
-        
-        ! Basic validation - URI should be valid and operation should be known
-        success = len_trim(uri) > 0 .and. (operation == "open" .or. &
-                                          operation == "change" .or. &
-                                          operation == "save" .or. &
-                                          operation == "close")
-        
-    end subroutine handle_document_lifecycle
-    
-    subroutine test_version_tracking(uri, versions, final_version, success)
-        character(len=*), intent(in) :: uri
-        integer, intent(in) :: versions(:)
-        integer, intent(out) :: final_version
-        logical, intent(out) :: success
+        type(fluff_lsp_server_t) :: server
+        character(len=:), allocatable :: notification
+        logical :: success, found
 
-        integer :: i, n
-        logical :: is_reset_test
+        call server%initialize("/project/root")
 
-        success = .false.
-        if (size(versions) == 0) then
-            final_version = 0
+        total_tests = total_tests + 1
+        call server%handle_text_document_did_open("file:///test.f90", "fortran", 1, &
+                                                  "program test"//new_line('a')// &
+                                                  "  implicit none"//new_line('a')// &
+                                                  "  integer :: x"//new_line('a')// &
+                                                  "  x = 1"//new_line('a')// &
+                                                  "end program", success)
+
+        if (.not. success) then
+            print *, "  FAIL: Document open"
             return
         end if
 
-        success = len_trim(uri) > 0
-
-        ! Detect reset scenario: versions should be strictly increasing
-        ! If not strictly increasing after first element, it indicates reset
-        is_reset_test = .false.
-        n = size(versions)
-        if (n >= 2) then
-            do i = 2, n
-                if (versions(i) <= versions(i - 1)) then
-                    is_reset_test = .true.
-                    exit
-                end if
-            end do
+        if (server%workspace%document_count /= 1) then
+            print *, "  FAIL: Document open - unexpected document_count"
+            return
         end if
 
-        ! For reset test (close/reopen scenario), return last version
-        ! which represents the version after reopening
-        ! For normal incrementing, return highest version
-        if (is_reset_test) then
-            final_version = versions(n)
+        if (server%workspace%documents(1)%uri /= "file:///test.f90") then
+            print *, "  FAIL: Document open - unexpected uri"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Document open"
+
+        call server%pop_notification(notification, found)
+        if (found) then
+            call assert_publish_diagnostics(notification, "file:///test.f90", success)
+            total_tests = total_tests + 1
+            if (success) then
+                passed_tests = passed_tests + 1
+                print *, "  PASS: Diagnostics notification after open"
+            else
+                print *, "  FAIL: Diagnostics notification after open"
+                return
+            end if
+        end if
+
+        total_tests = total_tests + 1
+        call server%handle_text_document_did_change("file:///test.f90", 2, &
+                                                    "program test"//new_line('a')// &
+                                                    "  implicit none"//new_line('a')// &
+                                                    "  integer :: x"//new_line('a')// &
+                                                    "  x = 2"//new_line('a')// &
+                                                    "end program", success)
+
+        if (.not. success) then
+            print *, "  FAIL: Document change"
+            return
+        end if
+
+        if (server%workspace%documents(1)%version /= 2) then
+            print *, "  FAIL: Document change - version not updated"
+            return
+        end if
+
+        if (index(server%workspace%documents(1)%content, "x = 2") == 0) then
+            print *, "  FAIL: Document change - content not updated"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Document change"
+
+        total_tests = total_tests + 1
+        call server%handle_text_document_did_save("file:///test.f90", success)
+        if (success) then
+            passed_tests = passed_tests + 1
+            print *, "  PASS: Document save"
         else
-            final_version = maxval(versions)
+            print *, "  FAIL: Document save"
+            return
         end if
 
-    end subroutine test_version_tracking
-    
-    subroutine test_content_sync(uri, change_type, original, result, success)
-        character(len=*), intent(in) :: uri, change_type, original
-        character(len=:), allocatable, intent(out) :: result
+        total_tests = total_tests + 1
+        call server%handle_text_document_did_close("file:///test.f90", success)
+        if (.not. success) then
+            print *, "  FAIL: Document close"
+            return
+        end if
+
+        if (server%workspace%document_count /= 0) then
+            print *, "  FAIL: Document close - document_count not decremented"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Document close"
+    end subroutine test_document_lifecycle
+
+    subroutine test_workspace_multiple_documents()
+        type(fluff_lsp_server_t) :: server
+        logical :: success
+
+        call server%initialize("/project/root")
+
+        total_tests = total_tests + 1
+        call server%handle_text_document_did_open("file:///a.f90", "fortran", 1, &
+                                                  "program a"//new_line('a')// &
+                                                  "  implicit none"//new_line('a')// &
+                                                  "end program", success)
+
+        if (.not. success) then
+            print *, "  FAIL: Open first document"
+            return
+        end if
+
+        call server%handle_text_document_did_open("file:///b.f90", "fortran", 1, &
+                                                  "program b"//new_line('a')// &
+                                                  "  implicit none"//new_line('a')// &
+                                                  "end program", success)
+
+        if (.not. success) then
+            print *, "  FAIL: Open second document"
+            return
+        end if
+
+        if (server%workspace%document_count /= 2) then
+            print *, "  FAIL: Multiple documents - unexpected document_count"
+            return
+        end if
+
+        call server%handle_text_document_did_close("file:///a.f90", success)
+        if (.not. success) then
+            print *, "  FAIL: Close first document"
+            return
+        end if
+
+        if (server%workspace%document_count /= 1) then
+            print *, "  FAIL: Multiple documents - close did not remove"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Multiple documents open/close"
+    end subroutine test_workspace_multiple_documents
+
+    subroutine test_uri_parsing()
+        character(len=:), allocatable :: path
+        logical :: success
+
+        total_tests = total_tests + 1
+        call uri_to_path("file:///home/user/project/main.f90", path, success)
+        if (success .and. path == "/home/user/project/main.f90") then
+            passed_tests = passed_tests + 1
+            print *, "  PASS: URI parsing"
+        else
+            print *, "  FAIL: URI parsing"
+            return
+        end if
+
+        total_tests = total_tests + 1
+        call uri_to_path("file:///C:/Users/user/project/main.f90", path, success)
+        if (success .and. path == "C:/Users/user/project/main.f90") then
+            passed_tests = passed_tests + 1
+            print *, "  PASS: Windows URI parsing"
+        else
+            print *, "  FAIL: Windows URI parsing"
+            return
+        end if
+
+        total_tests = total_tests + 1
+        call uri_to_path("file:///../relative/path.f90", path, success)
+        if (success .and. path == "../relative/path.f90") then
+            passed_tests = passed_tests + 1
+            print *, "  PASS: Relative path URI parsing"
+        else
+            print *, "  FAIL: Relative path URI parsing"
+            return
+        end if
+
+        total_tests = total_tests + 1
+        call uri_to_path("file:///path%20with%20spaces/file.f90", path, success)
+        if (success .and. path == "/path with spaces/file.f90") then
+            passed_tests = passed_tests + 1
+            print *, "  PASS: Percent decoding"
+        else
+            print *, "  FAIL: Percent decoding"
+            return
+        end if
+    end subroutine test_uri_parsing
+
+    subroutine assert_publish_diagnostics(notification, expected_uri, success)
+        character(len=*), intent(in) :: notification
+        character(len=*), intent(in) :: expected_uri
         logical, intent(out) :: success
 
-        character(len=1) :: nl
-        integer :: line2_start, line2_end
-
-        nl = new_line("a")
-        success = len_trim(uri) > 0
-
-        select case (change_type)
-        case ("full")
-            result = "completely new content"
-        case ("partial")
-            ! Replace line 2 with modified line 2
-            ! Original: line 1<nl>line 2<nl>line 3
-            ! Expected: line 1<nl>modified line 2<nl>line 3
-            line2_start = index(original, nl) + 1
-            line2_end = index(original(line2_start:), nl) + line2_start - 2
-            result = original(1:line2_start - 1) // "modified line 2" // original(line2_end + 1:)
-        case ("insert")
-            ! Insert inserted line after line 1
-            ! Original: line 1<nl>line 2
-            ! Expected: line 1<nl>inserted line<nl>line 2
-            line2_start = index(original, nl) + 1
-            result = original(1:line2_start - 1) // "inserted line" // nl // original(line2_start:)
-        case ("delete")
-            ! Delete line 2
-            ! Original: line 1<nl>line 2<nl>line 3
-            ! Expected: line 1<nl>line 3
-            line2_start = index(original, nl) + 1
-            line2_end = index(original(line2_start:), nl) + line2_start - 1
-            result = original(1:line2_start - 1) // original(line2_end + 1:)
-        case default
-            result = original
-            success = .false.
-        end select
-
-    end subroutine test_content_sync
-    
-    subroutine test_incremental_change(uri, start_line, start_char, end_line, end_char, text, success)
-        character(len=*), intent(in) :: uri, text
-        integer, intent(in) :: start_line, start_char, end_line, end_char
-        logical, intent(out) :: success
-        
-        ! Basic validation of incremental change parameters
-        success = len_trim(uri) > 0 .and. &
-                 start_line >= 0 .and. start_char >= 0 .and. &
-                 end_line >= start_line .and. &
-                 (end_line > start_line .or. end_char >= start_char)
-        
-    end subroutine test_incremental_change
-    
-    subroutine test_workspace_operation(operation, path, count, success)
-        character(len=*), intent(in) :: operation, path
-        integer, intent(out) :: count
-        logical, intent(out) :: success
-        
-        success = len_trim(path) > 0
-        
-        select case (operation)
-        case ("init")
-            count = 0
-        case ("add")
-            count = 1
-        case ("remove")
-            count = 0
-        case ("folder_change")
-            count = 0
-        case ("multi")
-            count = 2
-        case default
-            count = 0
-            success = .false.
-        end select
-        
-    end subroutine test_workspace_operation
-    
-    subroutine test_uri_to_path(uri, path, success)
-        character(len=*), intent(in) :: uri
-        character(len=:), allocatable, intent(out) :: path
-        logical, intent(out) :: success
-
-        character(len=:), allocatable :: temp_path
+        character(len=:), allocatable :: err
+        character(len=:), allocatable :: params_json, method, uri, diagnostics_json
+        logical :: ok, found
+        integer :: n
 
         success = .false.
+        call json_parse(notification, ok, err)
+        if (.not. ok) return
 
-        ! Basic URI to path conversion
-        ! URI format: file://[host]/path
-        ! - file:///path (Unix absolute) -> /path
-        ! - file:///C:/path (Windows) -> C:/path
-        ! - file://../path (relative) -> ../path
-        if (index(uri, "file://") == 1) then
-            temp_path = uri(8:)  ! Remove file:// prefix (7 chars), keep rest
+        call json_get_string_member(notification, "method", method, found, ok)
+        if (.not. ok .or. .not. found) return
+        if (method /= "textDocument/publishDiagnostics") return
 
-            ! Check for Windows drive letter: /C:/ pattern after file://
-            ! temp_path would be /C:/... for Windows paths
-            if (len(temp_path) >= 3) then
-                if (temp_path(1:1) == "/" .and. &
-                    is_alpha(temp_path(2:2)) .and. &
-                    temp_path(3:3) == ":") then
-                    ! Windows path: strip leading slash
-                    temp_path = temp_path(2:)
-                end if
-            end if
+        call json_get_member_json(notification, "params", params_json, found, ok)
+        if (.not. ok .or. .not. found) return
 
-            ! Check for relative path: /../ or /./ pattern
-            ! After stripping file://, relative paths look like /../path
-            if (len(temp_path) >= 2) then
-                if (temp_path(1:2) == "/." .and. &
-                    (len(temp_path) == 2 .or. &
-                     temp_path(3:3) == "/" .or. &
-                     temp_path(3:3) == ".")) then
-                    ! Relative path: strip leading slash
-                    temp_path = temp_path(2:)
-                end if
-            end if
+        call json_get_string_member(params_json, "uri", uri, found, ok)
+        if (.not. ok .or. .not. found) return
+        if (uri /= expected_uri) return
 
-            path = temp_path
+        call json_get_member_json(params_json, "diagnostics", &
+                                  diagnostics_json, found, ok)
+        if (.not. ok .or. .not. found) return
 
-            ! Handle URL decoding for special characters
-            if (index(path, "%20") > 0) then
-                ! Replace %20 with spaces (basic URL decoding)
-                call replace_substring(path, "%20", " ")
-            end if
+        call json_array_length(diagnostics_json, n, ok)
+        if (.not. ok) return
+        if (n < 0) return
 
-            success = .true.
-        else
-            path = ""
-        end if
+        success = .true.
+    end subroutine assert_publish_diagnostics
 
-    end subroutine test_uri_to_path
-
-    ! Helper function to check if character is alphabetic
-    pure function is_alpha(c) result(res)
-        character(len=1), intent(in) :: c
-        logical :: res
-
-        res = (c >= "A" .and. c <= "Z") .or. (c >= "a" .and. c <= "z")
-    end function is_alpha
-    
-    ! Helper function for string replacement
-    subroutine replace_substring(string, old_substr, new_substr)
-        character(len=:), allocatable, intent(inout) :: string
-        character(len=*), intent(in) :: old_substr, new_substr
-        
-        integer :: pos
-        character(len=:), allocatable :: temp_str
-        
-        pos = index(string, old_substr)
-        do while (pos > 0)
-            temp_str = string(1:pos-1) // new_substr // string(pos+len(old_substr):)
-            string = temp_str
-            pos = index(string, old_substr)
-        end do
-        
-    end subroutine replace_substring
-    
 end program test_lsp_document_sync

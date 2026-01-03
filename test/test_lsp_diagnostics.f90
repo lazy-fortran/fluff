@@ -1,425 +1,273 @@
 program test_lsp_diagnostics
+    use fluff_ast, only: fluff_ast_context_t
+    use fluff_json, only: json_array_length, json_get_member_json, &
+                          json_get_string_member, &
+                          json_parse
+    use fluff_linter, only: linter_engine_t
+    use fluff_lsp_protocol, only: lsp_clear_diagnostics_notification, &
+                                  lsp_format_diagnostic, &
+                                  lsp_publish_diagnostics_notification
+    use fluff_lsp_server, only: fluff_lsp_server_t
     use fluff_diagnostics, only: diagnostic_t
-    use fluff_json_rpc, only: publish_diagnostics_to_client, clear_diagnostics, &
-                              test_multifile_diagnostics, test_realtime_diagnostics
-    use fluff_linter, only: create_linter_engine, linter_engine_t
     use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
-    
+
     integer :: total_tests, passed_tests
-    
+
     print *, "=== LSP Diagnostic Publishing Test Suite ==="
-    
+
     total_tests = 0
     passed_tests = 0
-    
-    ! Test diagnostic publishing functionality
-    call test_diagnostic_generation()
-    call test_diagnostic_formatting()
-    call test_diagnostic_publishing()
-    call test_diagnostic_clearing()
-    call test_multiple_files()
-    call test_real_time_diagnostics()
-    
+
+    call test_server_publish_matches_formatter()
+    call test_clear_diagnostics_notification()
+    call test_realtime_updates()
+    call test_single_diagnostic_format_json()
+
     print *, ""
     print *, "=== LSP Diagnostics Test Summary ==="
     print *, "Total tests: ", total_tests
     print *, "Passed tests: ", passed_tests
-    print *, "Success rate: ", real(passed_tests, dp) / real(total_tests, dp) * &
-        100.0_dp, "%"
-    
-    if (passed_tests == total_tests) then
-        print *, "All LSP diagnostic tests passed!"
-        stop 0
-    end if
+    print *, "Success rate: ", real(passed_tests, dp)/real(total_tests, dp)*100.0_dp, &
+        "%"
 
-    print *, "Some LSP diagnostic tests failed!"
-    error stop 1
-    
+    if (passed_tests /= total_tests) error stop 1
+    stop 0
+
 contains
-    
-    subroutine test_diagnostic_generation()
-        print *, ""
-        print *, "Testing diagnostic generation from linting..."
-        
-        ! Test 1: Generate diagnostics from missing implicit none
-        call run_real_diagnostic_test("Missing implicit none", &
-            "program test" // new_line('a') // &
-            "integer :: x" // new_line('a') // &
-            "x = 42" // new_line('a') // &
-            "end program", &
-            ["F001"], 2)  ! Adjust to actual count
-            
-        ! Test 2: Generate some diagnostics from violations
-        call run_real_diagnostic_test("Code with violations", &
-            "program test" // new_line('a') // &
-            "integer :: x, y" // new_line('a') // &
-            "x = 1" // new_line('a') // &
-            "end program", &
-            [""], 3)
-            
-        ! Test 3: Clean code with no diagnostics
-        call run_real_diagnostic_test("Clean code", &
-            "program test" // new_line('a') // &
-            "    implicit none" // new_line('a') // &
-            "    integer :: x" // new_line('a') // &
-            "    x = 42" // new_line('a') // &
-            "    print *, x" // new_line('a') // &
-            "end program test", &
-            [""], 0)
-            
-        ! Test 4: Real diagnostic generation
-        call run_real_diagnostic_test("Real violations", &
-            "program test" // new_line('a') // &
-            "integer :: x" // new_line('a') // &
-            "x = 1" // new_line('a') // &
-            "end program", &
-            [""], 2)  ! Adjust to actual count from real linter
-            
-    end subroutine test_diagnostic_generation
-    
-    subroutine test_diagnostic_formatting()
-        print *, ""
-        print *, "Testing LSP diagnostic message formatting..."
-        
-        ! Test 1: Format error diagnostic
-        call run_format_test("Error diagnostic format", &
-            1, 0, 5, 1, 10, "Missing implicit none", "F001", "Error")
-            
-        ! Test 2: Format warning diagnostic
-        call run_format_test("Warning diagnostic format", &
-            2, 2, 0, 2, 15, "Line too long", "F003", "Warning")
-            
-        ! Test 3: Format info diagnostic
-        call run_format_test("Info diagnostic format", &
-            3, 1, 8, 1, 12, "Consider using intent", "F008", "Information")
-            
-        ! Test 4: Format hint diagnostic
-        call run_format_test("Hint diagnostic format", &
-            4, 0, 0, 0, 10, "Use modern syntax", "F010", "Hint")
-            
-    end subroutine test_diagnostic_formatting
-    
-    subroutine test_diagnostic_publishing()
-        print *, ""
-        print *, "Testing diagnostic publishing to client..."
-        
-        ! Test 1: Publish single diagnostic
-        call run_publish_test("Single diagnostic", &
-            "file:///test.f90", 1, .true.)
-            
-        ! Test 2: Publish multiple diagnostics
-        call run_publish_test("Multiple diagnostics", &
-            "file:///multi.f90", 3, .true.)
-            
-        ! Test 3: Publish to multiple files
-        call run_publish_test("Multiple files", &
-            "file:///file1.f90,file:///file2.f90", 2, .true.)
-            
-        ! Test 4: Failed publish (network error simulation)
-        call run_publish_test("Failed publish", &
-            "file:///error.f90", 1, .false.)
-            
-    end subroutine test_diagnostic_publishing
-    
-    subroutine test_diagnostic_clearing()
-        print *, ""
-        print *, "Testing diagnostic clearing..."
-        
-        ! Test 1: Clear all diagnostics for file
-        call run_clear_test("Clear all diagnostics", &
-            "file:///test.f90", "all", .true.)
-            
-        ! Test 2: Clear specific diagnostic types
-        call run_clear_test("Clear specific types", &
-            "file:///test.f90", "F001,F002", .true.)
-            
-        ! Test 3: Clear on file close
-        call run_clear_test("Clear on close", &
-            "file:///closed.f90", "close", .true.)
-            
-        ! Test 4: Clear on successful fix
-        call run_clear_test("Clear on fix", &
-            "file:///fixed.f90", "fix", .true.)
-            
-    end subroutine test_diagnostic_clearing
-    
-    subroutine test_multiple_files()
-        print *, ""
-        print *, "Testing multi-file diagnostic management..."
-        
-        ! Test 1: Track diagnostics across multiple files
-        call run_multifile_test("Multiple file tracking", &
-            ["file:///src/main.f90 ", "file:///src/utils.f90", &
-             "file:///src/types.f90"], &
-            [2, 1, 3], 3)
-            
-        ! Test 2: Cross-file dependency diagnostics
-        call run_multifile_test("Cross-file dependencies", &
-            ["file:///mod.f90 ", "file:///user.f90"], &
-            [0, 1], 2)  ! Error in user.f90 due to mod.f90
-            
-        ! Test 3: Workspace-wide diagnostic summary
-        call run_multifile_test("Workspace summary", &
-            ["file:///project/a.f90", "file:///project/b.f90"], &
-            [5, 3], 2)
-            
-    end subroutine test_multiple_files
-    
-    subroutine test_real_time_diagnostics()
-        print *, ""
-        print *, "Testing real-time diagnostic updates..."
-        
-        ! Test 1: Update diagnostics on document change
-        call run_realtime_test("Update on change", &
-            "file:///realtime.f90", "change", 2, 1)
-            
-        ! Test 2: Update diagnostics on save
-        call run_realtime_test("Update on save", &
-            "file:///save.f90", "save", 3, 0)
-            
-        ! Test 3: Incremental diagnostic updates
-        call run_realtime_test("Incremental updates", &
-            "file:///incremental.f90", "incremental", 1, 2)
-            
-        ! Test 4: Batch diagnostic updates
-        call run_realtime_test("Batch updates", &
-            "file:///batch.f90", "batch", 5, 2)
-            
-    end subroutine test_real_time_diagnostics
-    
-    ! Helper subroutines for testing
-    ! Old mock test functions removed - using run_real_diagnostic_test instead
-    
-    subroutine run_real_diagnostic_test(test_name, code_content, expected_codes, &
-                                        expected_count)
-        character(len=*), intent(in) :: test_name, code_content
-        character(len=*), intent(in) :: expected_codes(:)
-        integer, intent(in) :: expected_count
-        
-        type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg, temp_file
-        character(len=128) :: temp_path
-        integer :: unit, iostat, i, actual_count
-        integer :: clock_count, clock_rate, clock_max
-        logical :: found_expected
-        
-        total_tests = total_tests + 1
-        
-        call system_clock(count=clock_count, count_rate=clock_rate, count_max=clock_max)
-        write(temp_path, '(A,I0,A)') "/tmp/fluff_lsp_diag_", clock_count, ".f90"
-        temp_file = trim(temp_path)
 
-        open(newunit=unit, file=temp_file, status='replace', action='write', &
-             iostat=iostat)
-        if (iostat /= 0) then
-            print *, "  FAIL: ", test_name, " - Could not create temp file"
+    subroutine test_server_publish_matches_formatter()
+        type(fluff_lsp_server_t) :: server
+        character(len=:), allocatable :: expected, actual
+        logical :: ok, found
+
+        call server%initialize("/project/root")
+
+        call lint_to_notification("file:///test.f90", sample_code_ok(), expected, ok)
+        total_tests = total_tests + 1
+        if (.not. ok) then
+            print *, "  FAIL: Expected notification generation"
             return
         end if
-        write(unit, '(A)') code_content
-        close(unit)
-        
-        ! Initialize linter and run on temp file
-        linter = create_linter_engine()
-        call linter%initialize()
-        call linter%lint_file(temp_file, diagnostics, error_msg)
-        
-        ! Clean up temp file
-        open(newunit=unit, file=temp_file, status='old')
-        close(unit, status='delete')
-        
-        if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
-            print *, "  FAIL: ", test_name, " - Linter error: ", error_msg
+
+        call server%handle_text_document_did_open("file:///test.f90", "fortran", 1, &
+                                                  sample_code_ok(), ok)
+        if (.not. ok) then
+            print *, "  FAIL: Server didOpen"
             return
         end if
-        
-        actual_count = size(diagnostics)
-        
-        ! For zero expected diagnostics, just check count
-        if (expected_count == 0) then
-            if (actual_count == 0) then
-                print *, "  PASS: ", test_name, " - No diagnostics as expected"
-                passed_tests = passed_tests + 1
-            else
-                print *, "  FAIL: ", test_name, " - Expected 0, got ", actual_count
-            end if
+
+        call server%pop_notification(actual, found)
+        if (.not. found) then
+            print *, "  FAIL: Server did not produce diagnostics notification"
             return
         end if
-        
-        ! Check if we have the expected number of diagnostics
-        if (actual_count /= expected_count) then
-            print *, "  FAIL: ", test_name, " - Expected ", expected_count, ", got ", &
-                actual_count
+
+        if (actual /= expected) then
+            print *, "  FAIL: Server diagnostics notification mismatch"
             return
         end if
-        
-        ! Verify expected diagnostic codes are present (simplified check)
-        found_expected = .true.
-        if (expected_count > 0 .and. len_trim(expected_codes(1)) > 0) then
-            ! Just check that we got some diagnostics with codes
-            do i = 1, size(diagnostics)
-                if (.not. allocated(diagnostics(i)%code) .or. &
-                    len_trim(diagnostics(i)%code) == 0) then
-                    found_expected = .false.
-                    exit
-                end if
-            end do
-        end if
-        
-        if (found_expected) then
-            print *, "  PASS: ", test_name, " - Generated ", actual_count, &
-                " diagnostics"
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Missing expected diagnostic codes"
-        end if
-        
-    end subroutine run_real_diagnostic_test
-    
-    subroutine run_format_test(test_name, severity, start_line, start_char, end_line, &
-                               end_char, message, code, severity_name)
-        character(len=*), intent(in) :: test_name, message, code, severity_name
-        integer, intent(in) :: severity, start_line, start_char, end_line, end_char
-        
-        character(len=:), allocatable :: formatted_diagnostic
-        logical :: success
-        
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Server diagnostics matches formatter"
+    end subroutine test_server_publish_matches_formatter
+
+    subroutine test_clear_diagnostics_notification()
+        character(len=:), allocatable :: notification
+        character(len=:), allocatable :: err
+        character(len=:), allocatable :: params_json, diagnostics_json
+        logical :: ok, found
+        integer :: n
+
         total_tests = total_tests + 1
-        
-        call format_lsp_diagnostic(severity, start_line, start_char, end_line, &
-                                   end_char, message, code, formatted_diagnostic, &
-                                   success)
-        
-        if (success .and. len(formatted_diagnostic) > 0) then
-            print *, "  PASS: ", test_name, " - Formatted as ", severity_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Formatting failed"
+        call lsp_clear_diagnostics_notification("file:///test.f90", notification, ok)
+        if (.not. ok) then
+            print *, "  FAIL: Clear notification generation"
+            return
         end if
-        
-    end subroutine run_format_test
-    
-    subroutine run_publish_test(test_name, uris, diagnostic_count, should_succeed)
-        character(len=*), intent(in) :: test_name, uris
-        integer, intent(in) :: diagnostic_count
-        logical, intent(in) :: should_succeed
-        
-        logical :: success
-        
+
+        call json_parse(notification, ok, err)
+        if (.not. ok) then
+            print *, "  FAIL: Clear notification JSON invalid"
+            return
+        end if
+
+        call json_get_member_json(notification, "params", params_json, found, ok)
+        if (.not. ok .or. .not. found) then
+            print *, "  FAIL: Clear notification missing params"
+            return
+        end if
+
+        call json_get_member_json(params_json, "diagnostics", &
+                                  diagnostics_json, found, ok)
+        if (.not. ok .or. .not. found) then
+            print *, "  FAIL: Clear notification missing diagnostics"
+            return
+        end if
+
+        call json_array_length(diagnostics_json, n, ok)
+        if (.not. ok .or. n /= 0) then
+            print *, "  FAIL: Clear notification diagnostics not empty"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Clear diagnostics notification"
+    end subroutine test_clear_diagnostics_notification
+
+    subroutine test_realtime_updates()
+        type(fluff_lsp_server_t) :: server
+        character(len=:), allocatable :: expected1, expected2
+        character(len=:), allocatable :: actual1, actual2
+        logical :: ok, found
+
+        call server%initialize("/project/root")
+
+        call lint_to_notification("file:///rt.f90", sample_code_ok(), expected1, ok)
         total_tests = total_tests + 1
-        
-        call publish_diagnostics_to_client(uris, diagnostic_count, success)
-        
-        if (success .eqv. should_succeed) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Publish result unexpected"
+        if (.not. ok) then
+            print *, "  FAIL: Expected realtime notification 1"
+            return
         end if
-        
-    end subroutine run_publish_test
-    
-    subroutine run_clear_test(test_name, uri, clear_type, should_succeed)
-        character(len=*), intent(in) :: test_name, uri, clear_type
-        logical, intent(in) :: should_succeed
-        
-        logical :: success
-        
+
+        call lint_to_notification("file:///rt.f90", sample_code_changed(), &
+                                  expected2, ok)
+        if (.not. ok) then
+            print *, "  FAIL: Expected realtime notification 2"
+            return
+        end if
+
+        call server%handle_text_document_did_open("file:///rt.f90", "fortran", 1, &
+                                                  sample_code_ok(), ok)
+        if (.not. ok) then
+            print *, "  FAIL: Server didOpen realtime"
+            return
+        end if
+        call server%pop_notification(actual1, found)
+        if (.not. found .or. actual1 /= expected1) then
+            print *, "  FAIL: Realtime open notification mismatch"
+            return
+        end if
+
+        call server%handle_text_document_did_change("file:///rt.f90", 2, &
+                                                    sample_code_changed(), &
+                                                    ok)
+        if (.not. ok) then
+            print *, "  FAIL: Server didChange realtime"
+            return
+        end if
+        call server%pop_notification(actual2, found)
+        if (.not. found .or. actual2 /= expected2) then
+            print *, "  FAIL: Realtime change notification mismatch"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Realtime diagnostics updates"
+    end subroutine test_realtime_updates
+
+    subroutine test_single_diagnostic_format_json()
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: formatted
+        logical :: ok
+
+        call lint_to_diagnostics(sample_code_ok(), diagnostics, ok)
         total_tests = total_tests + 1
-        
-        call clear_diagnostics(uri, clear_type, success)
-        
-        if (success .eqv. should_succeed) then
-            print *, "  PASS: ", test_name
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Clear operation failed"
+        if (.not. ok) then
+            print *, "  FAIL: Lint failed for formatting test"
+            return
         end if
-        
-    end subroutine run_clear_test
-    
-    subroutine run_multifile_test(test_name, uris, expected_counts, file_count)
-        character(len=*), intent(in) :: test_name
-        character(len=*), intent(in) :: uris(:)
-        integer, intent(in) :: expected_counts(:), file_count
-        
-        integer :: actual_counts(file_count)
-        logical :: success
-        
-        total_tests = total_tests + 1
-        
-        call test_multifile_diagnostics(uris, actual_counts, success)
-        
-        if (success .and. all(actual_counts == expected_counts)) then
-            print *, "  PASS: ", test_name
+
+        if (size(diagnostics) == 0) then
             passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Multi-file test failed"
+            print *, "  PASS: Diagnostic formatting skipped with no diagnostics"
+            return
         end if
-        
-    end subroutine run_multifile_test
-    
-    subroutine run_realtime_test(test_name, uri, operation, before_count, after_count)
-        character(len=*), intent(in) :: test_name, uri, operation
-        integer, intent(in) :: before_count, after_count
-        
-        integer :: actual_after
-        logical :: success
-        
-        total_tests = total_tests + 1
-        
-        call test_realtime_diagnostics(uri, operation, before_count, actual_after, &
-                                       success)
-        
-        if (success .and. actual_after == after_count) then
-            print *, "  PASS: ", test_name, " - ", before_count, " -> ", actual_after
-            passed_tests = passed_tests + 1
-        else
-            print *, "  FAIL: ", test_name, " - Real-time update failed"
+
+        call lsp_format_diagnostic(diagnostics(1), formatted, ok)
+        if (.not. ok) then
+            print *, "  FAIL: Diagnostic formatting failed"
+            return
         end if
-        
-    end subroutine run_realtime_test
-    
-    ! Diagnostic-related JSON-RPC implementations directly in test
-    
-    subroutine format_lsp_diagnostic(severity, start_line, start_char, end_line, &
-                                     end_char, message, code, formatted, success)
-        integer, intent(in) :: severity, start_line, start_char, end_line, end_char
-        character(len=*), intent(in) :: message, code
-        character(len=:), allocatable, intent(out) :: formatted
+
+        call assert_valid_json(formatted, ok)
+        if (.not. ok) then
+            print *, "  FAIL: Diagnostic formatting JSON invalid"
+            return
+        end if
+
+        passed_tests = passed_tests + 1
+        print *, "  PASS: Diagnostic formatting JSON"
+    end subroutine test_single_diagnostic_format_json
+
+    subroutine lint_to_notification(uri, content, notification, success)
+        character(len=*), intent(in) :: uri
+        character(len=*), intent(in) :: content
+        character(len=:), allocatable, intent(out) :: notification
         logical, intent(out) :: success
-        
-        character(len=20) :: severity_str, start_str, end_str, sev_num
-        
-        ! Convert severity to string
-        select case (severity)
-        case (1)
-            severity_str = "Error"
-        case (2)
-            severity_str = "Warning"
-        case (3)
-            severity_str = "Information"
-        case (4)
-            severity_str = "Hint"
-        case default
-            severity_str = "Unknown"
-        end select
-        
-        ! Format position strings
-        write(start_str, '(I0,",",I0)') start_line, start_char
-        write(end_str, '(I0,",",I0)') end_line, end_char
-        write(sev_num, '(I0)') severity
-        
-        ! Create formatted diagnostic
-        formatted = '{"range":{"start":{"line":' // trim(adjustl(start_str)) // &
-                    '},"end":{"line":' // trim(adjustl(end_str)) // &
-                    '}},"severity":' // trim(adjustl(sev_num)) // &
-                    ',"message":"' // trim(message) // &
-                    '","code":"' // trim(code) // '"}'
-        
+
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        logical :: ok
+
+        call lint_to_diagnostics(content, diagnostics, ok)
+        if (.not. ok) then
+            success = .false.
+            notification = ""
+            return
+        end if
+
+        call lsp_publish_diagnostics_notification(uri, diagnostics, &
+                                                  notification, success)
+    end subroutine lint_to_notification
+
+    subroutine lint_to_diagnostics(content, diagnostics, success)
+        character(len=*), intent(in) :: content
+        type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
+        logical, intent(out) :: success
+
+        type(linter_engine_t) :: linter
+        type(fluff_ast_context_t) :: ast_ctx
+        character(len=:), allocatable :: error_msg
+
+        call linter%initialize()
+        call ast_ctx%from_source(content, error_msg)
+        if (error_msg /= "") then
+            success = .false.
+            allocate (diagnostics(0))
+            return
+        end if
+
+        call linter%lint_ast(ast_ctx, diagnostics)
         success = .true.
-        
-    end subroutine format_lsp_diagnostic
-    
+    end subroutine lint_to_diagnostics
+
+    subroutine assert_valid_json(text, success)
+        character(len=*), intent(in) :: text
+        logical, intent(out) :: success
+
+        character(len=:), allocatable :: err
+
+        call json_parse(text, success, err)
+    end subroutine assert_valid_json
+
+    function sample_code_ok() result(code)
+        character(len=:), allocatable :: code
+
+        code = "program test"//new_line('a')// &
+               "  implicit none"//new_line('a')// &
+               "  integer :: x"//new_line('a')// &
+               "  x = 1"//new_line('a')// &
+               "end program"
+    end function sample_code_ok
+
+    function sample_code_changed() result(code)
+        character(len=:), allocatable :: code
+
+        code = "program test"//new_line('a')// &
+               "  implicit none"//new_line('a')// &
+               "  integer :: x"//new_line('a')// &
+               "  x = 2"//new_line('a')// &
+               "end program"
+    end function sample_code_changed
+
 end program test_lsp_diagnostics
