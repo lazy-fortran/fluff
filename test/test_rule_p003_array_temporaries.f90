@@ -5,45 +5,68 @@ program test_rule_p003_array_temporaries
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists, assert_has_diagnostic_code
     implicit none
 
     print *, "Testing P003: Unnecessary array temporaries rule..."
 
-    ! Test 1: Unnecessary array temporaries (should trigger)
-    call test_unnecessary_temporaries()
-
-    ! Test 2: Necessary array operations (should not trigger)
-    call test_necessary_operations()
-
-    ! Test 3: Expression complexity causing temporaries
-    call test_complex_expressions()
-
-    ! Test 4: Function return temporaries
-    call test_function_temporaries()
+    call test_whole_array_expression_triggers()
+    call test_elemental_loop_is_ok()
 
     print *, "All P003 tests passed!"
 
 contains
 
-    subroutine test_unnecessary_temporaries()
-        ! P003 implementation requires deep type analysis for array temporaries detection
-        ! Rule is enabled but returns zero violations until deeper array analysis is added
-        print *, "  + Unnecessary array temporaries (rule enabled, needs type analysis)"
-    end subroutine test_unnecessary_temporaries
+    subroutine test_whole_array_expression_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
 
-    subroutine test_necessary_operations()
-        ! P003 implementation enabled - tests that efficient code produces no violations
-        print *, "  + Necessary array operations (rule enabled)"
-    end subroutine test_necessary_operations
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "real :: a(10), b(10), c(10)"//new_line('a')// &
+                    "c = a + b"//new_line('a')// &
+                    "end program test"
 
-    subroutine test_complex_expressions()
-        ! P003 enabled - placeholder for complex expression tests
-        print *, "  + Complex expressions (rule enabled)"
-    end subroutine test_complex_expressions
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p003_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
 
-    subroutine test_function_temporaries()
-        ! P003 enabled - placeholder for function return temporary tests
-        print *, "  + Function return temporaries (rule enabled)"
-    end subroutine test_function_temporaries
+        call assert_has_diagnostic_code(diagnostics, "P003", .true., &
+                                        "whole-array expression should be flagged")
+        print *, "  + Whole-array expression"
+    end subroutine test_whole_array_expression_triggers
+
+    subroutine test_elemental_loop_is_ok()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "integer :: i"//new_line('a')// &
+                    "real :: a(10), b(10), c(10)"//new_line('a')// &
+                    "do i = 1, 10"//new_line('a')// &
+                    "    c(i) = a(i) + b(i)"//new_line('a')// &
+                    "end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p003_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P003", .false., &
+                                        "element-wise loop should not be flagged")
+        print *, "  + Element-wise loop"
+    end subroutine test_elemental_loop_is_ok
 
 end program test_rule_p003_array_temporaries

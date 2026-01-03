@@ -5,45 +5,127 @@ program test_rule_f009_inconsistent_intent
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists, assert_has_diagnostic_code
     implicit none
 
     print *, "Testing F009: Inconsistent intent usage rule..."
 
-    ! Test 1: Inconsistent intent usage (should trigger)
-    call test_inconsistent_intent()
-
-    ! Test 2: Consistent intent usage (should not trigger)
-    call test_consistent_intent()
-
-    ! Test 3: Intent(in) variable modified
     call test_intent_in_modified()
-
-    ! Test 4: Intent(out) variable not assigned
+    call test_intent_in_not_modified()
     call test_intent_out_unassigned()
+    call test_intent_out_assigned()
 
     print *, "All F009 tests passed!"
 
 contains
 
-    subroutine test_inconsistent_intent()
-        ! F009 implementation enabled - symbol table API now available (issue #2613)
-        ! get_children() now works (issue #2612) enabling intent usage tracking
-        print *, "  + Inconsistent intent usage (rule enabled, needs usage analysis)"
-    end subroutine test_inconsistent_intent
-
-    subroutine test_consistent_intent()
-        ! F009 implementation enabled - tests that consistent intent usage is not flagged
-        print *, "  + Consistent intent usage (rule enabled)"
-    end subroutine test_consistent_intent
-
     subroutine test_intent_in_modified()
-        ! F009 enabled - placeholder for intent(in) modification detection
-        print *, "  + Intent(in) variable modified (rule enabled)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "subroutine calc(x)"//new_line('a')// &
+                    "    real, intent(in) :: x"//new_line('a')// &
+                    "    x = x + 1.0"//new_line('a')// &
+                    "end subroutine calc"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_f009_in_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "F009", .true., &
+                                        "intent(in) assignment should be flagged")
+        print *, "  + Intent(in) modified"
     end subroutine test_intent_in_modified
 
+    subroutine test_intent_in_not_modified()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "subroutine calc(x, y)"//new_line('a')// &
+                    "    real, intent(in) :: x"//new_line('a')// &
+                    "    real, intent(out) :: y"//new_line('a')// &
+                    "    y = x + 1.0"//new_line('a')// &
+                    "end subroutine calc"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_f009_in_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "F009", .false., &
+                                        "no intent violations expected")
+        print *, "  + Intent(in) not modified"
+    end subroutine test_intent_in_not_modified
+
     subroutine test_intent_out_unassigned()
-        ! F009 enabled - placeholder for intent(out) unassigned detection
-        print *, "  + Intent(out) variable unassigned (rule enabled)"
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "subroutine calc(y)"//new_line('a')// &
+                    "    real, intent(out) :: y"//new_line('a')// &
+                    "end subroutine calc"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_f009_out_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "F009", .true., &
+                                     "intent(out) without assignment should be flagged")
+        print *, "  + Intent(out) unassigned"
     end subroutine test_intent_out_unassigned
+
+    subroutine test_intent_out_assigned()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "subroutine calc(y)"//new_line('a')// &
+                    "    real, intent(out) :: y"//new_line('a')// &
+                    "    y = 1.0"//new_line('a')// &
+                    "end subroutine calc"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_f009_out_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "F009", .false., &
+                                        "no intent violations expected")
+        print *, "  + Intent(out) assigned"
+    end subroutine test_intent_out_assigned
 
 end program test_rule_f009_inconsistent_intent

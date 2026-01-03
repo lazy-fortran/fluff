@@ -5,45 +5,69 @@ program test_rule_p007_mixed_precision
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists, assert_has_diagnostic_code
     implicit none
 
     print *, "Testing P007: Mixed precision arithmetic rule..."
 
-    ! Test 1: Mixed precision operations (should trigger)
-    call test_mixed_precision()
-
-    ! Test 2: Consistent precision (should not trigger)
-    call test_consistent_precision()
-
-    ! Test 3: Necessary precision conversions
-    call test_necessary_conversions()
-
-    ! Test 4: Complex mixed precision expressions
-    call test_complex_mixed_expressions()
+    call test_mixed_precision_triggers()
+    call test_consistent_precision_is_ok()
 
     print *, "All P007 tests passed!"
 
 contains
 
-    subroutine test_mixed_precision()
-        ! P007 implementation enabled - needs type inference for precision analysis
-        ! get_children() now works (issue #2612) enabling expression analysis
-        print *, "  + Mixed precision operations (rule enabled, needs type inference)"
-    end subroutine test_mixed_precision
+    subroutine test_mixed_precision_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
 
-    subroutine test_consistent_precision()
-        ! P007 implementation enabled - tests that consistent precision is not flagged
-        print *, "  + Consistent precision (rule enabled)"
-    end subroutine test_consistent_precision
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "real :: a"//new_line('a')// &
+                    "real(8) :: b"//new_line('a')// &
+                    "real(8) :: r"//new_line('a')// &
+                    "r = a + b"//new_line('a')// &
+                    "end program test"
 
-    subroutine test_necessary_conversions()
-        ! P007 enabled - placeholder for necessary conversion tests
-        print *, "  + Necessary precision conversions (rule enabled)"
-    end subroutine test_necessary_conversions
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p007_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
 
-    subroutine test_complex_mixed_expressions()
-        ! P007 enabled - placeholder for complex expression tests
-        print *, "  + Complex mixed precision expressions (rule enabled)"
-    end subroutine test_complex_mixed_expressions
+        call assert_has_diagnostic_code(diagnostics, "P007", .true., &
+                                        "mixed precision binary op should be flagged")
+        print *, "  + Mixed precision"
+    end subroutine test_mixed_precision_triggers
+
+    subroutine test_consistent_precision_is_ok()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "real(8) :: a"//new_line('a')// &
+                    "real(8) :: b"//new_line('a')// &
+                    "real(8) :: r"//new_line('a')// &
+                    "r = a + b"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p007_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P007", .false., &
+                                        "consistent precision should not be flagged")
+        print *, "  + Consistent precision"
+    end subroutine test_consistent_precision_is_ok
 
 end program test_rule_p007_mixed_precision

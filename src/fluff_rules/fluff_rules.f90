@@ -1,15 +1,22 @@
 module fluff_rules
     ! Built-in rule implementations
     use fluff_core
-    use fluff_ast, only: fluff_ast_context_t, NODE_DECLARATION, NODE_IDENTIFIER, &
-                       NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF, NODE_IF, &
-                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN, NODE_ASSIGNMENT, &
-                       NODE_PROGRAM
-    use fluff_diagnostics
-    use fluff_rule_types
-    use fortfront, only: symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
-                        SCOPE_FUNCTION, SCOPE_SUBROUTINE, identifier_node, &
-                        semantic_context_t
+	    use fluff_ast, only: fluff_ast_context_t, NODE_DECLARATION, NODE_IDENTIFIER, &
+	                       NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF, NODE_IF, &
+	                       NODE_DO_LOOP, NODE_MODULE, NODE_UNKNOWN, NODE_ASSIGNMENT, &
+	                       NODE_PROGRAM
+	    use fluff_diagnostics
+	    use fluff_rule_f009, only: check_f009_inconsistent_intent_impl
+	    use fluff_rule_perf, only: check_p002_loop_ordering_impl, &
+	                               check_p003_array_temporaries_impl, &
+	                               check_p004_pure_elemental_impl, &
+	                               check_p005_string_operations_impl, &
+	                               check_p006_loop_allocations_impl, &
+	                               check_p007_mixed_precision_impl
+	    use fluff_rule_types
+	    use fortfront, only: symbol_info_t, variable_usage_info_t, get_variables_in_expression, &
+	                        SCOPE_FUNCTION, SCOPE_SUBROUTINE, identifier_node, &
+	                        semantic_context_t
     use fortfront_compat, only: get_identifier_name, get_symbols_in_scope, &
                                is_identifier_defined_direct, get_unused_variables_direct
     implicit none
@@ -3344,15 +3351,14 @@ contains
     end subroutine check_procedure_arguments_intent
     
     ! F009: Check inconsistent intent usage
-    subroutine check_f009_inconsistent_intent(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! BLOCKED: Requires fortfront AST API (issues #11-14)
-        allocate(violations(0))
-        
-    end subroutine check_f009_inconsistent_intent
+	    subroutine check_f009_inconsistent_intent(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_f009_inconsistent_intent_impl(ctx, node_index, violations)
+
+	    end subroutine check_f009_inconsistent_intent
     
     ! F010: Check obsolete language features
     subroutine check_f010_obsolete_features(ctx, node_index, violations)
@@ -3546,70 +3552,64 @@ contains
     end subroutine check_p001_array_access
     
     ! P002: Check loop ordering efficiency
-    subroutine check_p002_loop_ordering(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! Use fortfront AST to analyze loop ordering
-        call check_p002_loop_ordering_ast_based(ctx, node_index, violations)
-        
-    end subroutine check_p002_loop_ordering
+	    subroutine check_p002_loop_ordering(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p002_loop_ordering_impl(ctx, node_index, violations)
+
+	    end subroutine check_p002_loop_ordering
     
     ! P003: Check array temporaries
-    subroutine check_p003_array_temporaries(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) array temporaries check
-        allocate(violations(0))
-        
-    end subroutine check_p003_array_temporaries
+	    subroutine check_p003_array_temporaries(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p003_array_temporaries_impl(ctx, node_index, violations)
+
+	    end subroutine check_p003_array_temporaries
     
     ! P004: Check pure/elemental declarations
-    subroutine check_p004_pure_elemental(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! Use fortfront AST to analyze pure/elemental declarations
-        call check_p004_pure_elemental_ast_based(ctx, node_index, violations)
-        
-    end subroutine check_p004_pure_elemental
+	    subroutine check_p004_pure_elemental(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p004_pure_elemental_impl(ctx, node_index, violations)
+
+	    end subroutine check_p004_pure_elemental
     
     ! P005: Check string operations efficiency
-    subroutine check_p005_string_operations(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) string operations efficiency check
-        allocate(violations(0))
-        
-    end subroutine check_p005_string_operations
+	    subroutine check_p005_string_operations(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p005_string_operations_impl(ctx, node_index, violations)
+
+	    end subroutine check_p005_string_operations
     
     ! P006: Check loop allocations
-    subroutine check_p006_loop_allocations(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) loop allocations check
-        allocate(violations(0))
-        
-    end subroutine check_p006_loop_allocations
+	    subroutine check_p006_loop_allocations(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p006_loop_allocations_impl(ctx, node_index, violations)
+
+	    end subroutine check_p006_loop_allocations
     
     ! P007: Check mixed precision arithmetic
-    subroutine check_p007_mixed_precision(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-        
-        ! BLOCKED: Requires fortfront AST API (issues #11-14) mixed precision arithmetic check
-        allocate(violations(0))
-        
-    end subroutine check_p007_mixed_precision
+	    subroutine check_p007_mixed_precision(ctx, node_index, violations)
+	        type(fluff_ast_context_t), intent(in) :: ctx
+	        integer, intent(in) :: node_index
+	        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+
+	        call check_p007_mixed_precision_impl(ctx, node_index, violations)
+
+	    end subroutine check_p007_mixed_precision
     
     ! C001: Check for undefined variables
     subroutine check_c001_undefined_var(ctx, node_index, violations)

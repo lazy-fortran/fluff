@@ -5,45 +5,73 @@ program test_rule_p004_pure_elemental
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists, assert_has_diagnostic_code
     implicit none
 
     print *, "Testing P004: Missing pure/elemental declarations rule..."
 
-    ! Test 1: Functions that could be pure (should trigger)
-    call test_could_be_pure()
-
-    ! Test 2: Functions already pure (should not trigger)
-    call test_already_pure()
-
-    ! Test 3: Functions that could be elemental (should trigger)
-    call test_could_be_elemental()
-
-    ! Test 4: Functions with side effects (should not trigger)
-    call test_has_side_effects()
+    call test_missing_pure_triggers()
+    call test_already_pure_is_ok()
 
     print *, "All P004 tests passed!"
 
 contains
 
-    subroutine test_could_be_pure()
-        ! P004 implementation enabled - needs procedure attribute analysis from fortfront
-        ! get_children() now works (issue #2612), but still needs procedure purity analysis
-        print *, "  + Functions that could be pure (rule enabled, needs purity analysis)"
-    end subroutine test_could_be_pure
+    subroutine test_missing_pure_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
 
-    subroutine test_already_pure()
-        ! P004 implementation enabled - tests that already pure functions are not flagged
-        print *, "  + Functions already pure (rule enabled)"
-    end subroutine test_already_pure
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "print *, f(1.0)"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "real function f(x)"//new_line('a')// &
+                    "    real, intent(in) :: x"//new_line('a')// &
+                    "    f = x + 1.0"//new_line('a')// &
+                    "end function f"//new_line('a')// &
+                    "end program test"
 
-    subroutine test_could_be_elemental()
-        ! P004 enabled - placeholder for elemental function tests
-        print *, "  + Functions that could be elemental (rule enabled)"
-    end subroutine test_could_be_elemental
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p004_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
 
-    subroutine test_has_side_effects()
-        ! P004 enabled - placeholder for side effect analysis tests
-        print *, "  + Functions with side effects (rule enabled)"
-    end subroutine test_has_side_effects
+        call assert_has_diagnostic_code(diagnostics, "P004", .true., &
+                          "missing pure on side-effect-free function should be flagged")
+        print *, "  + Missing pure"
+    end subroutine test_missing_pure_triggers
+
+    subroutine test_already_pure_is_ok()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "print *, f(1.0)"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "pure real function f(x)"//new_line('a')// &
+                    "    real, intent(in) :: x"//new_line('a')// &
+                    "    f = x + 1.0"//new_line('a')// &
+                    "end function f"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p004_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P004", .false., &
+                                        "pure function should not be flagged")
+        print *, "  + Already pure"
+    end subroutine test_already_pure_is_ok
 
 end program test_rule_p004_pure_elemental

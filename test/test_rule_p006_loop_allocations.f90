@@ -5,45 +5,75 @@ program test_rule_p006_loop_allocations
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: make_temp_fortran_path, write_text_file, &
+                            delete_file_if_exists, assert_has_diagnostic_code
     implicit none
 
     print *, "Testing P006: Unnecessary allocations in loops rule..."
 
-    ! Test 1: Allocations inside loops (should trigger)
-    call test_allocations_in_loops()
-
-    ! Test 2: Pre-allocated outside loops (should not trigger)
-    call test_pre_allocated()
-
-    ! Test 3: Necessary allocations per iteration
-    call test_necessary_per_iteration()
-
-    ! Test 4: String allocations in loops
-    call test_string_allocations()
+    call test_allocate_inside_loop_triggers()
+    call test_allocate_outside_loop_is_ok()
 
     print *, "All P006 tests passed!"
 
 contains
 
-    subroutine test_allocations_in_loops()
-        ! P006 implementation enabled - needs allocation statement detection in loops
-        ! get_children() now works (issue #2612) enabling loop body analysis
-        print *, "  + Allocations inside loops (rule enabled, needs allocation analysis)"
-    end subroutine test_allocations_in_loops
+    subroutine test_allocate_inside_loop_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
 
-    subroutine test_pre_allocated()
-        ! P006 implementation enabled - tests that pre-allocated arrays are not flagged
-        print *, "  + Pre-allocated outside loops (rule enabled)"
-    end subroutine test_pre_allocated
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "integer :: i"//new_line('a')// &
+                    "real, allocatable :: a(:)"//new_line('a')// &
+                    "do i = 1, 10"//new_line('a')// &
+                    "    allocate(a(10))"//new_line('a')// &
+                    "    a = real(i)"//new_line('a')// &
+                    "    deallocate(a)"//new_line('a')// &
+                    "end do"//new_line('a')// &
+                    "end program test"
 
-    subroutine test_necessary_per_iteration()
-        ! P006 enabled - placeholder for necessary per-iteration allocation tests
-        print *, "  + Necessary allocations per iteration (rule enabled)"
-    end subroutine test_necessary_per_iteration
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p006_bad", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
 
-    subroutine test_string_allocations()
-        ! P006 enabled - placeholder for string allocation tests
-        print *, "  + String allocations in loops (rule enabled)"
-    end subroutine test_string_allocations
+        call assert_has_diagnostic_code(diagnostics, "P006", .true., &
+                                        "allocate inside loop should be flagged")
+        print *, "  + Allocate inside loop"
+    end subroutine test_allocate_inside_loop_triggers
+
+    subroutine test_allocate_outside_loop_is_ok()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "integer :: i"//new_line('a')// &
+                    "real, allocatable :: a(:)"//new_line('a')// &
+                    "allocate(a(10))"//new_line('a')// &
+                    "do i = 1, 10"//new_line('a')// &
+                    "    a = real(i)"//new_line('a')// &
+                    "end do"//new_line('a')// &
+                    "deallocate(a)"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p006_ok", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P006", .false., &
+                                        "allocate outside loop should not be flagged")
+        print *, "  + Allocate outside loop"
+    end subroutine test_allocate_outside_loop_is_ok
 
 end program test_rule_p006_loop_allocations
