@@ -1,10 +1,7 @@
 program test_rule_f013_multiple_statements
     ! Test F013: Multiple statements per line rule
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
                             delete_file_if_exists, lint_file_checked
     implicit none
