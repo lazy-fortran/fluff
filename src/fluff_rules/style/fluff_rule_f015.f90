@@ -281,14 +281,31 @@ contains
         integer, allocatable, intent(inout) :: referenced_labels(:)
 
         integer :: i
+        integer :: line
+        integer :: comma_idx
+        integer :: fmt_idx
         integer :: label
         logical :: ok
 
-        i = next_nontrivia_same_line(tokens, stmt_idx + 1)
-        if (i <= 0) return
-        if (tokens(i)%kind /= TK_NUMBER) return
-        if (.not. allocated(tokens(i)%text)) return
-        call parse_label(tokens(i)%text, label, ok)
+        line = tokens(stmt_idx)%line
+        comma_idx = 0
+
+        do i = stmt_idx + 1, size(tokens)
+            if (tokens(i)%line /= line) exit
+            if (tokens(i)%kind /= TK_OPERATOR) cycle
+            if (.not. allocated(tokens(i)%text)) cycle
+            if (tokens(i)%text == ",") then
+                comma_idx = i
+                exit
+            end if
+        end do
+        if (comma_idx <= 0) return
+
+        fmt_idx = next_nontrivia_same_line(tokens, comma_idx + 1)
+        if (fmt_idx <= 0) return
+        if (tokens(fmt_idx)%kind /= TK_NUMBER) return
+        if (.not. allocated(tokens(fmt_idx)%text)) return
+        call parse_label(tokens(fmt_idx)%text, label, ok)
         if (.not. ok) return
         call push_int_unique(referenced_labels, label)
     end subroutine collect_positional_format_label
