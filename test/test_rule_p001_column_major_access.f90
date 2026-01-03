@@ -4,7 +4,7 @@ program test_rule_p001_column_major_access
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
                             delete_file_if_exists, assert_has_diagnostic_code, &
-                            assert_diagnostic_location
+                            assert_diagnostic_location, lint_file_checked
     implicit none
 
     print *, "Testing P001: Column-major array access rule..."
@@ -23,7 +23,6 @@ contains
     subroutine test_2d_incorrect_order_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -42,7 +41,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_bad_2d", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .true., &
@@ -55,7 +54,6 @@ contains
     subroutine test_2d_correct_order_ok()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -74,7 +72,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_ok_2d", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .false., &
@@ -85,7 +83,6 @@ contains
     subroutine test_2d_incorrect_order_under_if_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -106,7 +103,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_bad_2d_if", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .true., &
@@ -119,7 +116,6 @@ contains
     subroutine test_3d_incorrect_order_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -140,7 +136,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_bad_3d", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .true., &
@@ -153,7 +149,6 @@ contains
     subroutine test_rhs_array_read_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -173,7 +168,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_rhs_read", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .true., &
@@ -186,7 +181,6 @@ contains
     subroutine test_non_array_call_ok()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -210,7 +204,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p001_call_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P001", .false., &

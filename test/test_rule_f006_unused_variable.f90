@@ -5,6 +5,7 @@ program test_rule_f006_unused_variable
     use fluff_rules
     use fluff_diagnostics
     use fluff_ast
+    use test_support, only: lint_file_checked
     implicit none
 
     print *, "Testing F006: Unused variable declaration rule..."
@@ -44,7 +45,6 @@ contains
     subroutine test_unused_variable()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: tmpfile
         integer :: unit
@@ -68,7 +68,7 @@ contains
         close (unit)
 
         ! Lint the file
-        call linter%lint_file(tmpfile, diagnostics, error_msg)
+        call lint_file_checked(linter, tmpfile, diagnostics)
 
         ! Check for F006 violation
         found_f006 = .false.
@@ -96,7 +96,6 @@ contains
     subroutine test_used_variable()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: tmpfile
         integer :: unit
@@ -121,7 +120,7 @@ contains
         close (unit)
 
         ! Lint the file
-        call linter%lint_file(tmpfile, diagnostics, error_msg)
+        call lint_file_checked(linter, tmpfile, diagnostics)
 
         ! Check for F006 violation
         found_f006 = .false.
@@ -149,7 +148,6 @@ contains
     subroutine test_multiple_unused()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: tmpfile
         integer :: unit
@@ -170,7 +168,7 @@ contains
         write (unit, '(A)') test_code
         close (unit)
 
-        call linter%lint_file(tmpfile, diagnostics, error_msg)
+        call lint_file_checked(linter, tmpfile, diagnostics)
 
         f006_count = 0
         if (allocated(diagnostics)) then
@@ -193,7 +191,6 @@ contains
     subroutine test_unused_parameter()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: tmpfile
         integer :: unit
@@ -216,7 +213,7 @@ contains
         write (unit, '(A)') test_code
         close (unit)
 
-        call linter%lint_file(tmpfile, diagnostics, error_msg)
+        call lint_file_checked(linter, tmpfile, diagnostics)
 
         found_f006 = .false.
         if (allocated(diagnostics)) then

@@ -6,7 +6,8 @@ program test_rule_p003_array_temporaries
     use fluff_diagnostics
     use fluff_ast
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code
+                            delete_file_if_exists, assert_has_diagnostic_code, &
+                            lint_file_checked
     implicit none
 
     print *, "Testing P003: Unnecessary array temporaries rule..."
@@ -21,7 +22,6 @@ contains
     subroutine test_whole_array_expression_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -34,7 +34,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p003_bad", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P003", .true., &
@@ -45,7 +45,6 @@ contains
     subroutine test_elemental_loop_is_ok()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -61,7 +60,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p003_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P003", .false., &

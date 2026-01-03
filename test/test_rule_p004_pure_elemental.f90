@@ -6,7 +6,8 @@ program test_rule_p004_pure_elemental
     use fluff_diagnostics
     use fluff_ast
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code
+                            delete_file_if_exists, assert_has_diagnostic_code, &
+                            lint_file_checked
     implicit none
 
     print *, "Testing P004: Missing pure/elemental declarations rule..."
@@ -21,7 +22,6 @@ contains
     subroutine test_missing_pure_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -38,18 +38,21 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p004_bad", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
-        call assert_has_diagnostic_code(diagnostics, "P004", .true., &
-                          "missing pure on side-effect-free function should be flagged")
+        call assert_has_diagnostic_code( &
+            diagnostics, &
+            "P004", &
+            .true., &
+            "missing pure on side-effect-free function should be "// &
+            "flagged")
         print *, "  + Missing pure"
     end subroutine test_missing_pure_triggers
 
     subroutine test_already_pure_is_ok()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -66,7 +69,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p004_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P004", .false., &

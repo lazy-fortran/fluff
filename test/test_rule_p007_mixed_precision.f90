@@ -6,7 +6,8 @@ program test_rule_p007_mixed_precision
     use fluff_diagnostics
     use fluff_ast
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code
+                            delete_file_if_exists, assert_has_diagnostic_code, &
+                            lint_file_checked
     implicit none
 
     print *, "Testing P007: Mixed precision arithmetic rule..."
@@ -21,7 +22,6 @@ contains
     subroutine test_mixed_precision_triggers()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -36,7 +36,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_bad", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .true., &
@@ -47,7 +47,6 @@ contains
     subroutine test_consistent_precision_is_ok()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -62,7 +61,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .false., &

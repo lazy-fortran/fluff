@@ -4,6 +4,7 @@ program test_rule_f003_line_length
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use fluff_visual_columns, only: visual_columns
+    use test_support, only: lint_file_checked
     implicit none
 
     print *, "Testing F003: Line too long rule..."
@@ -33,7 +34,6 @@ contains
     subroutine test_line_too_long()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=200) :: long_line
         character(len=*), parameter :: filename = &
@@ -59,7 +59,7 @@ contains
         close (99)
 
         ! Lint the file
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         ! Check for F003 violation
         found_f003 = .false.
@@ -99,7 +99,6 @@ contains
     subroutine test_line_within_limit()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=*), parameter :: filename = "/tmp/fluff_test_f003_ok.f90"
         integer :: i
@@ -119,7 +118,7 @@ contains
         close (99)
 
         ! Lint the file
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         ! Check for F003 violation
         found_f003 = .false.
@@ -147,7 +146,6 @@ contains
     subroutine test_continuation_lines()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=*), parameter :: filename = &
                                        "/tmp/fluff_test_f003_continuation.f90"
@@ -168,7 +166,7 @@ contains
         close (99)
 
         ! Lint the file
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         ! Check for F003 violation
         found_f003 = .false.
@@ -207,7 +205,6 @@ contains
     subroutine test_comment_lines()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=*), parameter :: filename = "/tmp/fluff_test_f003_comments.f90"
         integer :: i
@@ -231,7 +228,7 @@ contains
         close (99)
 
         ! Lint the file
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         ! Check that F003 is NOT triggered for comment lines
         found_f003 = .false.
@@ -261,7 +258,6 @@ contains
         type(linter_engine_t) :: linter
         type(fluff_config_t) :: config
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=*), parameter :: filename = "/tmp/fluff_test_f003_custom.f90"
         integer :: i
@@ -282,7 +278,7 @@ contains
         write (99, '(A)') test_code
         close (99)
 
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         found_f003 = .false.
         if (allocated(diagnostics)) then
@@ -310,7 +306,6 @@ contains
     subroutine test_tabs_column_calculation()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: long_line
         character(len=*), parameter :: filename = "/tmp/fluff_test_f003_tabs.f90"
@@ -331,7 +326,7 @@ contains
         write (99, '(A)') test_code
         close (99)
 
-        call linter%lint_file(filename, diagnostics, error_msg)
+        call lint_file_checked(linter, filename, diagnostics)
 
         found_f003 = .false.
         found_location = .false.

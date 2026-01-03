@@ -6,7 +6,7 @@ program test_rule_f014_unnecessary_parentheses
     use fluff_diagnostics
     use fluff_ast
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists
+                            delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F014: Unnecessary parentheses rule..."
@@ -30,7 +30,6 @@ contains
     subroutine test_unnecessary_parentheses()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -58,7 +57,7 @@ contains
         call write_text_file(path, test_code)
 
         ! Lint the file
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         ! Check for F014 violation
         found_f014 = .false.
@@ -84,7 +83,6 @@ contains
     subroutine test_necessary_parentheses()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -113,7 +111,7 @@ contains
         call write_text_file(path, test_code)
 
         ! Lint the file
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         ! Check for F014 violation
         found_f014 = .false.
@@ -139,7 +137,6 @@ contains
     subroutine test_expression_clarity()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -159,7 +156,7 @@ contains
         call make_temp_fortran_path("fluff_test_f014_clarity", path)
         call write_text_file(path, test_code)
 
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         found_f014 = .false.
         if (allocated(diagnostics)) then
@@ -174,7 +171,7 @@ contains
         call delete_file_if_exists(path)
 
         if (found_f014) then
-            error stop "Failed: F014 should not be triggered for expression " // &
+            error stop "Failed: F014 should not be triggered for expression "// &
                 "clarity parentheses"
         end if
 
@@ -184,7 +181,6 @@ contains
     subroutine test_function_call_parentheses()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -203,7 +199,7 @@ contains
         call make_temp_fortran_path("fluff_test_f014_call", path)
         call write_text_file(path, test_code)
 
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         found_f014 = .false.
         if (allocated(diagnostics)) then
