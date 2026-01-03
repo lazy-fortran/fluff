@@ -10,6 +10,7 @@ program test_rule_p001_column_major_access
     print *, "Testing P001: Column-major array access rule..."
 
     call test_2d_incorrect_order_triggers()
+    call test_2d_incorrect_order_under_if_triggers()
     call test_2d_correct_order_ok()
     call test_3d_incorrect_order_triggers()
     call test_non_array_call_ok()
@@ -79,6 +80,40 @@ contains
                                         "innermost loop varies leftmost index")
         print *, "  + 2D correct ordering ok"
     end subroutine test_2d_correct_order_ok
+
+    subroutine test_2d_incorrect_order_under_if_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+                    "    real :: matrix(n, m)"//new_line('a')// &
+                    "    integer :: i, j"//new_line('a')// &
+                    "    do i = 1, n"//new_line('a')// &
+                    "        if (i .gt. 0) then"//new_line('a')// &
+                    "            do j = 1, m"//new_line('a')// &
+                    "                matrix(i, j) = real(i * j)"//new_line('a')// &
+                    "            end do"//new_line('a')// &
+                    "        end if"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p001_bad_2d_if", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P001", .true., &
+                                        "inner loop nested under if triggers")
+        call assert_diagnostic_location(diagnostics, "P001", 9, 28, &
+                                        "P001 should point at array reference")
+        print *, "  + 2D incorrect ordering under if triggers"
+    end subroutine test_2d_incorrect_order_under_if_triggers
 
     subroutine test_3d_incorrect_order_triggers()
         type(linter_engine_t) :: linter
