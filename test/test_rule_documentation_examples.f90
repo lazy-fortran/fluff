@@ -1,10 +1,5 @@
 program test_rule_documentation_examples
     ! Generate comprehensive documentation examples for all rules
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
     implicit none
     
     print *, "Generating rule documentation and examples..."
@@ -72,18 +67,17 @@ contains
                               "Missing intent declarations", &
                               generate_f008_bad_example(), &
                               generate_f008_good_example())
-        
-        ! Continue for all F rules...
-        print *, "    ✓ Style rule examples completed (F001-F015)"
+
+        print *, "    ✓ Style rule examples completed (F001-F008)"
         
     end subroutine generate_style_rule_examples
     
     subroutine generate_performance_rule_examples()
         print *, "  📚 Generating performance rule examples..."
         
-        ! P001: Non-contiguous array access
-        call show_rule_example("P001", "non-contiguous-array-access", &
-                              "Non-contiguous array access pattern detected", &
+        ! P001: Column-major array access
+        call show_rule_example("P001", "column-major-array-access", &
+                              "Leftmost array index varies in an outer loop", &
                               generate_p001_bad_example(), &
                               generate_p001_good_example())
         
@@ -210,8 +204,8 @@ contains
         character(len=:), allocatable :: code
         code = "program line_too_long" // new_line('a') // &
                "    implicit none" // new_line('a') // &
-               "    real :: very_long_variable_name_that_makes_this_line_exceed_the_maximum_" // &
-               "length_limit = 3.14159" // new_line('a') // &
+               "    real :: very_long_variable_name_that_makes_this_" // &
+               "line_exceed_the_maximum_length_limit = 3.14159" // new_line('a') // &
                "end program line_too_long"
     end function generate_f003_bad_example
     
@@ -264,7 +258,6 @@ contains
                "end program consistent_spaces"
     end function generate_f005_good_example
     
-    ! Continue with other rule examples...
     function generate_f006_bad_example() result(code)
         character(len=:), allocatable :: code
         code = "program unused_variable" // new_line('a') // &
@@ -311,7 +304,8 @@ contains
         character(len=:), allocatable :: code
         code = "subroutine missing_intent(input, output)" // new_line('a') // &
                "    implicit none" // new_line('a') // &
-               "    real :: input, output  ! Missing intent declarations" // new_line('a') // &
+               "    real :: input, output  ! Missing intent " // &
+               "declarations" // new_line('a') // &
                "    output = input * 2.0" // new_line('a') // &
                "end subroutine missing_intent"
     end function generate_f008_bad_example
@@ -333,10 +327,10 @@ contains
                "    implicit none" // new_line('a') // &
                "    real :: matrix(1000, 1000)" // new_line('a') // &
                "    integer :: i, j" // new_line('a') // &
-               "    ! Bad: column-major access (non-contiguous)" // new_line('a') // &
+               "    ! Bad: leftmost index varies in outer loop" // new_line('a') // &
                "    do i = 1, 1000" // new_line('a') // &
                "        do j = 1, 1000" // new_line('a') // &
-               "            matrix(j, i) = real(i * j)" // new_line('a') // &
+               "            matrix(i, j) = real(i * j)" // new_line('a') // &
                "        end do" // new_line('a') // &
                "    end do" // new_line('a') // &
                "end program bad_array_access"
@@ -348,34 +342,66 @@ contains
                "    implicit none" // new_line('a') // &
                "    real :: matrix(1000, 1000)" // new_line('a') // &
                "    integer :: i, j" // new_line('a') // &
-               "    ! Good: row-major access (contiguous)" // new_line('a') // &
-               "    do j = 1, 1000" // new_line('a') // &
-               "        do i = 1, 1000" // new_line('a') // &
-               "            matrix(i, j) = real(i * j)" // new_line('a') // &
+               "    ! Good: leftmost index varies in inner loop" // new_line('a') // &
+               "    do i = 1, 1000" // new_line('a') // &
+               "        do j = 1, 1000" // new_line('a') // &
+               "            matrix(j, i) = real(i * j)" // new_line('a') // &
                "        end do" // new_line('a') // &
                "    end do" // new_line('a') // &
                "end program good_array_access"
     end function generate_p001_good_example
     
-    ! Continue with other performance rules...
     function generate_p002_bad_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Bad loop ordering - cache unfriendly"
+        code = "program bad_loop_order" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    integer, parameter :: n = 10, m = 10" // new_line('a') // &
+               "    real :: a(n, m)" // new_line('a') // &
+               "    integer :: i, j" // new_line('a') // &
+               "    do i = 1, n" // new_line('a') // &
+               "        do j = 1, m" // new_line('a') // &
+               "            a(i, j) = real(i * j)" // new_line('a') // &
+               "        end do" // new_line('a') // &
+               "    end do" // new_line('a') // &
+               "end program bad_loop_order"
     end function generate_p002_bad_example
     
     function generate_p002_good_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Good loop ordering - cache friendly"
+        code = "program good_loop_order" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    integer, parameter :: n = 10, m = 10" // new_line('a') // &
+               "    real :: a(n, m)" // new_line('a') // &
+               "    integer :: i, j" // new_line('a') // &
+               "    do i = 1, n" // new_line('a') // &
+               "        do j = 1, m" // new_line('a') // &
+               "            a(j, i) = real(i * j)" // new_line('a') // &
+               "        end do" // new_line('a') // &
+               "    end do" // new_line('a') // &
+               "end program good_loop_order"
     end function generate_p002_good_example
     
     function generate_p003_bad_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Bad: creates unnecessary temporaries"
+        code = "program bad_temporaries" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    integer, parameter :: n = 10" // new_line('a') // &
+               "    real :: a(n), b(n), c(n)" // new_line('a') // &
+               "    a = b + c" // new_line('a') // &
+               "end program bad_temporaries"
     end function generate_p003_bad_example
     
     function generate_p003_good_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Good: avoids temporaries"
+        code = "program good_no_temporaries" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    integer, parameter :: n = 10" // new_line('a') // &
+               "    real :: a(n), b(n), c(n)" // new_line('a') // &
+               "    integer :: i" // new_line('a') // &
+               "    do i = 1, n" // new_line('a') // &
+               "        a(i) = b(i) + c(i)" // new_line('a') // &
+               "    end do" // new_line('a') // &
+               "end program good_no_temporaries"
     end function generate_p003_good_example
     
     function generate_p004_bad_example() result(code)
@@ -390,7 +416,8 @@ contains
     
     function generate_p004_good_example() result(code)
         character(len=:), allocatable :: code
-        code = "pure elemental function compute_square(x) result(y)" // new_line('a') // &
+        code = "pure elemental function compute_square(x) " // &
+               "result(y)" // new_line('a') // &
                "    implicit none" // new_line('a') // &
                "    real, intent(in) :: x" // new_line('a') // &
                "    real :: y" // new_line('a') // &
@@ -400,12 +427,26 @@ contains
     
     function generate_p005_bad_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Bad: inefficient string concatenation in loop"
+        code = "program bad_string_build" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    character(len=256) :: s" // new_line('a') // &
+               "    integer :: i" // new_line('a') // &
+               "    s = ''" // new_line('a') // &
+               "    do i = 1, 100" // new_line('a') // &
+               "        s = trim(s)//'x'" // new_line('a') // &
+               "    end do" // new_line('a') // &
+               "    print *, len_trim(s)" // new_line('a') // &
+               "end program bad_string_build"
     end function generate_p005_bad_example
     
     function generate_p005_good_example() result(code)
         character(len=:), allocatable :: code
-        code = "! Good: efficient string operations"
+        code = "program good_string_build" // new_line('a') // &
+               "    implicit none" // new_line('a') // &
+               "    character(len=256) :: s" // new_line('a') // &
+               "    s = repeat('x', 100)" // new_line('a') // &
+               "    print *, len_trim(s)" // new_line('a') // &
+               "end program good_string_build"
     end function generate_p005_good_example
     
     function generate_p006_bad_example() result(code)

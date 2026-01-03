@@ -70,8 +70,8 @@ contains
 
         allocate (rules(7))
 
-        rules(1) = rule_info_t(code="P001", name="non-contiguous-array-access", &
-                               description="Non-contiguous array access pattern", &
+        rules(1) = rule_info_t(code="P001", name="column-major-array-access", &
+                               description="Array subscript varies outer loop first", &
                                category=CATEGORY_PERFORMANCE, subcategory="memory", &
                                default_enabled=.true., fixable=.false., &
                                severity=SEVERITY_WARNING, &

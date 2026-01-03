@@ -8,6 +8,7 @@ module test_support
     public :: write_text_file
     public :: delete_file_if_exists
     public :: assert_has_diagnostic_code
+    public :: assert_diagnostic_location
 
 contains
 
@@ -85,5 +86,38 @@ contains
             end if
         end if
     end subroutine assert_has_diagnostic_code
+
+    subroutine assert_diagnostic_location(diags, code, line, column, message)
+        type(diagnostic_t), allocatable, intent(in) :: diags(:)
+        character(len=*), intent(in) :: code
+        integer, intent(in) :: line
+        integer, intent(in) :: column
+        character(len=*), intent(in) :: message
+
+        integer :: i
+        logical :: found
+
+        found = .false.
+        if (allocated(diags)) then
+            do i = 1, size(diags)
+                if (diags(i)%code /= code) cycle
+                found = .true.
+                if (diags(i)%location%start%line /= line .or. &
+                    diags(i)%location%start%column /= column) then
+                    write (error_unit, '(A,1X,A,1X,I0,":",I0)') &
+                        "diagnostic location:", diags(i)%code, &
+                        diags(i)%location%start%line, diags(i)%location%start%column
+                    flush (error_unit)
+                    error stop "Failed: wrong diagnostic location for "//trim(code)// &
+                        ": "//trim(message)
+                end if
+                return
+            end do
+        end if
+
+        if (.not. found) then
+            call assert_has_diagnostic_code(diags, code, .true., message)
+        end if
+    end subroutine assert_diagnostic_location
 
 end module test_support
