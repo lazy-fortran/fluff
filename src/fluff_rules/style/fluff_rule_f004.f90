@@ -4,6 +4,8 @@ module fluff_rule_f004
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, &
                                  create_fix_suggestion, SEVERITY_WARNING, text_edit_t
     use fluff_rule_file_context, only: current_filename, current_source_text
+    use fluff_rule_trivia_utils, only: location_buffer_t, location_buffer_init, &
+                                       location_buffer_push, location_buffer_finish
     use fortfront, only: token_t, tokenize_core_with_trivia, trivia_token_t
     use lexer_token_types, only: TK_NEWLINE, TK_WHITESPACE
     implicit none
@@ -44,21 +46,30 @@ contains
     subroutine collect_trailing_whitespace(tokens, locations)
         type(token_t), allocatable, intent(in) :: tokens(:)
         type(source_range_t), allocatable, intent(out) :: locations(:)
+
+        type(location_buffer_t) :: buffer
         integer :: i
 
-        allocate (locations(0))
-        if (.not. allocated(tokens)) return
-        if (size(tokens) <= 0) return
+        call location_buffer_init(buffer)
+        if (.not. allocated(tokens)) then
+            call location_buffer_finish(buffer, locations)
+            return
+        end if
+        if (size(tokens) <= 0) then
+            call location_buffer_finish(buffer, locations)
+            return
+        end if
 
         do i = 1, size(tokens)
-            call collect_from_trivia(tokens(i)%leading_trivia, locations)
+            call collect_from_trivia(tokens(i)%leading_trivia, buffer)
         end do
-        call collect_from_trivia(tokens(size(tokens))%trailing_trivia, locations)
+        call collect_from_trivia(tokens(size(tokens))%trailing_trivia, buffer)
+        call location_buffer_finish(buffer, locations)
     end subroutine collect_trailing_whitespace
 
-    subroutine collect_from_trivia(trivia, locations)
+    subroutine collect_from_trivia(trivia, buffer)
         type(trivia_token_t), allocatable, intent(in) :: trivia(:)
-        type(source_range_t), allocatable, intent(inout) :: locations(:)
+        type(location_buffer_t), intent(inout) :: buffer
 
         integer :: i
         integer :: start_col, end_col
@@ -81,28 +92,9 @@ contains
             location%end%line = trivia(i - 1)%line
             location%end%column = end_col
 
-            call append_location(locations, location)
+            call location_buffer_push(buffer, location)
         end do
     end subroutine collect_from_trivia
-
-    subroutine append_location(locations, location)
-        type(source_range_t), allocatable, intent(inout) :: locations(:)
-        type(source_range_t), intent(in) :: location
-        type(source_range_t), allocatable :: tmp(:)
-        integer :: n
-
-        if (.not. allocated(locations)) then
-            allocate (locations(1))
-            locations(1) = location
-            return
-        end if
-
-        n = size(locations)
-        allocate (tmp(n + 1))
-        if (n > 0) tmp(1:n) = locations
-        tmp(n + 1) = location
-        call move_alloc(tmp, locations)
-    end subroutine append_location
 
     function make_f004_diagnostic(location) result(diag)
         type(source_range_t), intent(in) :: location
