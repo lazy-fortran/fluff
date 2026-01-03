@@ -9,6 +9,7 @@ module test_support
     public :: delete_file_if_exists
     public :: assert_has_diagnostic_code
     public :: assert_diagnostic_location
+    public :: assert_equal_int
 
 contains
 
@@ -119,5 +120,19 @@ contains
             call assert_has_diagnostic_code(diags, code, .true., message)
         end if
     end subroutine assert_diagnostic_location
+
+    subroutine assert_equal_int(actual, expected, context)
+        integer, intent(in) :: actual
+        integer, intent(in) :: expected
+        character(len=*), intent(in) :: context
+
+        if (actual /= expected) then
+            write (error_unit, '(A)') "Failed: "//trim(context)
+            write (error_unit, '(A,I0)') "  expected: ", expected
+            write (error_unit, '(A,I0)') "  actual:   ", actual
+            flush (error_unit)
+            error stop 1
+        end if
+    end subroutine assert_equal_int
 
 end module test_support
