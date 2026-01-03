@@ -3,6 +3,8 @@ module fluff_rule_f005
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename, current_source_text
+    use fortfront, only: token_t, tokenize_core_with_trivia, trivia_token_t
+    use lexer_token_types, only: TK_WHITESPACE
     implicit none
     private
 
@@ -15,100 +17,97 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
-        integer :: violation_count
+        type(token_t), allocatable :: tokens(:)
+        type(source_range_t), allocatable :: locations(:)
+        integer :: i
 
         if (.not. allocated(current_source_text)) then
             allocate (violations(0))
             return
         end if
 
-        allocate (temp_violations(100))
-        violation_count = 0
+        call tokenize_core_with_trivia(current_source_text, tokens)
 
-        call analyze_mixed_tabs_spaces_from_text(current_source_text, temp_violations, &
-                                                 violation_count)
-
-        allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
+        call collect_mixed_indentation(tokens, locations)
+        if (size(locations) <= 0) then
+            allocate (violations(0))
+            return
         end if
+
+        allocate (violations(size(locations)))
+        do i = 1, size(locations)
+            violations(i) = create_diagnostic( &
+                            code="F005", &
+                            message="Mixed tabs and spaces", &
+                            file_path=current_filename, &
+                            location=locations(i), &
+                            severity=SEVERITY_WARNING)
+        end do
     end subroutine check_f005_mixed_tabs_spaces
 
-    subroutine analyze_mixed_tabs_spaces_from_text(source_text, violations, &
-                                                   violation_count)
-        character(len=*), intent(in) :: source_text
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
+    subroutine collect_mixed_indentation(tokens, locations)
+        type(token_t), allocatable, intent(in) :: tokens(:)
+        type(source_range_t), allocatable, intent(out) :: locations(:)
+        integer :: i
 
-        integer :: pos, next_pos, line_num
-        integer :: line_start, line_end
-        type(source_range_t) :: location
-        character(len=:), allocatable :: line_content
-        integer :: i, spaces, tabs
-        logical :: has_spaces, has_tabs
+        allocate (locations(0))
+        if (.not. allocated(tokens)) return
+        if (size(tokens) <= 0) return
 
-        pos = 1
-        line_num = 0
-
-        do while (pos <= len(source_text))
-            line_num = line_num + 1
-
-            next_pos = index(source_text(pos:), new_line("a"))
-            if (next_pos == 0) then
-                line_start = pos
-                line_end = len(source_text)
-                pos = len(source_text) + 1
-            else
-                line_start = pos
-                line_end = pos + next_pos - 2
-                pos = pos + next_pos
-            end if
-
-            if (line_end < line_start) then
-                if (next_pos == 0) exit
-                cycle
-            end if
-
-            line_content = source_text(line_start:line_end)
-
-            spaces = 0
-            tabs = 0
-            has_spaces = .false.
-            has_tabs = .false.
-
-            do i = 1, len(line_content)
-                if (line_content(i:i) == " ") then
-                    spaces = spaces + 1
-                    has_spaces = .true.
-                else if (line_content(i:i) == achar(9)) then
-                    tabs = tabs + 1
-                    has_tabs = .true.
-                else
-                    exit
-                end if
-            end do
-
-            if (has_spaces .and. has_tabs) then
-                violation_count = violation_count + 1
-                if (violation_count <= size(violations)) then
-                    location%start%line = line_num
-                    location%start%column = 1
-                    location%end%line = line_num
-                    location%end%column = i
-
-                    violations(violation_count) = create_diagnostic( &
-                                                  code="F005", &
-                                                  message="Mixed tabs and spaces", &
-                                                  file_path=current_filename, &
-                                                  location=location, &
-                                                  severity=SEVERITY_WARNING &
-                                                  )
-                end if
-            end if
-
-            if (next_pos == 0) exit
+        do i = 1, size(tokens)
+            call collect_from_trivia(tokens(i)%leading_trivia, locations)
         end do
-    end subroutine analyze_mixed_tabs_spaces_from_text
+    end subroutine collect_mixed_indentation
+
+    subroutine collect_from_trivia(trivia, locations)
+        type(trivia_token_t), allocatable, intent(in) :: trivia(:)
+        type(source_range_t), allocatable, intent(inout) :: locations(:)
+
+        integer :: i
+        integer :: end_col
+        type(source_range_t) :: location
+
+        if (.not. allocated(trivia)) return
+        if (size(trivia) <= 0) return
+
+        do i = 1, size(trivia)
+            if (trivia(i)%kind /= TK_WHITESPACE) cycle
+            if (trivia(i)%column /= 1) cycle
+            if (.not. allocated(trivia(i)%text)) cycle
+            if (.not. has_space_and_tab(trivia(i)%text)) cycle
+
+            end_col = trivia(i)%column + len(trivia(i)%text) - 1
+            location%start%line = trivia(i)%line
+            location%start%column = trivia(i)%column
+            location%end%line = trivia(i)%line
+            location%end%column = end_col
+            call append_location(locations, location)
+        end do
+    end subroutine collect_from_trivia
+
+    logical function has_space_and_tab(text) result(has_both)
+        character(len=*), intent(in) :: text
+
+        has_both = (index(text, " ") > 0 .and. index(text, achar(9)) > 0)
+    end function has_space_and_tab
+
+    subroutine append_location(locations, location)
+        type(source_range_t), allocatable, intent(inout) :: locations(:)
+        type(source_range_t), intent(in) :: location
+        type(source_range_t), allocatable :: tmp(:)
+        integer :: n
+
+        if (.not. allocated(locations)) then
+            allocate (locations(1))
+            locations(1) = location
+            return
+        end if
+
+        n = size(locations)
+        allocate (tmp(n + 1))
+        if (n > 0) tmp(1:n) = locations
+        tmp(n + 1) = location
+        call move_alloc(tmp, locations)
+    end subroutine append_location
 
 end module fluff_rule_f005

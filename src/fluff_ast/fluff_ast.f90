@@ -6,7 +6,8 @@ module fluff_ast
         tooling_load_ast_from_string, tooling_parse_options_t, &
         create_semantic_context, analyze_program, &
         get_node_type_id_from_arena, get_node_location, get_children, &
-        has_source_text, get_source_text, get_source_line, get_source_range, &
+        set_source_text, has_source_text, get_source_text, get_source_line, &
+        get_source_range, &
         get_trivia_for_ast_node, trivia_t, &
         symbol_info_t, get_symbols_in_scope, get_all_symbols, is_symbol_defined, &
         lookup_symbol, &
@@ -102,6 +103,8 @@ contains
         call tooling_load_ast_from_string(source_code, arena, root_index, error_msg, &
                                           tooling_parse_options_t())
         if (len(error_msg) > 0) return
+
+        call set_source_text(arena, source_code)
 
         this%arena = arena
         this%root_index = root_index

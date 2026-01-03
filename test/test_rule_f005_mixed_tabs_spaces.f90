@@ -1,229 +1,240 @@
 program test_rule_f005_mixed_tabs_spaces
-    ! Test F005: Mixed tabs and spaces rule
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: linter_engine_t, create_linter_engine
     implicit none
-    
+
     print *, "Testing F005: Mixed tabs and spaces rule..."
-    
+
     ! Test 1: Lines with mixed tabs and spaces (should trigger)
     call test_mixed_tabs_spaces()
-    
+
     ! Test 2: Lines with only spaces (should not trigger)
     call test_only_spaces()
-    
+
     ! Test 3: Lines with only tabs (should not trigger)
     call test_only_tabs()
-    
+
     ! Test 4: Multiple mixed indentations
     call test_multiple_mixed()
-    
+
     print *, "All F005 tests passed!"
-    
+
 contains
-    
+
     subroutine test_mixed_tabs_spaces()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        integer :: i
-        logical :: found_f005
-        
-        ! Enable test - fortfront is available
-        
+        integer :: f005_count
+        character(len=*), parameter :: path = "/tmp/fluff_test_f005.f90"
+
         ! Note: Using char(9) for tab character
-        test_code = "program test" // new_line('a') // &
-                   "    implicit none" // new_line('a') // &        ! 4 spaces
-                   char(9) // "integer :: x" // new_line('a') // &  ! Tab + text
-                   "  " // char(9) // "x = 42" // new_line('a') // & ! 2 spaces + tab
-                   "end program test"
-        
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &        ! 4 spaces
+                    char(9)//"integer :: x"//new_line('a')// &  ! Tab + text
+                    "  "//char(9)//"x = 42"//new_line('a')// & ! 2 spaces + tab
+                    "end program test"
+
         linter = create_linter_engine()
-        
+
         ! Create temporary file
-        open(unit=99, file="test_f005.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
-        
+        open (unit=99, file=path, status="replace")
+        write (99, '(A)') test_code
+        close (99)
+
         ! Lint the file
-        call linter%lint_file("test_f005.f90", diagnostics, error_msg)
-        
-        ! Check for F005 violation
-        found_f005 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F005") then
-                    found_f005 = .true.
-                    exit
-                end if
-            end do
-        end if
-        
+        call linter%lint_file(path, diagnostics, error_msg)
+
+        call assert_error_empty(error_msg)
+        call count_code(diagnostics, "F005", f005_count)
+        call assert_equal_int(f005_count, 1, "Expected 1 F005 violation")
+        call assert_f005_location(diagnostics, 4, 1, 3)
+
         ! Clean up
-        open(unit=99, file="test_f005.f90", status="old")
-        close(99, status="delete")
-        
-        if (.not. found_f005) then
-            error stop "Failed: F005 should be triggered for mixed tabs and spaces"
-        end if
-        
+        open (unit=99, file=path, status="old")
+        close (99, status="delete")
+
         print *, "  ✓ Mixed tabs and spaces"
-        
+
     end subroutine test_mixed_tabs_spaces
-    
+
     subroutine test_only_spaces()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        integer :: i
-        logical :: found_f005
-        
-        ! Enable test - fortfront is available
-        
-        test_code = "program test" // new_line('a') // &
-                   "    implicit none" // new_line('a') // &
-                   "    integer :: x" // new_line('a') // &
-                   "    x = 42" // new_line('a') // &
-                   "end program test"
-        
+        integer :: f005_count
+        character(len=*), parameter :: path = "/tmp/fluff_test_f005_spaces.f90"
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer :: x"//new_line('a')// &
+                    "    x = 42"//new_line('a')// &
+                    "end program test"
+
         linter = create_linter_engine()
-        
+
         ! Create temporary file
-        open(unit=99, file="test_f005_spaces.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
-        
+        open (unit=99, file=path, status="replace")
+        write (99, '(A)') test_code
+        close (99)
+
         ! Lint the file
-        call linter%lint_file("test_f005_spaces.f90", diagnostics, error_msg)
-        
-        ! Check for F005 violation
-        found_f005 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F005") then
-                    found_f005 = .true.
-                    exit
-                end if
-            end do
-        end if
-        
+        call linter%lint_file(path, diagnostics, error_msg)
+
+        call assert_error_empty(error_msg)
+        call count_code(diagnostics, "F005", f005_count)
+
         ! Clean up
-        open(unit=99, file="test_f005_spaces.f90", status="old")
-        close(99, status="delete")
-        
-        if (found_f005) then
-            error stop "Failed: F005 should not be triggered for consistent spaces"
-        end if
-        
+        open (unit=99, file=path, status="old")
+        close (99, status="delete")
+
+        call assert_equal_int(f005_count, 0, "Expected 0 F005 violations")
+
         print *, "  ✓ Only spaces"
-        
+
     end subroutine test_only_spaces
-    
+
     subroutine test_only_tabs()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        integer :: i
-        logical :: found_f005
-        
-        ! Enable test - fortfront is available
-        
+        integer :: f005_count
+        character(len=*), parameter :: path = "/tmp/fluff_test_f005_tabs.f90"
+
         ! Use only tabs for indentation
-        test_code = "program test" // new_line('a') // &
-                   char(9) // "implicit none" // new_line('a') // &
-                   char(9) // "integer :: x" // new_line('a') // &
-                   char(9) // "x = 42" // new_line('a') // &
-                   "end program test"
-        
+        test_code = "program test"//new_line('a')// &
+                    char(9)//"implicit none"//new_line('a')// &
+                    char(9)//"integer :: x"//new_line('a')// &
+                    char(9)//"x = 42"//new_line('a')// &
+                    "end program test"
+
         linter = create_linter_engine()
-        
+
         ! Create temporary file
-        open(unit=99, file="test_f005_tabs.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
-        
+        open (unit=99, file=path, status="replace")
+        write (99, '(A)') test_code
+        close (99)
+
         ! Lint the file
-        call linter%lint_file("test_f005_tabs.f90", diagnostics, error_msg)
-        
-        ! Check for F005 violation
-        found_f005 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F005") then
-                    found_f005 = .true.
-                    exit
-                end if
-            end do
-        end if
-        
+        call linter%lint_file(path, diagnostics, error_msg)
+
+        call assert_error_empty(error_msg)
+        call count_code(diagnostics, "F005", f005_count)
+
         ! Clean up
-        open(unit=99, file="test_f005_tabs.f90", status="old")
-        close(99, status="delete")
-        
-        if (found_f005) then
-            error stop "Failed: F005 should not be triggered for consistent tabs"
-        end if
-        
+        open (unit=99, file=path, status="old")
+        close (99, status="delete")
+
+        call assert_equal_int(f005_count, 0, "Expected 0 F005 violations")
+
         print *, "  ✓ Only tabs"
-        
+
     end subroutine test_only_tabs
-    
+
     subroutine test_multiple_mixed()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        integer :: i
         integer :: f005_count
-        
-        ! Enable test - fortfront is available
-        
+        character(len=*), parameter :: path = "/tmp/fluff_test_f005_multi.f90"
+
         ! Multiple lines with mixed indentation
-        test_code = "program test" // new_line('a') // &
-                   "    implicit none" // new_line('a') // &            ! 4 spaces
-                   char(9) // "integer :: x" // new_line('a') // &     ! 1 tab
-                   "  " // char(9) // "real :: y" // new_line('a') // & ! 2 spaces + 1 tab (mixed)
-                   char(9) // "  x = 42" // new_line('a') // &         ! 1 tab + 2 spaces (mixed)
-                   "    y = 3.14" // new_line('a') // &                 ! 4 spaces
-                   "end program test"
-        
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &            ! 4 spaces
+                    char(9)//"integer :: x"//new_line('a')// &     ! 1 tab
+                    "  "//char(9)//"real :: y"//new_line('a')// &
+                    ! 2 spaces + 1 tab (mixed)
+                    char(9)//"  x = 42"//new_line('a')// &
+                    ! 1 tab + 2 spaces (mixed)
+                    "    y = 3.14"//new_line('a')// &                 ! 4 spaces
+                    "end program test"
+
         linter = create_linter_engine()
-        
+
         ! Create temporary file
-        open(unit=99, file="test_f005_multi.f90", status="replace")
-        write(99, '(A)') test_code
-        close(99)
-        
+        open (unit=99, file=path, status="replace")
+        write (99, '(A)') test_code
+        close (99)
+
         ! Lint the file
-        call linter%lint_file("test_f005_multi.f90", diagnostics, error_msg)
-        
-        ! Count F005 violations
-        f005_count = 0
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F005") then
-                    f005_count = f005_count + 1
-                end if
-            end do
-        end if
-        
+        call linter%lint_file(path, diagnostics, error_msg)
+
+        call assert_error_empty(error_msg)
+        call count_code(diagnostics, "F005", f005_count)
+
         ! Clean up
-        open(unit=99, file="test_f005_multi.f90", status="old")
-        close(99, status="delete")
-        
-        if (f005_count /= 2) then
-            print *, "Expected 2 F005 violations, found", f005_count
-            error stop "Failed: F005 should be triggered for lines with mixed tabs and spaces"
-        end if
-        
+        open (unit=99, file=path, status="old")
+        close (99, status="delete")
+
+        call assert_equal_int(f005_count, 2, "Expected 2 F005 violations")
+        call assert_f005_location(diagnostics, 4, 1, 3)
+        call assert_f005_location(diagnostics, 5, 1, 3)
+
         print *, "  ✓ Multiple mixed indentations"
-        
+
     end subroutine test_multiple_mixed
-    
+
+    subroutine assert_error_empty(error_msg)
+        character(len=:), allocatable, intent(in) :: error_msg
+        if (allocated(error_msg)) then
+            if (len_trim(error_msg) > 0) error stop error_msg
+        end if
+    end subroutine assert_error_empty
+
+    subroutine count_code(diagnostics, code, count)
+        type(diagnostic_t), allocatable, intent(in) :: diagnostics(:)
+        character(len=*), intent(in) :: code
+        integer, intent(out) :: count
+        integer :: i
+
+        count = 0
+        if (.not. allocated(diagnostics)) return
+        do i = 1, size(diagnostics)
+            if (allocated(diagnostics(i)%code)) then
+                if (diagnostics(i)%code == code) count = count + 1
+            end if
+        end do
+    end subroutine count_code
+
+    subroutine assert_equal_int(actual, expected, msg)
+        integer, intent(in) :: actual
+        integer, intent(in) :: expected
+        character(len=*), intent(in) :: msg
+        if (actual /= expected) then
+            print *, msg, " got=", actual, " expected=", expected
+            error stop msg
+        end if
+    end subroutine assert_equal_int
+
+    subroutine assert_f005_location(diagnostics, line, start_col, end_col)
+        type(diagnostic_t), allocatable, intent(in) :: diagnostics(:)
+        integer, intent(in) :: line, start_col, end_col
+        integer :: i
+        logical :: found
+
+        found = .false.
+        if (.not. allocated(diagnostics)) error stop "No diagnostics allocated"
+
+        do i = 1, size(diagnostics)
+            if (.not. allocated(diagnostics(i)%code)) cycle
+            if (diagnostics(i)%code /= "F005") cycle
+            if (diagnostics(i)%location%start%line /= line) cycle
+            call assert_equal_int(diagnostics(i)%location%start%column, start_col, &
+                                  "Bad F005 start column")
+            call assert_equal_int(diagnostics(i)%location%end%column, end_col, &
+                                  "Bad F005 end column")
+            found = .true.
+            exit
+        end do
+
+        if (.not. found) then
+            print *, "Missing F005 at line", line
+            error stop "Missing expected F005 location"
+        end if
+    end subroutine assert_f005_location
+
 end program test_rule_f005_mixed_tabs_spaces
