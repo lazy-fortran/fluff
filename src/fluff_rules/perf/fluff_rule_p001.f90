@@ -1,6 +1,9 @@
 module fluff_rule_p001
-    use fluff_ast, only: fluff_ast_context_t, NODE_DO_LOOP
-    use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
+    use fluff_ast, only: fluff_ast_context_t
+    use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
+    use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fortfront, only: assignment_node, call_or_subscript_node, do_loop_node, &
+                         identifier_node
     implicit none
     private
 
@@ -13,85 +16,233 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        call check_p001_array_access_ast_based(ctx, node_index, violations)
-    end subroutine check_p001_array_access
-
-    subroutine check_p001_array_access_ast_based(ctx, node_index, violations)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
-
-        type(diagnostic_t), allocatable :: temp_violations(:)
+        type(diagnostic_t), allocatable :: tmp(:)
+        integer, allocatable :: reported(:)
         integer :: violation_count
 
-        allocate (temp_violations(50))
         violation_count = 0
+        allocate (reported(0))
 
-        call analyze_array_access_patterns(ctx, node_index, temp_violations, &
-                                           violation_count)
+        call analyze_nested_loops(ctx, reported, tmp, violation_count)
 
         allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
-        end if
-    end subroutine check_p001_array_access_ast_based
+        if (violation_count > 0) violations = tmp(1:violation_count)
+    end subroutine check_p001_array_access
 
-    recursive subroutine analyze_array_access_patterns(ctx, node_index, violations, &
-                                                       violation_count)
+    subroutine analyze_nested_loops(ctx, reported, tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, allocatable, intent(inout) :: reported(:)
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        integer :: i, j
+        integer :: inner_index
+        character(len=:), allocatable :: v_outer, v_inner
+
+        do i = 1, ctx%arena%size
+            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
+            select type (outer_loop => ctx%arena%entries(i)%node)
+            type is (do_loop_node)
+                if (.not. allocated(outer_loop%var_name)) cycle
+                if (.not. allocated(outer_loop%body_indices)) cycle
+                v_outer = to_lower_ascii(trim(outer_loop%var_name))
+
+                do j = 1, size(outer_loop%body_indices)
+                    inner_index = outer_loop%body_indices(j)
+                    if (inner_index <= 0) cycle
+                    if (.not. allocated(ctx%arena%entries(inner_index)%node)) cycle
+                    select type (inner_loop => ctx%arena%entries(inner_index)%node)
+                    type is (do_loop_node)
+                        if (.not. allocated(inner_loop%var_name)) cycle
+                        v_inner = to_lower_ascii(trim(inner_loop%var_name))
+                        call collect_inefficient_accesses(ctx, inner_index, v_outer, &
+                                                          v_inner, reported, tmp, &
+                                                          violation_count)
+                    end select
+                end do
+            end select
+        end do
+    end subroutine analyze_nested_loops
+
+    recursive subroutine collect_inefficient_accesses(ctx, node_index, outer_var, &
+                                                      inner_var, reported, tmp, &
+                                                      violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
-        type(diagnostic_t), intent(inout) :: violations(:)
+        character(len=*), intent(in) :: outer_var
+        character(len=*), intent(in) :: inner_var
+        integer, allocatable, intent(inout) :: reported(:)
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
         integer, intent(inout) :: violation_count
 
         integer, allocatable :: children(:)
-        integer :: node_type, i
+        integer :: i
 
-        node_type = ctx%get_node_type(node_index)
-        if (node_type == NODE_DO_LOOP) then
-            call check_loop_array_access(ctx, node_index, violations, violation_count)
-        end if
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (do_loop_node)
+            if (allocated(n%body_indices)) then
+                do i = 1, size(n%body_indices)
+                    if (n%body_indices(i) > 0) then
+                        call collect_inefficient_accesses(ctx, n%body_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, tmp, &
+                                                          violation_count)
+                    end if
+                end do
+            end if
+            return
+        type is (assignment_node)
+            call collect_target_accesses(ctx, n%target_index, outer_var, inner_var, &
+                                         reported, tmp, violation_count)
+        end select
 
         children = ctx%get_children(node_index)
         do i = 1, size(children)
             if (children(i) > 0) then
-                call analyze_array_access_patterns(ctx, children(i), violations, &
-                                                   violation_count)
+                call collect_inefficient_accesses(ctx, children(i), outer_var, &
+                                                  inner_var, reported, tmp, &
+                                                  violation_count)
             end if
         end do
-        if (allocated(children)) deallocate (children)
-    end subroutine analyze_array_access_patterns
+    end subroutine collect_inefficient_accesses
 
-    subroutine check_loop_array_access(ctx, loop_node, violations, violation_count)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: loop_node
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
-
-        if (has_array_like_accesses(ctx, loop_node)) then
-            if (violation_count < size(violations)) then
-                violation_count = violation_count + 1
-                violations(violation_count) = create_diagnostic( &
-                                              code="P001", &
-                            message="Consider memory-efficient array access patterns", &
-                                              file_path="", &
-                                            location=ctx%get_node_location(loop_node), &
-                                              severity=SEVERITY_INFO)
-            end if
-        end if
-    end subroutine check_loop_array_access
-
-    logical function has_array_like_accesses(ctx, node_index) result(has_arrays)
+    recursive subroutine collect_target_accesses(ctx, node_index, outer_var, inner_var, &
+                                                 reported, tmp, violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
+        character(len=*), intent(in) :: outer_var
+        character(len=*), intent(in) :: inner_var
+        integer, allocatable, intent(inout) :: reported(:)
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
 
         integer, allocatable :: children(:)
+        integer :: i
 
-        has_arrays = .false.
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (call_or_subscript_node)
+            if (.not. reported_contains(reported, node_index)) then
+                if (is_inefficient_access(ctx, node_index, outer_var, inner_var)) then
+                    call push_reported(reported, node_index)
+                    call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                                        code="P001", &
+                                        message="Leftmost array index varies in an outer "// &
+                                        "loop; consider swapping loop order", &
+                                        file_path="", &
+                                        location=ctx%get_node_location(node_index), &
+                                        severity=SEVERITY_WARNING))
+                end if
+            end if
+
+            if (n%base_expr_index > 0) then
+                call collect_target_accesses(ctx, n%base_expr_index, outer_var, &
+                                             inner_var, reported, tmp, &
+                                             violation_count)
+            end if
+            if (allocated(n%arg_indices)) then
+                do i = 1, size(n%arg_indices)
+                    if (n%arg_indices(i) > 0) then
+                        call collect_target_accesses(ctx, n%arg_indices(i), outer_var, &
+                                                     inner_var, reported, tmp, &
+                                                     violation_count)
+                    end if
+                end do
+            end if
+            return
+        end select
+
         children = ctx%get_children(node_index)
-        if (size(children) > 2) then
-            has_arrays = .true.
-        end if
-        if (allocated(children)) deallocate (children)
-    end function has_array_like_accesses
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call collect_target_accesses(ctx, children(i), outer_var, inner_var, &
+                                             reported, tmp, violation_count)
+            end if
+        end do
+    end subroutine collect_target_accesses
+
+    logical function is_inefficient_access(ctx, node_index, outer_var, inner_var) &
+        result(bad)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        character(len=*), intent(in) :: outer_var
+        character(len=*), intent(in) :: inner_var
+
+        integer :: i
+        integer :: a1
+        character(len=:), allocatable :: n1
+        character(len=:), allocatable :: nk
+
+        bad = .false.
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (c => ctx%arena%entries(node_index)%node)
+        type is (call_or_subscript_node)
+            if (.not. allocated(c%arg_indices)) return
+            if (size(c%arg_indices) < 2) return
+            a1 = c%arg_indices(1)
+        class default
+            return
+        end select
+
+        call get_identifier_arg_name(ctx, a1, n1)
+        if (.not. allocated(n1)) return
+        if (n1 /= outer_var) return
+
+        select type (c => ctx%arena%entries(node_index)%node)
+        type is (call_or_subscript_node)
+            do i = 2, size(c%arg_indices)
+                call get_identifier_arg_name(ctx, c%arg_indices(i), nk)
+                if (allocated(nk)) then
+                    if (nk == inner_var) then
+                        bad = .true.
+                        return
+                    end if
+                end if
+            end do
+        end select
+    end function is_inefficient_access
+
+    subroutine get_identifier_arg_name(ctx, node_index, name)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        character(len=:), allocatable, intent(out) :: name
+
+        name = ""
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (identifier_node)
+            if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
+        end select
+    end subroutine get_identifier_arg_name
+
+    subroutine push_reported(reported, idx)
+        integer, allocatable, intent(inout) :: reported(:)
+        integer, intent(in) :: idx
+
+        reported = [reported, idx]
+    end subroutine push_reported
+
+    logical function reported_contains(reported, idx) result(found)
+        integer, allocatable, intent(in) :: reported(:)
+        integer, intent(in) :: idx
+
+        integer :: i
+
+        found = .false.
+        do i = 1, size(reported)
+            if (reported(i) == idx) then
+                found = .true.
+                return
+            end if
+        end do
+    end function reported_contains
 
 end module fluff_rule_p001
