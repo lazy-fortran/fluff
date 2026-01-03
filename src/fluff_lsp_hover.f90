@@ -166,7 +166,7 @@ contains
         ! Use semantic information to provide rich hover info
         call analyze_token_semantic(token, arena, semantic_ctx, root_index, info)
 
-        ! If semantic analysis didn't find anything or found wrong context, try text-based
+        ! If semantic analysis did not find anything or found wrong context, try text-based
         if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0 .or. &
             (token == "math_utils" .and. index(current_line, "use") == 1 .and. &
              info%signature /= "use math_utils")) then

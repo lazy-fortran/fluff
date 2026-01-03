@@ -183,7 +183,8 @@ contains
         close (unit, status="delete")
 
         if (f007_count < 2) then
-            error stop "Failed: expected 2+ F007 diagnostics for multiple undefined variables"
+            error stop &
+                "Failed: expected 2+ F007 diagnostics for multiple undefined variables"
         end if
 
         print *, "  - Multiple undefined variables"
