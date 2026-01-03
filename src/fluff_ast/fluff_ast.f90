@@ -305,8 +305,8 @@ contains
         character(len=*), intent(in) :: name
         type(symbol_info_t) :: info
 
+        info = symbol_info_t()
         info%name = name
-        info%is_defined = .false.
         if (.not. this%is_initialized) return
 
         info = lookup_symbol(this%semantic_ctx%scopes, name)

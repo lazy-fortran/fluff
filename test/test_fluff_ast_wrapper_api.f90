@@ -1,8 +1,7 @@
 program test_fluff_ast_wrapper_api
     use fluff_ast, only: create_ast_context, fluff_ast_context_t, fluff_trivia_t, &
                          NODE_ASSIGNMENT
-    use fortfront, only: CST_COMMENT, CST_NEWLINE, CST_WHITESPACE
-    use fortfront, only: symbol_info_t
+    use fortfront, only: CST_COMMENT, CST_NEWLINE, CST_WHITESPACE, symbol_info_t
     implicit none
 
     logical :: all_passed

@@ -1,8 +1,9 @@
 program test_lsp_diagnostics
-    use fluff_linter
-    use fluff_diagnostics
-    use fluff_formatter
-    use iso_fortran_env, only: output_unit
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_json_rpc, only: publish_diagnostics_to_client, clear_diagnostics, &
+                              test_multifile_diagnostics, test_realtime_diagnostics
+    use fluff_linter, only: create_linter_engine, linter_engine_t
+    use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
     
     integer :: total_tests, passed_tests
@@ -24,7 +25,8 @@ program test_lsp_diagnostics
     print *, "=== LSP Diagnostics Test Summary ==="
     print *, "Total tests: ", total_tests
     print *, "Passed tests: ", passed_tests
-    print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
+    print *, "Success rate: ", real(passed_tests, dp) / real(total_tests, dp) * &
+        100.0_dp, "%"
     
     if (passed_tests == total_tests) then
         print *, "All LSP diagnostic tests passed!"
@@ -307,7 +309,6 @@ contains
         
         total_tests = total_tests + 1
         
-        ! Publish diagnostics to LSP client (placeholder)
         call publish_diagnostics_to_client(uris, diagnostic_count, success)
         
         if (success .eqv. should_succeed) then
@@ -327,7 +328,6 @@ contains
         
         total_tests = total_tests + 1
         
-        ! Clear diagnostics (placeholder)
         call clear_diagnostics(uri, clear_type, success)
         
         if (success .eqv. should_succeed) then
@@ -349,7 +349,6 @@ contains
         
         total_tests = total_tests + 1
         
-        ! Test multi-file diagnostics (placeholder)
         call test_multifile_diagnostics(uris, actual_counts, success)
         
         if (success .and. all(actual_counts == expected_counts)) then
@@ -383,7 +382,6 @@ contains
     end subroutine run_realtime_test
     
     ! Diagnostic-related JSON-RPC implementations directly in test
-    ! Mock diagnostic generation removed - using real linter engine instead
     
     subroutine format_lsp_diagnostic(severity, start_line, start_char, end_line, &
                                      end_char, message, code, formatted, success)
@@ -423,88 +421,5 @@ contains
         success = .true.
         
     end subroutine format_lsp_diagnostic
-    
-    subroutine publish_diagnostics_to_client(uris, diagnostic_count, success)
-        character(len=*), intent(in) :: uris
-        integer, intent(in) :: diagnostic_count
-        logical, intent(out) :: success
-        
-        ! Simulate publishing - succeed if URI is valid and count is reasonable
-        success = len_trim(uris) > 0 .and. diagnostic_count >= 0
-        
-        ! Simulate network failure for specific test case
-        if (index(uris, "error.f90") > 0) success = .false.
-        
-    end subroutine publish_diagnostics_to_client
-    
-    subroutine clear_diagnostics(uri, clear_type, success)
-        character(len=*), intent(in) :: uri, clear_type
-        logical, intent(out) :: success
-        
-        ! Basic validation
-        success = len_trim(uri) > 0 .and. &
-                 (clear_type == "all" .or. &
-                  clear_type == "close" .or. &
-                  clear_type == "fix" .or. &
-                  index(clear_type, "F0") > 0)  ! Specific rule codes
-        
-    end subroutine clear_diagnostics
-    
-    subroutine test_multifile_diagnostics(uris, counts, success)
-        character(len=*), intent(in) :: uris(:)
-        integer, intent(out) :: counts(:)
-        logical, intent(out) :: success
-        
-        integer :: i
-        
-        success = size(uris) > 0 .and. size(counts) == size(uris)
-        
-        if (success) then
-            do i = 1, size(uris)
-                ! Simulate diagnostic counts based on filename patterns
-                if (index(uris(i), "main.f90") > 0) then
-                    counts(i) = 2
-                else if (index(uris(i), "utils.f90") > 0) then
-                    counts(i) = 1
-                else if (index(uris(i), "types.f90") > 0) then
-                    counts(i) = 3
-                else if (index(uris(i), "user.f90") > 0) then
-                    counts(i) = 1
-                else if (index(uris(i), "a.f90") > 0) then
-                    counts(i) = 5
-                else if (index(uris(i), "b.f90") > 0) then
-                    counts(i) = 3
-                else
-                    counts(i) = 0
-                end if
-            end do
-        end if
-        
-    end subroutine test_multifile_diagnostics
-    
-    subroutine test_realtime_diagnostics(uri, operation, before_count, after_count, &
-                                         success)
-        character(len=*), intent(in) :: uri, operation
-        integer, intent(in) :: before_count
-        integer, intent(out) :: after_count
-        logical, intent(out) :: success
-        
-        success = len_trim(uri) > 0
-        
-        select case (operation)
-        case ("change")
-            after_count = max(0, before_count - 1)  ! Assume fixing one issue
-        case ("save")
-            after_count = 0  ! Assume all issues fixed on save
-        case ("incremental")
-            after_count = before_count + 1  ! Assume adding one issue
-        case ("batch")
-            after_count = max(0, before_count - 3)  ! Assume fixing multiple issues
-        case default
-            after_count = before_count
-            success = .false.
-        end select
-        
-    end subroutine test_realtime_diagnostics
     
 end program test_lsp_diagnostics
