@@ -3,6 +3,7 @@ program test_rule_f003_line_length
     use fluff_config, only: create_default_config, fluff_config_t
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
+    use fluff_rule_f003, only: f003_visual_columns
     implicit none
 
     print *, "Testing F003: Line too long rule..."
@@ -317,7 +318,7 @@ contains
         logical :: found_f003, found_location
 
         long_line = achar(9)//"real :: x = 0.0 ! "//repeat("a", 90)
-        expected_end_col = visual_columns(long_line)
+        expected_end_col = f003_visual_columns(long_line)
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -363,26 +364,5 @@ contains
 
         print *, "  ✓ Tabs counted as visual columns"
     end subroutine test_tabs_column_calculation
-
-    integer function visual_columns(line_text) result(cols)
-        character(len=*), intent(in) :: line_text
-        integer, parameter :: tab_width = 4
-        integer :: i, col, next_stop
-        character(len=1) :: ch
-
-        col = 0
-        do i = 1, len(line_text)
-            ch = line_text(i:i)
-            if (i == len(line_text) .and. ch == achar(13)) exit
-            select case (ch)
-            case (achar(9))
-                next_stop = ((col/tab_width) + 1)*tab_width
-                col = next_stop
-            case default
-                col = col + 1
-            end select
-        end do
-        cols = col
-    end function visual_columns
 
 end program test_rule_f003_line_length

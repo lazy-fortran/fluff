@@ -7,6 +7,7 @@ module fluff_rule_f003
     private
 
     public :: check_f003_line_length
+    public :: f003_visual_columns
 
 contains
 
@@ -36,7 +37,7 @@ contains
             call ctx%get_source_line(line_num, line_text, found)
             if (.not. found) exit
 
-            line_length = physical_line_length(line_text)
+            line_length = f003_visual_columns(line_text)
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
                     violation_count = violation_count + 1
@@ -57,7 +58,7 @@ contains
             call ctx%get_source_line(line_num, line_text, found)
             if (.not. found) exit
 
-            line_length = physical_line_length(line_text)
+            line_length = f003_visual_columns(line_text)
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
                     violation_count = violation_count + 1
@@ -93,7 +94,7 @@ contains
                severity=SEVERITY_WARNING)
     end function create_f003_diagnostic
 
-    integer function physical_line_length(line_text) result(length)
+    integer function f003_visual_columns(line_text) result(cols)
         character(len=*), intent(in) :: line_text
         integer, parameter :: tab_width = 4
         integer :: i, col, next_stop
@@ -113,8 +114,8 @@ contains
             end select
         end do
 
-        length = col
-    end function physical_line_length
+        cols = col
+    end function f003_visual_columns
 
     logical function is_comment_only_line(line_text) result(is_comment)
         character(len=*), intent(in) :: line_text
