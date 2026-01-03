@@ -285,6 +285,7 @@ contains
 
         ! Initialize linter
         call app%linter%initialize()
+        call app%linter%set_config(config)
 
         ! Process files
         if (allocated(app%args%files)) then

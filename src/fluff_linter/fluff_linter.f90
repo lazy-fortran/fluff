@@ -1,11 +1,11 @@
 module fluff_linter
     ! Linting engine and rule registry
-    use fluff_core
-    use fluff_ast
-    use fluff_diagnostics
-    use fluff_rule_types
+    use fluff_ast, only: fluff_ast_context_t
+    use fluff_config, only: fluff_config_t, create_default_config
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_rule_types, only: rule_info_t
     use fluff_metrics, only: metrics_collector_t, timer_t, create_metrics_collector
-    use fluff_cache, only: ast_cache_t, create_ast_cache
+    use fluff_cache, only: ast_cache_t
     use fluff_rules, only: set_current_file_context
     implicit none
     private
@@ -49,8 +49,10 @@ module fluff_linter
         logical :: is_initialized = .false.
         type(rule_registry_t) :: rule_registry
         type(ast_cache_t) :: ast_cache
+        type(fluff_config_t) :: config
     contains
         procedure :: initialize => linter_initialize
+        procedure :: set_config => linter_set_config
         procedure :: lint_file => linter_lint_file
         procedure :: lint_ast => linter_lint_ast
     end type linter_engine_t
@@ -76,6 +78,7 @@ contains
         this%is_initialized = .true.
         this%rule_registry%rule_count = 0
         this%rule_registry%metrics = create_metrics_collector()
+        this%config = create_default_config()
         ! Note: AST cache initialization disabled due to memory safety issues
 
         ! Register built-in rules
@@ -83,9 +86,15 @@ contains
 
     end subroutine linter_initialize
 
+    subroutine linter_set_config(this, config)
+        class(linter_engine_t), intent(inout) :: this
+        type(fluff_config_t), intent(in) :: config
+
+        this%config = config
+    end subroutine linter_set_config
+
     ! Lint a file
     subroutine linter_lint_file(this, filename, diagnostics, error_msg)
-        use iso_fortran_env, only: iostat_end
         class(linter_engine_t), intent(inout) :: this
         character(len=*), intent(in) :: filename
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
@@ -127,7 +136,7 @@ contains
         call ast_ctx%from_source(source_code, error_msg)
 
         ! Set current file context for rules that need source text access
-        call set_current_file_context(filename, source_code)
+        call set_current_file_context(filename, source_code, this%config%line_length)
 
         if (allocated(error_msg) .and. len(error_msg) > 0) then
             print *, "ERROR: fortfront AST parsing failed in linter!"
@@ -472,7 +481,8 @@ contains
         allocate (all_violations(0))
 
         ! Execute rules in parallel with critical section for results
-!$omp parallel do private(i, rule_violations) shared(all_violations, enabled_rules, ast_ctx)
+!$omp parallel private(i,rule_violations) shared(all_violations,enabled_rules,ast_ctx)
+!$omp do
         do i = 1, size(enabled_rules)
             if (associated(enabled_rules(i)%check)) then
                 call enabled_rules(i)%check(ast_ctx, 1, rule_violations)
@@ -484,7 +494,8 @@ contains
                 end if
             end if
         end do
-!$omp end parallel do
+!$omp end do
+!$omp end parallel
 
         ! Return all violations
         diagnostics = all_violations

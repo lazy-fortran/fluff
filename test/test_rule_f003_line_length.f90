@@ -1,10 +1,8 @@
 program test_rule_f003_line_length
     ! Test F003: Line too long rule
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
+    use fluff_config, only: create_default_config, fluff_config_t
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: create_linter_engine, linter_engine_t
     implicit none
     
     print *, "Testing F003: Line too long rule..."
@@ -20,6 +18,9 @@ program test_rule_f003_line_length
     
     ! Test 4: Comments at different lengths
     call test_comment_lines()
+
+    ! Test 5: Custom line length configuration
+    call test_custom_line_length()
     
     print *, "All F003 tests passed!"
     
@@ -31,13 +32,15 @@ contains
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=200) :: long_line
-        integer :: i
-        logical :: found_f003
+        integer :: i, expected_end_col
+        logical :: found_f003, found_location
         
         ! Enable test - fortfront is available
         
         ! Create a line that's definitely too long (> 88 characters)
-        long_line = "    real :: very_long_variable_name_that_exceeds_the_maximum_line_length_limit_of_88_characters_in_fortran"
+        long_line = "    real :: very_long_variable_name_that_exceeds_the_maximum_" // &
+                    "line_length_limit_of_88_characters_in_fortran"
+        expected_end_col = len_trim(long_line)
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
@@ -56,10 +59,17 @@ contains
         
         ! Check for F003 violation
         found_f003 = .false.
+        found_location = .false.
         if (allocated(diagnostics)) then
             do i = 1, size(diagnostics)
                 if (diagnostics(i)%code == "F003") then
                     found_f003 = .true.
+                    if (diagnostics(i)%location%start%line == 3 .and. &
+                        diagnostics(i)%location%start%column == 89 .and. &
+                        diagnostics(i)%location%end%line == 3 .and. &
+                        diagnostics(i)%location%end%column == expected_end_col) then
+                        found_location = .true.
+                    end if
                     exit
                 end if
             end do
@@ -70,7 +80,12 @@ contains
         close(99, status="delete")
         
         if (.not. found_f003) then
-            error stop "Failed: F003 should be triggered for lines exceeding length limit"
+            error stop "Failed: F003 should be triggered for lines exceeding " // &
+                       "length limit"
+        end if
+
+        if (.not. found_location) then
+            error stop "Failed: F003 location should point to the overflow span"
         end if
         
         print *, "  ✓ Line too long"
@@ -89,7 +104,8 @@ contains
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
-                   "    real :: x, y, z  ! This line is well within the 88 character limit" // new_line('a') // &
+                   "    real :: x, y, z  ! This line is well within the 88 " // &
+                   "character limit" // new_line('a') // &
                    "end program test"
         
         linter = create_linter_engine()
@@ -131,12 +147,12 @@ contains
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         integer :: i
-        logical :: found_f003, has_fix_suggestion
+        logical :: found_f003, found_location
         
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
-                   "    real :: result = very_long_expression_that_exceeds_line_limit + " &
-                   // "another_very_long_term" // new_line('a') // &
+                   "    real :: result = very_long_expression_that_exceeds_line_" // &
+                   "limit + another_very_long_term" // new_line('a') // &
                    "end program test"
         
         linter = create_linter_engine()
@@ -147,17 +163,20 @@ contains
         close(99)
         
         ! Lint the file
-        call linter%lint_file("test_f003_continuation.f90", diagnostics, error_msg)
+        call linter%lint_file("test_f003_continuation.f90", diagnostics, &
+                              error_msg)
         
         ! Check for F003 violation with fix suggestions
         found_f003 = .false.
-        has_fix_suggestion = .false.
+        found_location = .false.
         if (allocated(diagnostics)) then
             do i = 1, size(diagnostics)
                 if (diagnostics(i)%code == "F003") then
                     found_f003 = .true.
-                    if (allocated(diagnostics(i)%fixes)) then
-                        has_fix_suggestion = size(diagnostics(i)%fixes) > 0
+                    if (diagnostics(i)%location%start%line == 3 .and. &
+                        diagnostics(i)%location%start%column == 89 .and. &
+                        diagnostics(i)%location%end%line == 3) then
+                        found_location = .true.
                     end if
                     exit
                 end if
@@ -169,14 +188,15 @@ contains
         close(99, status="delete")
         
         if (.not. found_f003) then
-            error stop "Failed: F003 should be triggered for long continuation line"
+            error stop "Failed: F003 should be triggered for long continuation " // &
+                       "line"
         end if
         
-        if (.not. has_fix_suggestion) then
-            print *, "  ⚠ F003 triggered but no fix suggestions provided"
-        else
-            print *, "  ✓ Continuation lines with fix suggestions"
+        if (.not. found_location) then
+            error stop "Failed: F003 location should point to the overflow span"
         end if
+
+        print *, "  ✓ Long physical line detected"
         
     end subroutine test_continuation_lines
     
@@ -191,8 +211,10 @@ contains
         ! Comments should be ignored by F003
         test_code = "program test" // new_line('a') // &
                    "    implicit none" // new_line('a') // &
-                   "    ! This is a very long comment line that definitely exceeds " &
-                   // "the 88 character limit but should be ignored by F003" // new_line('a') // &
+                   "    ! This is a very long comment line that definitely " // &
+                   "exceeds the 88 character limit but should be ignored by " // &
+                   "F003" // &
+                   new_line('a') // &
                    "    real :: x = 42" // new_line('a') // &
                    "end program test"
         
@@ -222,11 +244,61 @@ contains
         close(99, status="delete")
         
         if (found_f003) then
-            error stop "Failed: F003 should not be triggered for long comment lines"
+            error stop "Failed: F003 should not be triggered for long comment " // &
+                       "lines"
         end if
         
         print *, "  ✓ Comment lines correctly ignored"
         
     end subroutine test_comment_lines
+
+    subroutine test_custom_line_length()
+        type(linter_engine_t) :: linter
+        type(fluff_config_t) :: config
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        integer :: i
+        logical :: found_f003
+
+        config = create_default_config()
+        config%line_length = 20
+
+        test_code = "program test" // new_line('a') // &
+                   "    implicit none" // new_line('a') // &
+                   "    real :: this_is_longer_than_twenty" // new_line('a') // &
+                   "end program test"
+
+        linter = create_linter_engine()
+        call linter%set_config(config)
+
+        open(unit=99, file="test_f003_custom.f90", status="replace")
+        write(99, '(A)') test_code
+        close(99)
+
+        call linter%lint_file("test_f003_custom.f90", diagnostics, error_msg)
+
+        found_f003 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F003") then
+                    if (diagnostics(i)%location%start%line == 3 .and. &
+                        diagnostics(i)%location%start%column == 21) then
+                        found_f003 = .true.
+                    end if
+                    exit
+                end if
+            end do
+        end if
+
+        open(unit=99, file="test_f003_custom.f90", status="old")
+        close(99, status="delete")
+
+        if (.not. found_f003) then
+            error stop "Failed: F003 should respect configured line length"
+        end if
+
+        print *, "  ✓ Custom line length respected"
+    end subroutine test_custom_line_length
     
 end program test_rule_f003_line_length
