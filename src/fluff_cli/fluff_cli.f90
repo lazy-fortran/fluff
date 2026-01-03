@@ -15,7 +15,7 @@ module fluff_cli
 
     ! CLI argument types
     type, public :: cli_args_t
-        character(len=:), allocatable :: command     ! "check", "format", "server"
+        character(len=:), allocatable :: command     ! check, format, server
         character(len=:), allocatable :: files(:)    ! Files to process
         logical :: fix = .false.
         logical :: diff = .false.
@@ -28,7 +28,7 @@ module fluff_cli
         logical :: quiet = .false.
         logical :: verbose = .false.
         character(len=:), allocatable :: config_file
-        character(len=:), allocatable :: output_format  ! "text", "json", "sarif"
+        character(len=:), allocatable :: output_format  ! text, json, sarif
         character(len=:), allocatable :: error_msg    ! Parse error message
     contains
         procedure :: parse => args_parse
