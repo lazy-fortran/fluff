@@ -2,7 +2,9 @@ module fluff_rule_f012
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
-    use fluff_rule_file_context, only: current_filename, current_source_text
+    use fluff_rule_diagnostic_utils, only: push_diagnostic
+    use fluff_rule_file_context, only: current_filename
+    use fortfront, only: declaration_node
     implicit none
     private
 
@@ -15,145 +17,96 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
+        type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
 
-        if (.not. allocated(current_source_text)) then
-            allocate (violations(0))
-            return
-        end if
-
-        allocate (temp_violations(100))
-        violation_count = 0
-
-        call analyze_naming_conventions_from_text(current_source_text, &
-                                                  temp_violations, &
-                                                  violation_count)
-
-        allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
-        end if
-    end subroutine check_f012_naming_conventions
-
-    subroutine analyze_naming_conventions_from_text(source_text, violations, &
-                                                    violation_count)
-        character(len=*), intent(in) :: source_text
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
-
-        character(len=64) :: var_names(1000)
-        integer :: num_vars
+        type(source_range_t) :: first_location
+        logical :: has_first_location
         integer :: snake_count, camel_count, pascal_count
 
-        var_names = ""
-        num_vars = 0
-        call collect_declared_variable_names(source_text, var_names, num_vars)
-        if (num_vars <= 0) return
+        allocate (tmp(0))
+        violation_count = 0
 
-        call count_naming_styles(var_names, num_vars, snake_count, camel_count, &
-                                 pascal_count)
+        call count_declared_naming_styles(ctx, snake_count, camel_count, pascal_count, &
+                                          first_location, has_first_location)
 
         if (has_mixed_naming_styles(snake_count, camel_count, pascal_count)) then
-            call push_inconsistent_naming_violation(violations, violation_count)
-        end if
-    end subroutine analyze_naming_conventions_from_text
-
-    subroutine collect_declared_variable_names(source_text, var_names, num_vars)
-        character(len=*), intent(in) :: source_text
-        character(len=*), intent(inout) :: var_names(:)
-        integer, intent(inout) :: num_vars
-
-        integer :: pos, line_num
-        logical :: done
-        character(len=:), allocatable :: line_content
-        character(len=:), allocatable :: line_trimmed
-        character(len=:), allocatable :: line_lower
-        integer :: double_colon_pos
-
-        pos = 1
-        line_num = 0
-
-        do
-            call next_source_line(source_text, pos, line_num, line_content, done)
-            if (done) exit
-            if (is_comment_line(line_content)) cycle
-
-            line_trimmed = adjustl(line_content)
-            line_lower = to_lower(line_trimmed)
-            double_colon_pos = index(line_trimmed, "::")
-            if (double_colon_pos <= 0) cycle
-
-            if (has_type_keyword(line_lower(1:double_colon_pos))) then
-                call extract_variable_names(line_trimmed(double_colon_pos + 2:), &
-                                            var_names, num_vars)
+            if (.not. has_first_location) then
+                first_location%start%line = 1
+                first_location%start%column = 1
+                first_location%end%line = 1
+                first_location%end%column = 1
             end if
-        end do
-    end subroutine collect_declared_variable_names
-
-    subroutine next_source_line(source_text, pos, line_num, line_content, done)
-        character(len=*), intent(in) :: source_text
-        integer, intent(inout) :: pos
-        integer, intent(inout) :: line_num
-        character(len=:), allocatable, intent(out) :: line_content
-        logical, intent(out) :: done
-
-        integer :: next_pos
-        integer :: line_start, line_end
-
-        if (pos > len(source_text)) then
-            done = .true.
-            line_content = ""
-            return
+            call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                                 code="F012", &
+                                 message="Inconsistent naming convention", &
+                                 file_path=current_filename, &
+                                 location=first_location, &
+                                 severity=SEVERITY_INFO))
         end if
 
-        line_num = line_num + 1
-        next_pos = index(source_text(pos:), new_line("a"))
-        if (next_pos == 0) then
-            line_start = pos
-            line_end = len(source_text)
-            pos = len(source_text) + 1
-        else
-            line_start = pos
-            line_end = pos + next_pos - 2
-            pos = pos + next_pos
-        end if
+        allocate (violations(violation_count))
+        if (violation_count > 0) violations = tmp(1:violation_count)
+    end subroutine check_f012_naming_conventions
 
-        if (line_end < line_start) then
-            line_content = ""
-        else
-            line_content = source_text(line_start:line_end)
-        end if
-
-        done = .false.
-    end subroutine next_source_line
-
-    subroutine count_naming_styles(var_names, num_vars, snake_count, camel_count, &
-                                   pascal_count)
-        character(len=*), intent(in) :: var_names(:)
-        integer, intent(in) :: num_vars
+    subroutine count_declared_naming_styles(ctx, snake_count, camel_count, &
+                                            pascal_count, first_location, &
+                                            has_first_location)
+        type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(out) :: snake_count
         integer, intent(out) :: camel_count
         integer, intent(out) :: pascal_count
+        type(source_range_t), intent(out) :: first_location
+        logical, intent(out) :: has_first_location
 
         integer :: i
-        character(len=64) :: var_name
+        integer :: j
+        character(len=:), allocatable :: name
 
         snake_count = 0
         camel_count = 0
         pascal_count = 0
+        has_first_location = .false.
 
-        do i = 1, min(num_vars, size(var_names))
-            var_name = trim(var_names(i))
-            if (len_trim(var_name) == 0) cycle
-            if (is_snake_case(var_name)) snake_count = snake_count + 1
-            if (is_camel_case(var_name)) camel_count = camel_count + 1
-            if (is_pascal_case(var_name)) pascal_count = pascal_count + 1
+        do i = 1, ctx%arena%size
+            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
+            select type (n => ctx%arena%entries(i)%node)
+            type is (declaration_node)
+                if (n%is_multi_declaration .and. allocated(n%var_names)) then
+                    do j = 1, size(n%var_names)
+                        name = trim(n%var_names(j))
+                        call count_one(name, snake_count, camel_count, pascal_count)
+                        if (.not. has_first_location .and. len_trim(name) > 0) then
+                            first_location = ctx%get_node_location(i)
+                            has_first_location = .true.
+                        end if
+                    end do
+                else if (allocated(n%var_name)) then
+                    name = trim(n%var_name)
+                    call count_one(name, snake_count, camel_count, pascal_count)
+                    if (.not. has_first_location .and. len_trim(name) > 0) then
+                        first_location = ctx%get_node_location(i)
+                        has_first_location = .true.
+                    end if
+                end if
+            end select
         end do
-    end subroutine count_naming_styles
+    end subroutine count_declared_naming_styles
 
-    logical function has_mixed_naming_styles(snake_count, camel_count, &
-                                            pascal_count) result(has_mixed)
+    subroutine count_one(name, snake_count, camel_count, pascal_count)
+        character(len=*), intent(in) :: name
+        integer, intent(inout) :: snake_count
+        integer, intent(inout) :: camel_count
+        integer, intent(inout) :: pascal_count
+
+        if (len_trim(name) <= 0) return
+        if (is_snake_case(name)) snake_count = snake_count + 1
+        if (is_camel_case(name)) camel_count = camel_count + 1
+        if (is_pascal_case(name)) pascal_count = pascal_count + 1
+    end subroutine count_one
+
+    pure logical function has_mixed_naming_styles(snake_count, camel_count, &
+                                                  pascal_count) result(has_mixed)
         integer, intent(in) :: snake_count
         integer, intent(in) :: camel_count
         integer, intent(in) :: pascal_count
@@ -163,163 +116,74 @@ contains
                     (camel_count > 0 .and. pascal_count > 0)
     end function has_mixed_naming_styles
 
-    subroutine push_inconsistent_naming_violation(violations, violation_count)
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
+    pure logical function is_snake_case(name) result(is_snake)
+        character(len=*), intent(in) :: name
 
-        type(source_range_t) :: location
+        is_snake = .false.
+        if (len_trim(name) <= 0) return
+        if (index(name, "_") <= 0) return
+        if (has_uppercase(name)) return
+        is_snake = .true.
+    end function is_snake_case
 
-        violation_count = violation_count + 1
-        if (violation_count <= size(violations)) then
-            location%start%line = 1
-            location%start%column = 1
-            location%end%line = 1
-            location%end%column = 1
-            violations(violation_count) = create_diagnostic( &
-                                          code="F012", &
-                                          message="Inconsistent naming convention", &
-                                          file_path=current_filename, &
-                                          location=location, &
-                                          severity=SEVERITY_INFO)
-        end if
-    end subroutine push_inconsistent_naming_violation
+    pure logical function is_camel_case(name) result(is_camel)
+        character(len=*), intent(in) :: name
 
-    logical function has_type_keyword(str) result(has_type)
-        character(len=*), intent(in) :: str
-        character(len=:), allocatable :: trimmed
+        is_camel = .false.
+        if (len_trim(name) <= 0) return
+        if (index(name, "_") > 0) return
+        if (.not. is_lowercase_letter(name(1:1))) return
+        if (.not. has_uppercase(name)) return
+        is_camel = .true.
+    end function is_camel_case
 
-        trimmed = adjustl(str)
-        has_type = index(trimmed, "integer") > 0 .or. &
-                   index(trimmed, "real") > 0 .or. &
-                   index(trimmed, "character") > 0 .or. &
-                   index(trimmed, "logical") > 0 .or. &
-                   index(trimmed, "complex") > 0 .or. &
-                   index(trimmed, "type(") > 0 .or. &
-                   index(trimmed, "class(") > 0 .or. &
-                   index(trimmed, "double precision") > 0
-    end function has_type_keyword
+    pure logical function is_pascal_case(name) result(is_pascal)
+        character(len=*), intent(in) :: name
 
-    subroutine extract_variable_names(decl_str, var_names, num_vars)
-        character(len=*), intent(in) :: decl_str
-        character(len=*), intent(inout) :: var_names(:)
-        integer, intent(inout) :: num_vars
+        is_pascal = .false.
+        if (len_trim(name) <= 0) return
+        if (index(name, "_") > 0) return
+        if (.not. is_uppercase_letter(name(1:1))) return
+        if (.not. has_lowercase(name)) return
+        is_pascal = .true.
+    end function is_pascal_case
 
-        character(len=:), allocatable :: trimmed
-        integer :: start_pos, comma_pos, eq_pos, paren_pos
-        character(len=:), allocatable :: var_part
-
-        trimmed = adjustl(decl_str)
-        start_pos = 1
-
-        do while (start_pos <= len(trimmed))
-            comma_pos = index(trimmed(start_pos:), ",")
-            if (comma_pos == 0) then
-                var_part = trimmed(start_pos:)
-            else
-                var_part = trimmed(start_pos:start_pos + comma_pos - 2)
-            end if
-
-            eq_pos = index(var_part, "=")
-            if (eq_pos > 0) then
-                var_part = var_part(1:eq_pos - 1)
-            end if
-
-            paren_pos = index(var_part, "(")
-            if (paren_pos > 0) then
-                var_part = var_part(1:paren_pos - 1)
-            end if
-
-            var_part = adjustl(trim(var_part))
-            if (len(var_part) > 0) then
-                num_vars = num_vars + 1
-                if (num_vars <= size(var_names)) then
-                    var_names(num_vars) = var_part
-                end if
-            end if
-
-            if (comma_pos == 0) exit
-            start_pos = start_pos + comma_pos
-        end do
-    end subroutine extract_variable_names
-
-    logical function is_snake_case(name) result(is_snake)
+    pure logical function has_uppercase(name) result(has_upper)
         character(len=*), intent(in) :: name
         integer :: i
 
-        is_snake = .true.
+        has_upper = .false.
         do i = 1, len(name)
-            if (name(i:i) >= "A" .and. name(i:i) <= "Z") then
-                is_snake = .false.
+            if (is_uppercase_letter(name(i:i))) then
+                has_upper = .true.
                 return
             end if
         end do
+    end function has_uppercase
 
-        is_snake = index(name, "_") > 0 .or. len(name) <= 4
-    end function is_snake_case
-
-    logical function is_camel_case(name) result(is_camel)
+    pure logical function has_lowercase(name) result(has_lower)
         character(len=*), intent(in) :: name
-        logical :: has_upper, has_lower
         integer :: i
 
-        is_camel = .false.
-        has_upper = .false.
         has_lower = .false.
-
-        if (name(1:1) >= "A" .and. name(1:1) <= "Z") return
-
         do i = 1, len(name)
-            if (name(i:i) >= "a" .and. name(i:i) <= "z") has_lower = .true.
-            if (name(i:i) >= "A" .and. name(i:i) <= "Z") has_upper = .true.
-        end do
-
-        is_camel = has_upper .and. has_lower .and. index(name, "_") == 0
-    end function is_camel_case
-
-    logical function is_pascal_case(name) result(is_pascal)
-        character(len=*), intent(in) :: name
-        logical :: has_upper, has_lower
-        integer :: i
-
-        is_pascal = .false.
-        has_upper = .false.
-        has_lower = .false.
-
-        if (name(1:1) < "A" .or. name(1:1) > "Z") return
-
-        do i = 1, len(name)
-            if (name(i:i) >= "a" .and. name(i:i) <= "z") has_lower = .true.
-            if (name(i:i) >= "A" .and. name(i:i) <= "Z") has_upper = .true.
-        end do
-
-        is_pascal = has_upper .and. has_lower .and. index(name, "_") == 0
-    end function is_pascal_case
-
-    function to_lower(str) result(lower_str)
-        character(len=*), intent(in) :: str
-        character(len=len(str)) :: lower_str
-        integer :: i
-        integer :: ascii_val
-
-        lower_str = str
-        do i = 1, len(str)
-            ascii_val = iachar(str(i:i))
-            if (ascii_val >= iachar("A") .and. ascii_val <= iachar("Z")) then
-                lower_str(i:i) = achar(ascii_val + 32)
+            if (is_lowercase_letter(name(i:i))) then
+                has_lower = .true.
+                return
             end if
         end do
-    end function to_lower
+    end function has_lowercase
 
-    logical function is_comment_line(line) result(is_comment)
-        character(len=*), intent(in) :: line
-        character(len=:), allocatable :: trimmed
+    pure logical function is_lowercase_letter(ch) result(ok)
+        character(len=1), intent(in) :: ch
 
-        trimmed = adjustl(line)
-        if (len_trim(trimmed) == 0) then
-            is_comment = .false.
-        else
-            is_comment = trimmed(1:1) == "!"
-        end if
-    end function is_comment_line
+        ok = (ch >= "a" .and. ch <= "z")
+    end function is_lowercase_letter
+
+    pure logical function is_uppercase_letter(ch) result(ok)
+        character(len=1), intent(in) :: ch
+
+        ok = (ch >= "A" .and. ch <= "Z")
+    end function is_uppercase_letter
 
 end module fluff_rule_f012

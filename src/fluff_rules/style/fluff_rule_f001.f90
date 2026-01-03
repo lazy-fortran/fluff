@@ -1,10 +1,13 @@
 module fluff_rule_f001
-    use fluff_ast, only: fluff_ast_context_t, NODE_DECLARATION, NODE_FUNCTION_DEF, &
-                         NODE_MODULE, NODE_PROGRAM, NODE_SUBROUTINE_DEF, NODE_UNKNOWN
+    use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, fix_suggestion_t, text_edit_t, &
                                  create_diagnostic, SEVERITY_WARNING
-    use fluff_rule_file_context, only: current_source_text
+    use fluff_rule_file_context, only: current_filename
+    use fluff_rule_diagnostic_utils, only: push_diagnostic
+    use fortfront, only: function_def_node, implicit_statement_node, &
+                         interface_block_node, &
+                         module_node, program_node, subroutine_def_node
     implicit none
     private
 
@@ -17,71 +20,140 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        call check_f001_implicit_none_ast_based(ctx, node_index, violations)
+        type(diagnostic_t), allocatable :: tmp(:)
+        integer :: violation_count
+
+        allocate (tmp(0))
+        violation_count = 0
+
+        call walk_tree(ctx, ctx%root_index, .false., tmp, violation_count)
+
+        allocate (violations(violation_count))
+        if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f001_implicit_none
 
-    subroutine check_f001_implicit_none_ast_based(ctx, node_index, violations)
+    recursive subroutine walk_tree(ctx, node_index, in_interface, tmp, &
+                                   violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
-        type(diagnostic_t), allocatable, intent(out) :: violations(:)
+        logical, intent(in) :: in_interface
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
-        integer :: violation_count
-        logical :: found_implicit_none
-        integer :: node_type
+        integer, allocatable :: children(:)
+        integer :: i
+        logical :: child_in_interface
+
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        child_in_interface = in_interface
+        select type (node => ctx%arena%entries(node_index)%node)
+        type is (interface_block_node)
+            child_in_interface = .true.
+        type is (program_node)
+            if (.not. in_interface) then
+                call check_scope(ctx, node_index, tmp, violation_count)
+            end if
+        type is (module_node)
+            if (.not. in_interface) then
+                call check_scope(ctx, node_index, tmp, violation_count)
+            end if
+        type is (subroutine_def_node)
+            if (.not. in_interface) then
+                call check_scope(ctx, node_index, tmp, violation_count)
+            end if
+        type is (function_def_node)
+            if (.not. in_interface) then
+                call check_scope(ctx, node_index, tmp, violation_count)
+            end if
+        end select
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            call walk_tree(ctx, children(i), child_in_interface, tmp, violation_count)
+        end do
+        if (allocated(children)) deallocate (children)
+    end subroutine walk_tree
+
+    subroutine check_scope(ctx, scope_index, tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: scope_index
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        type(diagnostic_t) :: diag
         type(fix_suggestion_t) :: fix
         type(text_edit_t) :: edit
         type(source_range_t) :: location
+        logical :: has_implicit_none
 
-        allocate (temp_violations(10))
-        violation_count = 0
+        has_implicit_none = scope_has_implicit_none(ctx, scope_index, scope_index)
+        if (has_implicit_none) return
 
-        node_type = ctx%get_node_type(node_index)
+        location = ctx%get_node_location(scope_index)
+        diag = create_diagnostic( &
+               code="F001", &
+               message="Missing implicit none statement", &
+               file_path=current_filename, &
+               location=location, &
+               severity=SEVERITY_WARNING)
 
-        if (node_type == NODE_PROGRAM .or. node_type == NODE_MODULE .or. &
-            node_type == NODE_FUNCTION_DEF .or. node_type == NODE_SUBROUTINE_DEF .or. &
-            node_type == NODE_DECLARATION .or. node_type == NODE_UNKNOWN .or. &
-            node_index == 1) then
+        fix%description = "Add implicit none statement"
+        fix%is_safe = .true.
 
-            if (allocated(current_source_text)) then
-                found_implicit_none = index(current_source_text, "implicit") > 0 .and. &
-                                      index(current_source_text, "none") > 0
-                if (.not. found_implicit_none) then
-                    location = ctx%get_node_location(node_index)
-                    violation_count = 1
+        edit%range%start%line = location%start%line + 1
+        edit%range%start%column = 1
+        edit%range%end%line = location%start%line + 1
+        edit%range%end%column = 1
+        edit%new_text = "    implicit none"//new_line('a')
 
-                    temp_violations(violation_count) = create_diagnostic( &
-                                                       code="F001", &
-                                                       message= &
-                                                       "Missing implicit none "// &
-                                                       "statement", &
-                                                       file_path="", &
-                                                       location=location, &
-                                                       severity=SEVERITY_WARNING &
-                                                       )
+        allocate (fix%edits(1))
+        fix%edits(1) = edit
+        allocate (diag%fixes(1))
+        diag%fixes(1) = fix
 
-                    fix%description = "Add implicit none statement"
-                    fix%is_safe = .true.
+        call push_diagnostic(tmp, violation_count, diag)
+    end subroutine check_scope
 
-                    edit%range%start%line = location%start%line + 1
-                    edit%range%start%column = 1
-                    edit%range%end%line = location%start%line + 1
-                    edit%range%end%column = 1
-                    edit%new_text = "    implicit none"//new_line('a')
+    recursive logical function scope_has_implicit_none(ctx, scope_index, &
+                                                       node_index) result(found)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: scope_index
+        integer, intent(in) :: node_index
 
-                    allocate (fix%edits(1))
-                    fix%edits(1) = edit
+        integer, allocatable :: children(:)
+        integer :: i
 
-                    allocate (temp_violations(violation_count)%fixes(1))
-                    temp_violations(violation_count)%fixes(1) = fix
-                end if
+        found = .false.
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        if (node_index /= scope_index) then
+            select type (n => ctx%arena%entries(node_index)%node)
+            type is (subroutine_def_node)
+                return
+            type is (function_def_node)
+                return
+            end select
+        end if
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (implicit_statement_node)
+            found = n%is_none
+            return
+        end select
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            if (scope_has_implicit_none(ctx, scope_index, children(i))) then
+                found = .true.
+                exit
             end if
-        end if
-
-        allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
-        end if
-    end subroutine check_f001_implicit_none_ast_based
+        end do
+        if (allocated(children)) deallocate (children)
+    end function scope_has_implicit_none
 
 end module fluff_rule_f001

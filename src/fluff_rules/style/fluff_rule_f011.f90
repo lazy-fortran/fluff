@@ -2,7 +2,10 @@ module fluff_rule_f011
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
-    use fluff_rule_file_context, only: current_filename, current_source_text
+    use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
+    use fortfront, only: token_t, tokenize_core_with_trivia
+    use lexer_token_types, only: TK_IDENTIFIER, TK_KEYWORD
     implicit none
     private
 
@@ -15,262 +18,138 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
-        type(diagnostic_t), allocatable :: temp_violations(:)
+        character(len=:), allocatable :: source_text
+        logical :: found
+        type(token_t), allocatable :: tokens(:)
+        type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
 
-        if (.not. allocated(current_source_text)) then
+        call ctx%get_source_text(source_text, found)
+        if (.not. found) then
             allocate (violations(0))
             return
         end if
 
-        allocate (temp_violations(100))
+        call tokenize_core_with_trivia(source_text, tokens)
+
+        allocate (tmp(0))
         violation_count = 0
 
-        call analyze_missing_end_labels_from_text(current_source_text, &
-                                                  temp_violations, &
-                                                  violation_count)
+        call scan_end_statements(tokens, tmp, violation_count)
 
         allocate (violations(violation_count))
-        if (violation_count > 0) then
-            violations = temp_violations(1:violation_count)
-        end if
+        if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f011_missing_end_labels
 
-    subroutine analyze_missing_end_labels_from_text(source_text, violations, &
-                                                    violation_count)
-        character(len=*), intent(in) :: source_text
-        type(diagnostic_t), intent(inout) :: violations(:)
+    subroutine scan_end_statements(tokens, tmp, violation_count)
+        type(token_t), allocatable, intent(in) :: tokens(:)
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
         integer, intent(inout) :: violation_count
 
-        integer :: pos, line_num
-        logical :: done
-        character(len=:), allocatable :: line_content
-        character(len=:), allocatable :: line_trimmed
-        character(len=:), allocatable :: line_lower
-        character(len=64) :: stack_names(100)
-        integer :: stack_depth
-        integer :: name_start, name_end
+        integer :: i
+        integer :: first_idx
+        integer :: current_line
 
-        pos = 1
-        line_num = 0
-        stack_depth = 0
-        stack_names = ""
+        if (.not. allocated(tokens)) return
+        if (size(tokens) <= 0) return
 
-        do
-            call next_source_line(source_text, pos, line_num, line_content, done)
-            if (done) exit
-            if (is_comment_line(line_content)) cycle
-
-            line_trimmed = adjustl(line_content)
-            line_lower = to_lower(line_trimmed)
-
-            call handle_start_construct(line_lower, line_trimmed, stack_names, &
-                                        stack_depth, name_start, name_end)
-            call handle_end_construct(line_lower, line_num, violations, &
-                                      violation_count, stack_depth)
+        current_line = -1
+        first_idx = 0
+        do i = 1, size(tokens)
+            if (tokens(i)%line /= current_line) then
+                if (first_idx > 0) then
+                    call check_line_end_statement(tokens, first_idx, tmp, &
+                                                  violation_count)
+                end if
+                current_line = tokens(i)%line
+                first_idx = i
+            end if
         end do
-    end subroutine analyze_missing_end_labels_from_text
+        if (first_idx > 0) then
+            call check_line_end_statement(tokens, first_idx, tmp, violation_count)
+        end if
+    end subroutine scan_end_statements
 
-    subroutine next_source_line(source_text, pos, line_num, line_content, done)
-        character(len=*), intent(in) :: source_text
-        integer, intent(inout) :: pos
-        integer, intent(inout) :: line_num
-        character(len=:), allocatable, intent(out) :: line_content
-        logical, intent(out) :: done
+    subroutine check_line_end_statement(tokens, first_idx, tmp, violation_count)
+        type(token_t), intent(in) :: tokens(:)
+        integer, intent(in) :: first_idx
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
 
-        integer :: next_pos
-        integer :: line_start, line_end
+        integer :: line
+        integer :: i
+        character(len=:), allocatable :: t0
+        character(len=:), allocatable :: kind
+        logical :: has_name
 
-        if (pos > len(source_text)) then
-            done = .true.
-            line_content = ""
+        line = tokens(first_idx)%line
+        i = first_idx
+
+        if (tokens(i)%kind /= TK_KEYWORD) return
+        if (.not. allocated(tokens(i)%text)) return
+        t0 = to_lower_ascii(trim(tokens(i)%text))
+        if (t0 /= "end") return
+
+        i = i + 1
+        if (i > size(tokens)) return
+        if (tokens(i)%line /= line) return
+        if (tokens(i)%kind /= TK_KEYWORD) return
+        if (.not. allocated(tokens(i)%text)) return
+        kind = to_lower_ascii(trim(tokens(i)%text))
+
+        if (kind /= "program" .and. kind /= "module" .and. kind /= "subroutine" .and. &
+            kind /= "function") then
             return
         end if
 
-        line_num = line_num + 1
-
-        next_pos = index(source_text(pos:), new_line("a"))
-        if (next_pos == 0) then
-            line_start = pos
-            line_end = len(source_text)
-            pos = len(source_text) + 1
-        else
-            line_start = pos
-            line_end = pos + next_pos - 2
-            pos = pos + next_pos
-        end if
-
-        if (line_end < line_start) then
-            line_content = ""
-        else
-            line_content = source_text(line_start:line_end)
-        end if
-
-        done = .false.
-    end subroutine next_source_line
-
-    subroutine handle_start_construct(line_lower, line_trimmed, stack_names, &
-                                      stack_depth, name_start, name_end)
-        character(len=*), intent(in) :: line_lower
-        character(len=*), intent(in) :: line_trimmed
-        character(len=*), intent(inout) :: stack_names(:)
-        integer, intent(inout) :: stack_depth
-        integer, intent(inout) :: name_start
-        integer, intent(inout) :: name_end
-
-        if (index(line_lower, "program ") == 1) then
-            call push_construct_name(stack_names, stack_depth, line_trimmed, 9)
-        else if (index(line_lower, "module ") == 1 .and. &
-                 index(line_lower, "module procedure") /= 1) then
-            call push_construct_name(stack_names, stack_depth, line_trimmed, 8)
-        else if (index(line_lower, "subroutine ") == 1) then
-            call push_construct_name(stack_names, stack_depth, line_trimmed, 12)
-        else if (is_function_start(line_lower)) then
-            name_start = index(line_lower, "function ") + 9
-            name_end = len(line_trimmed)
-            stack_depth = stack_depth + 1
-            if (stack_depth <= size(stack_names)) then
-                stack_names(stack_depth) = &
-                    extract_name(line_trimmed(name_start:name_end))
+        if (kind == "module") then
+            if (i + 1 <= size(tokens)) then
+                if (tokens(i + 1)%line == line) then
+                    if (tokens(i + 1)%kind == TK_KEYWORD) then
+                        if (allocated(tokens(i + 1)%text)) then
+                            if (to_lower_ascii(trim(tokens(i + 1)%text)) == &
+                                "procedure") then
+                                return
+                            end if
+                        end if
+                    end if
+                end if
             end if
         end if
-    end subroutine handle_start_construct
 
-    subroutine push_construct_name(stack_names, stack_depth, line_trimmed, start_pos)
-        character(len=*), intent(inout) :: stack_names(:)
-        integer, intent(inout) :: stack_depth
-        character(len=*), intent(in) :: line_trimmed
-        integer, intent(in) :: start_pos
-
-        stack_depth = stack_depth + 1
-        if (stack_depth <= size(stack_names)) then
-            stack_names(stack_depth) = extract_name(line_trimmed(start_pos:))
+        has_name = .false.
+        if (i + 1 <= size(tokens)) then
+            if (tokens(i + 1)%line == line) then
+                if (allocated(tokens(i + 1)%text)) then
+                    has_name = (tokens(i + 1)%kind == TK_IDENTIFIER)
+                end if
+            end if
         end if
-    end subroutine push_construct_name
 
-    logical function is_function_start(line_lower) result(is_start)
-        character(len=*), intent(in) :: line_lower
+        if (has_name) return
 
-        is_start = index(line_lower, "function ") > 0 .and. &
-                   (index(line_lower, "function ") == 1 .or. &
-                    index(line_lower, "pure function ") == 1 .or. &
-                    index(line_lower, "elemental function ") == 1)
-    end function is_function_start
+        call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                             code="F011", &
+                             message="Missing end label for "//trim(kind), &
+                             file_path=current_filename, &
+                             location=end_phrase_location(tokens(first_idx), &
+                                                          tokens(i)), &
+                             severity=SEVERITY_INFO))
+    end subroutine check_line_end_statement
 
-    subroutine handle_end_construct(line_lower, line_num, violations, &
-                                    violation_count, stack_depth)
-        character(len=*), intent(in) :: line_lower
-        integer, intent(in) :: line_num
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
-        integer, intent(inout) :: stack_depth
-
-        if (index(line_lower, "end program") == 1) then
-            if (len_trim(line_lower) == 11) then
-                call push_end_label_violation(violations, violation_count, &
-                                              line_num, "program", 11)
-            end if
-            if (stack_depth > 0) stack_depth = stack_depth - 1
-        else if (is_end_module(line_lower)) then
-            if (len_trim(line_lower) == 10) then
-                call push_end_label_violation(violations, violation_count, &
-                                              line_num, "module", 10)
-            end if
-            if (stack_depth > 0) stack_depth = stack_depth - 1
-        else if (index(line_lower, "end subroutine") == 1) then
-            if (len_trim(line_lower) == 14) then
-                call push_end_label_violation(violations, violation_count, &
-                                              line_num, "subroutine", 14)
-            end if
-            if (stack_depth > 0) stack_depth = stack_depth - 1
-        else if (index(line_lower, "end function") == 1) then
-            if (len_trim(line_lower) == 12) then
-                call push_end_label_violation(violations, violation_count, &
-                                              line_num, "function", 12)
-            end if
-            if (stack_depth > 0) stack_depth = stack_depth - 1
-        end if
-    end subroutine handle_end_construct
-
-    logical function is_end_module(line_lower) result(is_end)
-        character(len=*), intent(in) :: line_lower
-
-        is_end = index(line_lower, "end module") == 1 .and. &
-                 index(line_lower, "end module procedure") /= 1
-    end function is_end_module
-
-    subroutine push_end_label_violation(violations, violation_count, line_num, &
-                                        kind_name, end_len)
-        type(diagnostic_t), intent(inout) :: violations(:)
-        integer, intent(inout) :: violation_count
-        integer, intent(in) :: line_num
-        character(len=*), intent(in) :: kind_name
-        integer, intent(in) :: end_len
-
+    pure function end_phrase_location(end_tok, kind_tok) result(location)
+        type(token_t), intent(in) :: end_tok
+        type(token_t), intent(in) :: kind_tok
         type(source_range_t) :: location
+        integer :: end_col
 
-        violation_count = violation_count + 1
-        if (violation_count <= size(violations)) then
-            location%start%line = line_num
-            location%start%column = 1
-            location%end%line = line_num
-            location%end%column = end_len
-            violations(violation_count) = create_diagnostic( &
-                                          code="F011", &
-                                          message="Missing end label for " // &
-                                                  trim(kind_name), &
-                                          file_path=current_filename, &
-                                          location=location, &
-                                          severity=SEVERITY_INFO)
-        end if
-    end subroutine push_end_label_violation
+        location%start%line = end_tok%line
+        location%start%column = end_tok%column
+        location%end%line = end_tok%line
 
-    function extract_name(str) result(name)
-        character(len=*), intent(in) :: str
-        character(len=64) :: name
-        integer :: paren_pos, space_pos
-        character(len=:), allocatable :: trimmed
-
-        name = ""
-        trimmed = adjustl(str)
-
-        paren_pos = index(trimmed, "(")
-        space_pos = index(trimmed, " ")
-
-        if (paren_pos > 0) then
-            name = trimmed(1:paren_pos - 1)
-        else if (space_pos > 0) then
-            name = trimmed(1:space_pos - 1)
-        else
-            name = trimmed
-        end if
-    end function extract_name
-
-    function to_lower(str) result(lower_str)
-        character(len=*), intent(in) :: str
-        character(len=len(str)) :: lower_str
-        integer :: i
-        integer :: ascii_val
-
-        lower_str = str
-        do i = 1, len(str)
-            ascii_val = iachar(str(i:i))
-            if (ascii_val >= iachar("A") .and. ascii_val <= iachar("Z")) then
-                lower_str(i:i) = achar(ascii_val + 32)
-            end if
-        end do
-    end function to_lower
-
-    logical function is_comment_line(line) result(is_comment)
-        character(len=*), intent(in) :: line
-        character(len=:), allocatable :: trimmed
-
-        trimmed = adjustl(line)
-        if (len_trim(trimmed) == 0) then
-            is_comment = .false.
-        else
-            is_comment = trimmed(1:1) == "!"
-        end if
-    end function is_comment_line
+        end_col = kind_tok%column
+        if (allocated(kind_tok%text)) end_col = end_col + len(kind_tok%text) - 1
+        location%end%column = end_col
+    end function end_phrase_location
 
 end module fluff_rule_f011
