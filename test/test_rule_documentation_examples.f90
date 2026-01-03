@@ -1,10 +1,5 @@
 program test_rule_documentation_examples
     ! Generate comprehensive documentation examples for all rules
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
     implicit none
     
     print *, "Generating rule documentation and examples..."
@@ -209,8 +204,8 @@ contains
         character(len=:), allocatable :: code
         code = "program line_too_long" // new_line('a') // &
                "    implicit none" // new_line('a') // &
-               "    real :: very_long_variable_name_that_makes_this_line_exceed_the_maximum_" // &
-               "length_limit = 3.14159" // new_line('a') // &
+               "    real :: very_long_variable_name_that_makes_this_" // &
+               "line_exceed_the_maximum_length_limit = 3.14159" // new_line('a') // &
                "end program line_too_long"
     end function generate_f003_bad_example
     
@@ -309,7 +304,8 @@ contains
         character(len=:), allocatable :: code
         code = "subroutine missing_intent(input, output)" // new_line('a') // &
                "    implicit none" // new_line('a') // &
-               "    real :: input, output  ! Missing intent declarations" // new_line('a') // &
+               "    real :: input, output  ! Missing intent " // &
+               "declarations" // new_line('a') // &
                "    output = input * 2.0" // new_line('a') // &
                "end subroutine missing_intent"
     end function generate_f008_bad_example
@@ -420,7 +416,8 @@ contains
     
     function generate_p004_good_example() result(code)
         character(len=:), allocatable :: code
-        code = "pure elemental function compute_square(x) result(y)" // new_line('a') // &
+        code = "pure elemental function compute_square(x) " // &
+               "result(y)" // new_line('a') // &
                "    implicit none" // new_line('a') // &
                "    real, intent(in) :: x" // new_line('a') // &
                "    real :: y" // new_line('a') // &
