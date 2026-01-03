@@ -16,7 +16,12 @@ contains
         integer, intent(in) :: node_index
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
+        type(diagnostic_t), allocatable :: buffer(:)
+        type(diagnostic_t), allocatable :: new_buffer(:)
         integer :: violation_count
+        integer :: capacity
+        integer :: copy_count
+        integer :: new_capacity
         integer :: line_num
         integer :: max_length
         integer :: line_length
@@ -32,6 +37,7 @@ contains
         if (max_length <= 0) max_length = 88
 
         violation_count = 0
+        capacity = 0
         line_num = 1
         do
             call ctx%get_source_line(line_num, line_text, found)
@@ -41,6 +47,19 @@ contains
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
                     violation_count = violation_count + 1
+                    if (violation_count > capacity) then
+                        new_capacity = max(8, 2*capacity)
+                        allocate (new_buffer(new_capacity))
+                        copy_count = min(capacity, violation_count - 1)
+                        if (copy_count > 0) then
+                            new_buffer(1:copy_count) = buffer(1:copy_count)
+                        end if
+                        call move_alloc(new_buffer, buffer)
+                        capacity = new_capacity
+                    end if
+                    buffer(violation_count) = create_f003_diagnostic(line_num, &
+                                                                     line_length, &
+                                                                     max_length)
                 end if
             end if
 
@@ -52,24 +71,7 @@ contains
             return
         end if
 
-        violation_count = 0
-        line_num = 1
-        do
-            call ctx%get_source_line(line_num, line_text, found)
-            if (.not. found) exit
-
-            line_length = visual_columns(line_text)
-            if (line_length > max_length) then
-                if (.not. is_comment_only_line(line_text)) then
-                    violation_count = violation_count + 1
-                    violations(violation_count) = create_f003_diagnostic(line_num, &
-                                                                         line_length, &
-                                                                         max_length)
-                end if
-            end if
-
-            line_num = line_num + 1
-        end do
+        violations = buffer(1:violation_count)
     end subroutine check_f003_line_length
 
     function create_f003_diagnostic(line_num, line_length, max_length) result(diag)
