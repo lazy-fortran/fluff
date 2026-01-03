@@ -1,12 +1,10 @@
 program test_rule_f009_inconsistent_intent
     ! Test F009: Inconsistent intent usage rule
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code
+                            delete_file_if_exists, assert_has_diagnostic_code, &
+                            lint_file_checked
     implicit none
 
     print *, "Testing F009: Inconsistent intent usage rule..."
@@ -23,7 +21,6 @@ contains
     subroutine test_intent_in_modified()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -39,7 +36,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_f009_in_bad", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "F009", .true., &
@@ -50,7 +47,6 @@ contains
     subroutine test_intent_in_not_modified()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -67,7 +63,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_f009_in_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "F009", .false., &
@@ -78,7 +74,6 @@ contains
     subroutine test_intent_out_unassigned()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -93,18 +88,18 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_f009_out_bad", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "F009", .true., &
-                                     "intent(out) without assignment should be flagged")
+                                        "intent(out) without assignment should be "// &
+                                        "flagged")
         print *, "  + Intent(out) unassigned"
     end subroutine test_intent_out_unassigned
 
     subroutine test_intent_out_assigned()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
 
@@ -120,7 +115,7 @@ contains
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_f009_out_ok", path)
         call write_text_file(path, test_code)
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "F009", .false., &

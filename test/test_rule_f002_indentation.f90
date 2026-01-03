@@ -1,12 +1,9 @@
 program test_rule_f002_indentation
     ! Test F002: Inconsistent indentation rule
-    use fluff_core
-    use fluff_linter
-    use fluff_rules
-    use fluff_diagnostics
-    use fluff_ast
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists
+                            delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F002: Inconsistent indentation rule..."
@@ -30,7 +27,6 @@ contains
     subroutine test_inconsistent_indentation()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -49,7 +45,7 @@ contains
         call write_text_file(path, test_code)
 
         ! Lint the file
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         ! Check for F002 violation
         found_f002 = .false.
@@ -75,7 +71,6 @@ contains
     subroutine test_consistent_4_spaces()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -93,7 +88,7 @@ contains
         call write_text_file(path, test_code)
 
         ! Lint the file
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         ! Check for F002 violation
         found_f002 = .false.
@@ -119,7 +114,6 @@ contains
     subroutine test_consistent_2_spaces()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -136,7 +130,7 @@ contains
         call make_temp_fortran_path("fluff_test_f002_2space", path)
         call write_text_file(path, test_code)
 
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         found_f002 = .false.
         if (allocated(diagnostics)) then
@@ -151,7 +145,7 @@ contains
         call delete_file_if_exists(path)
 
         if (found_f002) then
-            error stop "Failed: F002 should not be triggered for consistent " // &
+            error stop "Failed: F002 should not be triggered for consistent "// &
                 "2-space indentation"
         end if
 
@@ -161,7 +155,6 @@ contains
     subroutine test_mixed_levels()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
@@ -178,7 +171,7 @@ contains
         call make_temp_fortran_path("fluff_test_f002_mixed", path)
         call write_text_file(path, test_code)
 
-        call linter%lint_file(path, diagnostics, error_msg)
+        call lint_file_checked(linter, path, diagnostics)
 
         found_f002 = .false.
         if (allocated(diagnostics)) then

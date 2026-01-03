@@ -1,12 +1,14 @@
 module test_support
     use, intrinsic :: iso_fortran_env, only: error_unit
     use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: linter_engine_t
     implicit none
     private
 
     public :: make_temp_fortran_path
     public :: write_text_file
     public :: delete_file_if_exists
+    public :: lint_file_checked
     public :: assert_has_diagnostic_code
     public :: assert_diagnostic_location
     public :: assert_equal_int
@@ -48,6 +50,24 @@ contains
             close (unit, status="delete")
         end if
     end subroutine delete_file_if_exists
+
+    subroutine lint_file_checked(linter, path, diags)
+        type(linter_engine_t), intent(inout) :: linter
+        character(len=*), intent(in) :: path
+        type(diagnostic_t), allocatable, intent(out) :: diags(:)
+
+        character(len=:), allocatable :: error_msg
+
+        call linter%lint_file(path, diags, error_msg)
+
+        if (allocated(error_msg)) then
+            if (len_trim(error_msg) > 0) then
+                write (error_unit, '(A)') "lint_file error: "//trim(error_msg)
+                flush (error_unit)
+                error stop trim(error_msg)
+            end if
+        end if
+    end subroutine lint_file_checked
 
     subroutine assert_has_diagnostic_code(diags, code, expected, message)
         type(diagnostic_t), allocatable, intent(in) :: diags(:)
