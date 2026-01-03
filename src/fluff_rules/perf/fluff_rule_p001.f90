@@ -3,7 +3,8 @@ module fluff_rule_p001
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fortfront, only: assignment_node, call_or_subscript_node, do_loop_node, &
-                         identifier_node, if_node, select_case_node, &
+                         identifier_node, binary_op_node, if_node, &
+                         select_case_node, &
                          case_block_node, case_default_node, where_node
     implicit none
     private
@@ -198,55 +199,6 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (do_loop_node)
-            if (allocated(n%body_indices)) then
-                do i = 1, size(n%body_indices)
-                    if (n%body_indices(i) > 0) then
-                        call collect_inefficient_accesses(ctx, n%body_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, &
-                                                          violation_count)
-                    end if
-                end do
-            end if
-            return
-        type is (assignment_node)
-            call collect_target_accesses(ctx, n%target_index, outer_var, inner_var, &
-                                         reported, reported_count, tmp, &
-                                         violation_count)
-        end select
-
-        children = ctx%get_children(node_index)
-        do i = 1, size(children)
-            if (children(i) > 0) then
-                call collect_inefficient_accesses(ctx, children(i), outer_var, &
-                                                  inner_var, reported, &
-                                                  reported_count, tmp, &
-                                                  violation_count)
-            end if
-        end do
-    end subroutine collect_inefficient_accesses
-
-    recursive subroutine collect_target_accesses(ctx, node_index, outer_var, &
-                                                 inner_var, reported, reported_count, &
-                                                 tmp, violation_count)
-        type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(in) :: node_index
-        character(len=*), intent(in) :: outer_var
-        character(len=*), intent(in) :: inner_var
-        integer, allocatable, intent(inout) :: reported(:)
-        integer, intent(inout) :: reported_count
-        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
-        integer, intent(inout) :: violation_count
-
-        integer, allocatable :: children(:)
-        integer :: i
-
-        if (node_index <= 0) return
-        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
-
-        select type (n => ctx%arena%entries(node_index)%node)
         type is (call_or_subscript_node)
             if (.not. reported_contains(reported, reported_count, node_index)) then
                 if (is_inefficient_access(ctx, node_index, outer_var, inner_var)) then
@@ -263,33 +215,66 @@ contains
             end if
 
             if (n%base_expr_index > 0) then
-                call collect_target_accesses(ctx, n%base_expr_index, outer_var, &
-                                             inner_var, reported, reported_count, &
-                                             tmp, &
-                                             violation_count)
+                call collect_inefficient_accesses(ctx, n%base_expr_index, outer_var, &
+                                                  inner_var, reported, &
+                                                  reported_count, tmp, &
+                                                  violation_count)
             end if
             if (allocated(n%arg_indices)) then
                 do i = 1, size(n%arg_indices)
                     if (n%arg_indices(i) > 0) then
-                        call collect_target_accesses(ctx, n%arg_indices(i), outer_var, &
-                                                     inner_var, reported, &
-                                                     reported_count, tmp, &
-                                                     violation_count)
+                        call collect_inefficient_accesses(ctx, n%arg_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, reported_count, &
+                                                          tmp, violation_count)
                     end if
                 end do
             end if
+            return
+        type is (do_loop_node)
+            if (allocated(n%body_indices)) then
+                do i = 1, size(n%body_indices)
+                    if (n%body_indices(i) > 0) then
+                        call collect_inefficient_accesses(ctx, n%body_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, reported_count, &
+                                                          tmp, &
+                                                          violation_count)
+                    end if
+                end do
+            end if
+            return
+        type is (assignment_node)
+            call collect_inefficient_accesses(ctx, n%target_index, outer_var, &
+                                              inner_var, &
+                                              reported, reported_count, tmp, &
+                                              violation_count)
+            call collect_inefficient_accesses(ctx, n%value_index, outer_var, &
+                                              inner_var, &
+                                              reported, reported_count, tmp, &
+                                              violation_count)
+            return
+        type is (binary_op_node)
+            call collect_inefficient_accesses(ctx, n%left_index, outer_var, inner_var, &
+                                              reported, reported_count, tmp, &
+                                              violation_count)
+            call collect_inefficient_accesses(ctx, n%right_index, outer_var, &
+                                              inner_var, &
+                                              reported, reported_count, tmp, &
+                                              violation_count)
             return
         end select
 
         children = ctx%get_children(node_index)
         do i = 1, size(children)
             if (children(i) > 0) then
-                call collect_target_accesses(ctx, children(i), outer_var, inner_var, &
-                                             reported, reported_count, tmp, &
-                                             violation_count)
+                call collect_inefficient_accesses(ctx, children(i), outer_var, &
+                                                  inner_var, reported, &
+                                                  reported_count, tmp, &
+                                                  violation_count)
             end if
         end do
-    end subroutine collect_target_accesses
+    end subroutine collect_inefficient_accesses
 
     logical function is_inefficient_access(ctx, node_index, outer_var, inner_var) &
         result(bad)
@@ -298,54 +283,66 @@ contains
         character(len=*), intent(in) :: outer_var
         character(len=*), intent(in) :: inner_var
 
-        integer :: i
-        integer :: a1
-        character(len=:), allocatable :: n1
-        character(len=:), allocatable :: nk
+        integer :: i, first_index
+        logical :: first_uses_outer
 
         bad = .false.
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (c => ctx%arena%entries(node_index)%node)
         type is (call_or_subscript_node)
+            if (.not. c%is_array_access) return
             if (.not. allocated(c%arg_indices)) return
             if (size(c%arg_indices) < 2) return
-            a1 = c%arg_indices(1)
+            first_index = c%arg_indices(1)
         class default
             return
         end select
 
-        call get_identifier_arg_name(ctx, a1, n1)
-        if (.not. allocated(n1)) return
-        if (n1 /= outer_var) return
+        first_uses_outer = expr_depends_on_var(ctx, first_index, outer_var)
+        if (.not. first_uses_outer) return
 
         select type (c => ctx%arena%entries(node_index)%node)
         type is (call_or_subscript_node)
             do i = 2, size(c%arg_indices)
-                call get_identifier_arg_name(ctx, c%arg_indices(i), nk)
-                if (allocated(nk)) then
-                    if (nk == inner_var) then
-                        bad = .true.
-                        return
-                    end if
+                if (expr_depends_on_var(ctx, c%arg_indices(i), inner_var)) then
+                    bad = .true.
+                    return
                 end if
             end do
         end select
     end function is_inefficient_access
 
-    subroutine get_identifier_arg_name(ctx, node_index, name)
+    recursive logical function expr_depends_on_var(ctx, node_index, var_name) &
+        result(depends)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
-        character(len=:), allocatable, intent(out) :: name
+        character(len=*), intent(in) :: var_name
 
+        integer, allocatable :: children(:)
+        integer :: i
+        character(len=:), allocatable :: name_lower
+
+        depends = .false.
         if (node_index <= 0) return
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
         type is (identifier_node)
-            if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
+            if (.not. allocated(n%name)) return
+            name_lower = to_lower_ascii(trim(n%name))
+            depends = (name_lower == var_name)
+            return
         end select
-    end subroutine get_identifier_arg_name
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (expr_depends_on_var(ctx, children(i), var_name)) then
+                depends = .true.
+                return
+            end if
+        end do
+    end function expr_depends_on_var
 
     subroutine push_reported(reported, reported_count, idx)
         integer, allocatable, intent(inout) :: reported(:)

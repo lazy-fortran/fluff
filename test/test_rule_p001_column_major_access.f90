@@ -13,6 +13,7 @@ program test_rule_p001_column_major_access
     call test_2d_incorrect_order_under_if_triggers()
     call test_2d_correct_order_ok()
     call test_3d_incorrect_order_triggers()
+    call test_rhs_array_read_triggers()
     call test_non_array_call_ok()
 
     print *, "All P001 tests passed!"
@@ -148,6 +149,39 @@ contains
                                         "P001 should point at array reference")
         print *, "  + 3D incorrect ordering triggers"
     end subroutine test_3d_incorrect_order_triggers
+
+    subroutine test_rhs_array_read_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+                    "    real :: matrix(n, m)"//new_line('a')// &
+                    "    real :: x"//new_line('a')// &
+                    "    integer :: i, j"//new_line('a')// &
+                    "    do i = 1, n"//new_line('a')// &
+                    "        do j = 1, m"//new_line('a')// &
+                    "            x = matrix(i, j)"//new_line('a')// &
+                    "        end do"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p001_rhs_read", path)
+        call write_text_file(path, test_code)
+        call linter%lint_file(path, diagnostics, error_msg)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P001", .true., &
+                                        "array reads should be checked")
+        call assert_diagnostic_location(diagnostics, "P001", 9, 28, &
+                                        "P001 should point at array reference")
+        print *, "  + RHS array read triggers"
+    end subroutine test_rhs_array_read_triggers
 
     subroutine test_non_array_call_ok()
         type(linter_engine_t) :: linter
