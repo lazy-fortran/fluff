@@ -20,6 +20,7 @@ contains
         type(diagnostic_t), allocatable :: new_buffer(:)
         integer :: violation_count
         integer :: capacity
+        integer :: copy_count
         integer :: new_capacity
         integer :: line_num
         integer :: max_length
@@ -49,8 +50,9 @@ contains
                     if (violation_count > capacity) then
                         new_capacity = max(8, 2*capacity)
                         allocate (new_buffer(new_capacity))
-                        if (capacity > 0) then
-                            new_buffer(1:capacity) = buffer
+                        copy_count = min(capacity, violation_count - 1)
+                        if (copy_count > 0) then
+                            new_buffer(1:copy_count) = buffer(1:copy_count)
                         end if
                         call move_alloc(new_buffer, buffer)
                         capacity = new_capacity
