@@ -3,7 +3,7 @@ module fluff_lsp_hover
     use fluff_ast
     use fluff_linter
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                         lex_source, parse_tokens, analyze_semantics, &
+                         lex_source, parse_tokens, analyze_program, &
                          create_ast_arena, create_semantic_context, &
                          get_identifiers_in_subtree, get_node_type_id
     implicit none
@@ -161,12 +161,12 @@ contains
         end if
 
         call create_semantic_context(semantic_ctx)
-        call analyze_semantics(arena, root_index)
+        call analyze_program(semantic_ctx, arena, root_index)
 
         ! Use semantic information to provide rich hover info
         call analyze_token_semantic(token, arena, semantic_ctx, root_index, info)
 
-      ! If semantic analysis didn't find anything or found wrong context, try text-based
+        ! If semantic analysis didn't find anything or found wrong context, try text-based
         if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0 .or. &
             (token == "math_utils" .and. index(current_line, "use") == 1 .and. &
              info%signature /= "use math_utils")) then

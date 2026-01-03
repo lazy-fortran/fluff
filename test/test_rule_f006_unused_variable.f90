@@ -25,14 +25,33 @@ program test_rule_f006_unused_variable
 
 contains
 
+    function make_tmpfile(stem) result(path)
+        character(len=*), intent(in) :: stem
+        character(len=:), allocatable :: path
+
+        integer :: count, rate, max_count
+        integer, save :: seq = 0
+        character(len=32) :: stamp, seq_str
+
+        call system_clock(count, rate, max_count)
+        seq = seq + 1
+
+        write (stamp, '(I0)') count
+        write (seq_str, '(I0)') seq
+        path = "/tmp/"//trim(stem)//"_"//trim(stamp)//"_"//trim(seq_str)//".f90"
+    end function make_tmpfile
+
     subroutine test_unused_variable()
         type(linter_engine_t) :: linter
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        character(len=*), parameter :: tmpfile = "/tmp/fluff_test_f006.f90"
+        character(len=:), allocatable :: tmpfile
+        integer :: unit
         integer :: i
         logical :: found_f006
+
+        tmpfile = make_tmpfile("fluff_test_f006")
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -44,9 +63,9 @@ contains
         linter = create_linter_engine()
 
         ! Create temporary file
-        open (unit=99, file=tmpfile, status="replace")
-        write (99, '(A)') test_code
-        close (99)
+        open (newunit=unit, file=tmpfile, status="replace", action="write")
+        write (unit, '(A)') test_code
+        close (unit)
 
         ! Lint the file
         call linter%lint_file(tmpfile, diagnostics, error_msg)
@@ -63,8 +82,8 @@ contains
         end if
 
         ! Clean up
-        open (unit=99, file=tmpfile, status="old")
-        close (99, status="delete")
+        open (newunit=unit, file=tmpfile, status="old", action="read")
+        close (unit, status="delete")
 
         if (.not. found_f006) then
             error stop "Failed: F006 should be triggered for unused variable"
@@ -79,9 +98,12 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        character(len=*), parameter :: tmpfile = "/tmp/fluff_test_f006_ok.f90"
+        character(len=:), allocatable :: tmpfile
+        integer :: unit
         integer :: i
         logical :: found_f006
+
+        tmpfile = make_tmpfile("fluff_test_f006_ok")
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -94,9 +116,9 @@ contains
         linter = create_linter_engine()
 
         ! Create temporary file
-        open (unit=99, file=tmpfile, status="replace")
-        write (99, '(A)') test_code
-        close (99)
+        open (newunit=unit, file=tmpfile, status="replace", action="write")
+        write (unit, '(A)') test_code
+        close (unit)
 
         ! Lint the file
         call linter%lint_file(tmpfile, diagnostics, error_msg)
@@ -113,8 +135,8 @@ contains
         end if
 
         ! Clean up
-        open (unit=99, file=tmpfile, status="old")
-        close (99, status="delete")
+        open (newunit=unit, file=tmpfile, status="old", action="read")
+        close (unit, status="delete")
 
         if (found_f006) then
             error stop "Failed: F006 should not be triggered when variables are used"
@@ -129,8 +151,11 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        character(len=*), parameter :: tmpfile = "/tmp/fluff_test_f006_multi.f90"
+        character(len=:), allocatable :: tmpfile
+        integer :: unit
         integer :: i, f006_count
+
+        tmpfile = make_tmpfile("fluff_test_f006_multi")
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -141,9 +166,9 @@ contains
 
         linter = create_linter_engine()
 
-        open (unit=99, file=tmpfile, status="replace")
-        write (99, '(A)') test_code
-        close (99)
+        open (newunit=unit, file=tmpfile, status="replace", action="write")
+        write (unit, '(A)') test_code
+        close (unit)
 
         call linter%lint_file(tmpfile, diagnostics, error_msg)
 
@@ -154,8 +179,8 @@ contains
             end do
         end if
 
-        open (unit=99, file=tmpfile, status="old")
-        close (99, status="delete")
+        open (newunit=unit, file=tmpfile, status="old", action="read")
+        close (unit, status="delete")
 
         if (f006_count < 2) then
             error stop &
@@ -170,9 +195,12 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: test_code
-        character(len=*), parameter :: tmpfile = "/tmp/fluff_test_f006_param.f90"
+        character(len=:), allocatable :: tmpfile
+        integer :: unit
         integer :: i
         logical :: found_f006
+
+        tmpfile = make_tmpfile("fluff_test_f006_param")
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -184,9 +212,9 @@ contains
 
         linter = create_linter_engine()
 
-        open (unit=99, file=tmpfile, status="replace")
-        write (99, '(A)') test_code
-        close (99)
+        open (newunit=unit, file=tmpfile, status="replace", action="write")
+        write (unit, '(A)') test_code
+        close (unit)
 
         call linter%lint_file(tmpfile, diagnostics, error_msg)
 
@@ -200,8 +228,8 @@ contains
             end do
         end if
 
-        open (unit=99, file=tmpfile, status="old")
-        close (99, status="delete")
+        open (newunit=unit, file=tmpfile, status="old", action="read")
+        close (unit, status="delete")
 
         if (found_f006) then
             error stop &
