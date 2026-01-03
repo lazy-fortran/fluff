@@ -15,8 +15,6 @@ program test_visual_columns
     call assert_equal_int(visual_columns("ab"//achar(9)//"c", tab_width=8), 9, &
                           "tab stop after two chars with width 8")
 
-    print *, "  ✓ visual_columns tab_width handling"
-
 contains
 
     subroutine assert_equal_int(actual, expected, context)
@@ -30,4 +28,3 @@ contains
     end subroutine assert_equal_int
 
 end program test_visual_columns
-
