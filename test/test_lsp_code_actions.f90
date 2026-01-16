@@ -33,9 +33,9 @@ program test_lsp_code_actions
     print *, "Success rate: ", success_rate, "%"
 
     if (passed_tests == total_tests) then
-        print *, "✅ All LSP code action tests passed!"
+        print *, "[OK] All LSP code action tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed (expected in RED phase)"
     end if
 
 contains

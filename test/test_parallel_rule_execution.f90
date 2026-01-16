@@ -57,7 +57,7 @@ contains
             error stop "Failed: invalid timing results"
         end if
 
-        print *, "  ✓ Parallel execution performance"
+        print *, "  OK Parallel execution performance"
 
     end subroutine test_parallel_performance
 
@@ -91,7 +91,7 @@ contains
             end if
         end do
 
-        print *, "  ✓ Thread safety"
+        print *, "  OK Thread safety"
 
     end subroutine test_thread_safety
 
@@ -124,7 +124,7 @@ contains
             error stop "Failed: serial and parallel results differ"
         end if
 
-        print *, "  ✓ Result consistency"
+        print *, "  OK Result consistency"
 
     end subroutine test_result_consistency
 

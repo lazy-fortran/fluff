@@ -29,9 +29,9 @@ program test_fortran_specific_style
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All Fortran-specific style tests passed!"
+        print *, "[OK] All Fortran-specific style tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed (expected in RED phase)"
     end if
     
 contains

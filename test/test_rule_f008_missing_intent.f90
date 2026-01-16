@@ -69,7 +69,7 @@ contains
             error stop "Failed: F008 should be triggered for missing intent"
         end if
 
-        print *, "  ✓ Missing intent declarations"
+        print *, "  OK Missing intent declarations"
 
     end subroutine test_missing_intent
 
@@ -120,7 +120,7 @@ contains
                 "properly declared"
         end if
 
-        print *, "  ✓ Proper intent declarations"
+        print *, "  OK Proper intent declarations"
 
     end subroutine test_proper_intent
 
@@ -165,7 +165,7 @@ contains
             error stop "Failed: F008 should be triggered for mixed intent declarations"
         end if
 
-        print *, "  ✓ Mixed intent declarations"
+        print *, "  OK Mixed intent declarations"
     end subroutine test_mixed_intent
 
     subroutine test_function_parameters()
@@ -207,7 +207,7 @@ contains
                 "without intent"
         end if
 
-        print *, "  ✓ Function parameters"
+        print *, "  OK Function parameters"
     end subroutine test_function_parameters
 
 end program test_rule_f008_missing_intent

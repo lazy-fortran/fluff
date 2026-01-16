@@ -50,7 +50,7 @@ contains
             error stop "Failed: line_length should remain from file when not in CLI"
         end if
         
-        print *, "  ✓ CLI overrides file configuration"
+        print *, "  OK CLI overrides file configuration"
     end subroutine test_cli_overrides_file
     
     subroutine test_config_merge()
@@ -99,7 +99,7 @@ contains
             error stop "Failed: ignore rules should be added"
         end if
         
-        print *, "  ✓ Configuration merge"
+        print *, "  OK Configuration merge"
     end subroutine test_config_merge
     
     subroutine test_priority_order()
@@ -127,7 +127,7 @@ contains
             error stop "Failed: File config should override defaults"
         end if
         
-        print *, "  ✓ Configuration priority order"
+        print *, "  OK Configuration priority order"
     end subroutine test_priority_order
     
 end program test_cli_override

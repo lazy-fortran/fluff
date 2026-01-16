@@ -18,7 +18,7 @@ program test_rule_documentation_examples
 contains
     
     subroutine generate_style_rule_examples()
-        print *, "  📚 Generating style rule examples..."
+        print *, "  DOCS Generating style rule examples..."
         
         ! F001: Missing implicit none
         call show_rule_example("F001", "missing-implicit-none", &
@@ -68,12 +68,12 @@ contains
                               generate_f008_bad_example(), &
                               generate_f008_good_example())
 
-        print *, "    ✓ Style rule examples completed (F001-F008)"
+        print *, "    OK Style rule examples completed (F001-F008)"
         
     end subroutine generate_style_rule_examples
     
     subroutine generate_performance_rule_examples()
-        print *, "  📚 Generating performance rule examples..."
+        print *, "  DOCS Generating performance rule examples..."
         
         ! P001: Column-major array access
         call show_rule_example("P001", "column-major-array-access", &
@@ -117,12 +117,12 @@ contains
                               generate_p007_bad_example(), &
                               generate_p007_good_example())
         
-        print *, "    ✓ Performance rule examples completed (P001-P007)"
+        print *, "    OK Performance rule examples completed (P001-P007)"
         
     end subroutine generate_performance_rule_examples
     
     subroutine generate_correctness_rule_examples()
-        print *, "  📚 Generating correctness rule examples..."
+        print *, "  DOCS Generating correctness rule examples..."
         
         ! C001: Undefined variable
         call show_rule_example("C001", "undefined-variable", &
@@ -130,7 +130,7 @@ contains
                               generate_c001_bad_example(), &
                               generate_c001_good_example())
         
-        print *, "    ✓ Correctness rule examples completed (C001)"
+        print *, "    OK Correctness rule examples completed (C001)"
         
     end subroutine generate_correctness_rule_examples
     
@@ -143,12 +143,12 @@ contains
         print '(A,A,A)', "## ", code, ": " // name
         print '(A)', description
         print *, ""
-        print *, "### ❌ Bad Example (triggers rule):"
+        print *, "### [FAIL] Bad Example (triggers rule):"
         print *, "```fortran"
         print '(A)', bad_example
         print *, "```"
         print *, ""
-        print *, "### ✅ Good Example (follows best practices):"
+        print *, "### [OK] Good Example (follows best practices):"
         print *, "```fortran"
         print '(A)', good_example
         print *, "```"

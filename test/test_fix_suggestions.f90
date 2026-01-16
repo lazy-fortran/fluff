@@ -33,7 +33,7 @@ contains
         type(fix_suggestion_t) :: fix
         type(text_edit_t) :: edit
         
-        print *, "  🔧 Testing basic fix generation..."
+        print *, "  TOOLS Testing basic fix generation..."
         
         ! Create a diagnostic that can have a fix
         diagnostic%code = "F001"
@@ -80,7 +80,7 @@ contains
             error stop "Fix should be marked as safe"
         end if
         
-        print *, "    ✓ Basic fix generation"
+        print *, "    OK Basic fix generation"
         
     end subroutine test_basic_fix_generation
     
@@ -89,7 +89,7 @@ contains
         type(text_edit_t) :: edit
         character(len=:), allocatable :: original_code, fixed_code
         
-        print *, "  🔧 Testing fix application..."
+        print *, "  TOOLS Testing fix application..."
         
         ! Original source code
         original_code = "program test" // new_line('a') // &
@@ -124,7 +124,7 @@ contains
             error stop "Original code should be preserved"
         end if
         
-        print *, "    ✓ Fix application"
+        print *, "    OK Fix application"
         
     end subroutine test_fix_application
     
@@ -133,7 +133,7 @@ contains
         type(fix_suggestion_t) :: fix1, fix2
         type(text_edit_t) :: edit1, edit2
         
-        print *, "  🔧 Testing multiple fixes per diagnostic..."
+        print *, "  TOOLS Testing multiple fixes per diagnostic..."
         
         ! Create diagnostic
         diagnostic%code = "F006"
@@ -193,7 +193,7 @@ contains
             error stop "Second fix should be unsafe"
         end if
         
-        print *, "    ✓ Multiple fixes per diagnostic"
+        print *, "    OK Multiple fixes per diagnostic"
         
     end subroutine test_multiple_fixes_per_diagnostic
     
@@ -203,7 +203,7 @@ contains
         type(text_edit_t) :: edit1, edit2
         logical :: has_conflict
         
-        print *, "  🔧 Testing fix conflict detection..."
+        print *, "  TOOLS Testing fix conflict detection..."
         
         ! Create first diagnostic and fix
         diag1%code = "F001"
@@ -242,7 +242,7 @@ contains
             error stop "Should detect conflict between overlapping fixes"
         end if
         
-        print *, "    ✓ Fix conflict detection"
+        print *, "    OK Fix conflict detection"
         
     end subroutine test_fix_conflict_detection
     
@@ -250,7 +250,7 @@ contains
         type(fix_suggestion_t) :: safe_fix, unsafe_fix
         type(text_edit_t) :: edit1, edit2
         
-        print *, "  🔧 Testing safe vs unsafe fixes..."
+        print *, "  TOOLS Testing safe vs unsafe fixes..."
         
         ! Create safe fix (formatting)
         safe_fix%description = "Fix indentation"
@@ -287,7 +287,7 @@ contains
             error stop "Unsafe fix should be marked as unsafe"
         end if
         
-        print *, "    ✓ Safe vs unsafe fixes"
+        print *, "    OK Safe vs unsafe fixes"
         
     end subroutine test_safe_vs_unsafe_fixes
     
@@ -296,7 +296,7 @@ contains
         type(text_edit_t) :: edit1, edit2, edit3
         character(len=:), allocatable :: source_code, fixed_code
         
-        print *, "  🔧 Testing complex multi-edit fixes..."
+        print *, "  TOOLS Testing complex multi-edit fixes..."
         
         ! Original source with multiple issues
         source_code = "program test" // new_line('a') // &
@@ -333,7 +333,7 @@ contains
         !     error stop "Should fix print statement"
         ! end if
         
-        print *, "    ✓ Complex multi-edit fixes"
+        print *, "    OK Complex multi-edit fixes"
         
     end subroutine test_complex_multi_edit_fixes
     

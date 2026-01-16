@@ -31,9 +31,9 @@ program test_lsp_hover
     print *, "Success rate: ", success_rate, "%"
 
     if (passed_tests == total_tests) then
-        print *, "✅ All LSP hover tests passed!"
+        print *, "[OK] All LSP hover tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed (expected in RED phase)"
     end if
 
 contains

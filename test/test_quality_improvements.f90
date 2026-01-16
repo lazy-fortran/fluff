@@ -29,9 +29,9 @@ program test_quality_improvements
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All quality improvement tests passed!"
+        print *, "[OK] All quality improvement tests passed!"
     else
-        print *, "⚠️  Some tests need attention"
+        print *, "[WARN]  Some tests need attention"
     end if
     
 contains
@@ -198,10 +198,10 @@ contains
         print *, "    After:  ", quality_after%overall_score, "/10"
         
         if (quality_after%overall_score >= quality_before%overall_score) then
-            print *, "    ✓ Quality maintained or improved"
+            print *, "    OK Quality maintained or improved"
             passed_tests = passed_tests + 1
         else
-            print *, "    ⚠ Quality decreased"
+            print *, "    [WARN] Quality decreased"
         end if
         
         ! Show some formatted output (first few lines)

@@ -32,9 +32,9 @@ program test_file_watching
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All file watching tests passed!"
+        print *, "[OK] All file watching tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed (expected in RED phase)"
     end if
     
 contains

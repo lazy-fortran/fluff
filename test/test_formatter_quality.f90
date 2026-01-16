@@ -51,7 +51,7 @@ contains
         if (indent_violations > 0) then
             print *, "  Warning: Found indentation inconsistencies"
         else
-            print *, "  ✓ Perfect indentation consistency"
+            print *, "  OK Perfect indentation consistency"
         end if
         
     end subroutine test_indentation_consistency
@@ -80,7 +80,7 @@ contains
                  real(count_lines(formatted_code) - long_lines) / real(count_lines(formatted_code)) * 100.0, "%"
         
         if (long_lines == 0) then
-            print *, "  ✓ All lines within length limit"
+            print *, "  OK All lines within length limit"
         else
             print *, "  Warning: Some lines exceed length limit"
         end if
@@ -118,7 +118,7 @@ contains
         print *, "  Semantic preservation: ", semantically_identical
         
         if (semantically_identical) then
-            print *, "  ✓ Perfect semantic preservation"
+            print *, "  OK Perfect semantic preservation"
         else
             print *, "  Warning: Semantic differences detected"
             print *, "  Original normalized: ", original_normalized
@@ -159,7 +159,7 @@ contains
         print *, "  Second format length: ", len(second_format)
         
         if (is_stable) then
-            print *, "  ✓ Format is stable (idempotent)"
+            print *, "  OK Format is stable (idempotent)"
         else
             print *, "  Warning: Format is unstable"
             print *, "  First: ", first_format
@@ -194,7 +194,7 @@ contains
                  real(count_lines(formatted_code)) * 100.0, "%"
         
         if (trailing_spaces == 0 .and. inconsistent_spacing == 0) then
-            print *, "  ✓ Perfect whitespace normalization"
+            print *, "  OK Perfect whitespace normalization"
         else
             print *, "  Warning: Whitespace issues detected"
         end if

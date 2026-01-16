@@ -141,7 +141,7 @@ contains
         
         print *, "Based on collected feedback, here are key insights:"
         do i = 1, size(insights)
-            print *, "  • ", trim(insights(i))
+            print *, "  - ", trim(insights(i))
         end do
         
         print *, ""

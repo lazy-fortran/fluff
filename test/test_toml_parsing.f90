@@ -66,7 +66,7 @@ contains
             error stop "Failed: output_format should be json"
         end if
         
-        print *, "  ✓ Basic configuration parsing"
+        print *, "  OK Basic configuration parsing"
     end subroutine test_basic_config
     
     
@@ -90,7 +90,7 @@ contains
             error stop "Failed: error message should mention configuration"
         end if
         
-        print *, "  ✓ Invalid configuration handling"
+        print *, "  OK Invalid configuration handling"
     end subroutine test_invalid_config
     
 end program test_toml_parsing

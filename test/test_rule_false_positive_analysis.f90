@@ -26,7 +26,7 @@ program test_rule_false_positive_analysis
 contains
 
     subroutine analyze_style_rule_false_positives()
-        print *, "  🔍 Analyzing style rules for false positives..."
+        print *, "  SCAN Analyzing style rules for false positives..."
 
         ! F001: implicit none - test valid cases
         call test_f001_valid_cases()
@@ -43,12 +43,12 @@ contains
         ! F005: mixed tabs/spaces - test consistent formatting
         call test_f005_valid_cases()
 
-        print *, "    ✓ Style rule false positive analysis completed"
+        print *, "    OK Style rule false positive analysis completed"
 
     end subroutine analyze_style_rule_false_positives
 
     subroutine analyze_performance_rule_false_positives()
-        print *, "  🔍 Analyzing performance rules for false positives..."
+        print *, "  SCAN Analyzing performance rules for false positives..."
 
         ! P001: array access - test legitimate non-contiguous access
         call test_p001_valid_cases()
@@ -62,22 +62,22 @@ contains
         ! P004: pure/elemental - test cases where not applicable
         call test_p004_valid_cases()
 
-        print *, "    ✓ Performance rule false positive analysis completed"
+        print *, "    OK Performance rule false positive analysis completed"
 
     end subroutine analyze_performance_rule_false_positives
 
     subroutine analyze_correctness_rule_false_positives()
-        print *, "  🔍 Analyzing correctness rules for false positives..."
+        print *, "  SCAN Analyzing correctness rules for false positives..."
 
         ! C001: undefined variable - test valid variable usage
         call test_c001_valid_cases()
 
-        print *, "    ✓ Correctness rule false positive analysis completed"
+        print *, "    OK Correctness rule false positive analysis completed"
 
     end subroutine analyze_correctness_rule_false_positives
 
     subroutine analyze_edge_case_false_positives()
-        print *, "  🔍 Analyzing edge cases for false positives..."
+        print *, "  SCAN Analyzing edge cases for false positives..."
 
         ! Test complex code patterns that might confuse rules
         call test_complex_patterns()
@@ -88,7 +88,7 @@ contains
         ! Test modern Fortran features
         call test_modern_features()
 
-        print *, "    ✓ Edge case false positive analysis completed"
+        print *, "    OK Edge case false positive analysis completed"
 
     end subroutine analyze_edge_case_false_positives
 

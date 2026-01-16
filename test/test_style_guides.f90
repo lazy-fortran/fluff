@@ -27,9 +27,9 @@ program test_style_guides
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All style guide tests passed!"
+        print *, "[OK] All style guide tests passed!"
     else
-        print *, "❌ Some style guide tests failed (expected in RED phase)"
+        print *, "[FAIL] Some style guide tests failed (expected in RED phase)"
     end if
     
 contains

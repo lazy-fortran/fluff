@@ -56,7 +56,7 @@ contains
         open (unit=99, file=path, status="old")
         close (99, status="delete")
 
-        print *, "  ✓ Mixed tabs and spaces"
+        print *, "  OK Mixed tabs and spaces"
 
     end subroutine test_mixed_tabs_spaces
 
@@ -93,7 +93,7 @@ contains
 
         call assert_equal_int(f005_count, 0, "Expected 0 F005 violations")
 
-        print *, "  ✓ Only spaces"
+        print *, "  OK Only spaces"
 
     end subroutine test_only_spaces
 
@@ -131,7 +131,7 @@ contains
 
         call assert_equal_int(f005_count, 0, "Expected 0 F005 violations")
 
-        print *, "  ✓ Only tabs"
+        print *, "  OK Only tabs"
 
     end subroutine test_only_tabs
 
@@ -175,7 +175,7 @@ contains
         call assert_f005_location(diagnostics, 4, 1, 3)
         call assert_f005_location(diagnostics, 5, 1, 3)
 
-        print *, "  ✓ Multiple mixed indentations"
+        print *, "  OK Multiple mixed indentations"
 
     end subroutine test_multiple_mixed
 

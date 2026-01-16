@@ -42,7 +42,7 @@ contains
             error stop "Failed: should show 0 rules executed initially"
         end if
         
-        print *, "  ✓ Metrics collection during execution"
+        print *, "  OK Metrics collection during execution"
         
     end subroutine test_execution_metrics
     
@@ -61,7 +61,7 @@ contains
             error stop "Failed: report should contain header"
         end if
         
-        print *, "  ✓ Metrics report generation"
+        print *, "  OK Metrics report generation"
         
     end subroutine test_metrics_report
     
@@ -87,7 +87,7 @@ contains
             error stop "Failed: metrics should be reset"
         end if
         
-        print *, "  ✓ Metrics reset"
+        print *, "  OK Metrics reset"
         
     end subroutine test_metrics_reset
     
