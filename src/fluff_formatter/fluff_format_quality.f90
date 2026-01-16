@@ -1,6 +1,6 @@
 module fluff_format_quality
     ! Format quality assessment and metrics
-    use iso_fortran_env, only: dp => real64
+    use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
     private
     
@@ -233,7 +233,8 @@ contains
             
             ! Score based on how close to ideal ratio
             if (blank_line_ratio >= ideal_ratio) then
-                score = 10.0_dp - min(5.0_dp, (blank_line_ratio - ideal_ratio) * 20.0_dp)
+                score = 10.0_dp - min(5.0_dp, &
+                                      (blank_line_ratio - ideal_ratio) * 20.0_dp)
             else
                 score = 5.0_dp + (blank_line_ratio / ideal_ratio) * 5.0_dp
             end if
@@ -444,7 +445,8 @@ contains
             select case (op)
             case ('+', '-', '*', '/')
                 ! Skip ** operator
-                if (op == '*' .and. pos < len(result) .and. result(pos+1:pos+1) == '*') then
+                if (op == '*' .and. pos < len(result) .and. &
+                    result(pos+1:pos+1) == '*') then
                     pos = pos + 1
                     cycle
                 end if
@@ -489,76 +491,90 @@ contains
     subroutine break_long_lines(code, max_length)
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
-        
+
         character(len=:), allocatable :: result
-        character(len=1000), allocatable :: lines(:)
-        integer :: num_lines, i
+        character(len=:), allocatable :: line
+        integer :: start_pos, end_pos, newline_pos
         logical :: first_line, skip_line_breaking
-        
-        allocate(lines(10000))
-        call split_code_into_lines(code, lines, num_lines)
-        
+
         result = ""
         first_line = .true.
         skip_line_breaking = .false.
-        
-        do i = 1, num_lines
-            ! Safe trimming
-            if (i <= size(lines)) then
-                ! Check for magic comment to skip line breaking
-                if (index(adjustl(lines(i)), '! fmt: skip') > 0 .or. &
-                    index(adjustl(lines(i)), '! fluff: noqa') > 0) then
-                    skip_line_breaking = .true.
-                else if (index(adjustl(lines(i)), '! fmt: on') > 0 .or. &
-                         index(adjustl(lines(i)), '! fluff: qa') > 0) then
-                    skip_line_breaking = .false.
-                end if
-                
-                if (len_trim(lines(i)) > max_length .and. .not. skip_line_breaking) then
-                    if (.not. first_line) then
-                        result = result // new_line('a')
-                    end if
-                    call break_fortran_line(lines(i)(1:len_trim(lines(i))), result, max_length)
-                    first_line = .false.
-                else
-                    if (.not. first_line) then
-                        result = result // new_line('a')
-                    end if
-                    if (len_trim(lines(i)) > 0) then
-                        result = result // lines(i)(1:len_trim(lines(i)))
-                    end if
-                    first_line = .false.
-                end if
+
+        start_pos = 1
+        do while (start_pos <= len(code))
+            newline_pos = index(code(start_pos:), new_line('a'))
+            if (newline_pos == 0) then
+                end_pos = len(code)
+            else
+                end_pos = start_pos + newline_pos - 2
             end if
+
+            if (end_pos >= start_pos) then
+                line = code(start_pos:end_pos)
+            else
+                line = ""
+            end if
+
+            if (index(adjustl(line), '! fmt: skip') > 0 .or. &
+                index(adjustl(line), '! fluff: noqa') > 0) then
+                skip_line_breaking = .true.
+            else if (index(adjustl(line), '! fmt: on') > 0 .or. &
+                     index(adjustl(line), '! fluff: qa') > 0) then
+                skip_line_breaking = .false.
+            end if
+
+            if (len_trim(line) > max_length .and. .not. skip_line_breaking) then
+                if (.not. first_line) result = result // new_line('a')
+                call break_fortran_line(line(1:len_trim(line)), result, max_length)
+                first_line = .false.
+            else
+                if (.not. first_line) result = result // new_line('a')
+                if (len_trim(line) > 0) then
+                    result = result // line(1:len_trim(line))
+                end if
+                first_line = .false.
+            end if
+
+            if (newline_pos == 0) exit
+            start_pos = start_pos + newline_pos
         end do
-        
+
         code = result
-        
+
     end subroutine break_long_lines
     
     subroutine combine_short_lines(code, max_length)
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
-        
+
         character(len=:), allocatable :: result
-        character(len=1000), allocatable :: lines(:)
-        integer :: num_lines, i, j
-        character(len=:), allocatable :: combined_line, current_line, next_line
-        logical :: can_combine, skip_combining
-        
-        allocate(lines(10000))
-        call split_code_into_lines(code, lines, num_lines)
-        
+        character(len=:), allocatable :: combined_line
+        character(len=:), allocatable :: current_line, next_line
+        integer :: pos, next_pos
+        integer :: current_end, next_end
+        integer :: current_newline, next_newline
+        logical :: can_combine, first_line, skip_combining
+
         result = ""
-        i = 1
+        pos = 1
+        first_line = .true.
         skip_combining = .false.
-        
-        do while (i <= num_lines)
-            if (i > size(lines)) exit
-            
-            current_line = lines(i)(1:len_trim(lines(i)))
-            
-            ! Check for magic comments
+
+        do while (pos <= len(code))
+            current_newline = index(code(pos:), new_line('a'))
+            if (current_newline == 0) then
+                current_end = len(code)
+            else
+                current_end = pos + current_newline - 2
+            end if
+
+            if (current_end >= pos) then
+                current_line = code(pos:current_end)
+            else
+                current_line = ""
+            end if
+
             if (index(adjustl(current_line), '! fmt: skip') > 0 .or. &
                 index(adjustl(current_line), '! fluff: noqa') > 0) then
                 skip_combining = .true.
@@ -566,35 +582,55 @@ contains
                      index(adjustl(current_line), '! fluff: qa') > 0) then
                 skip_combining = .false.
             end if
-            
-            ! Try to combine with next line if both are short
+
             can_combine = .false.
-            if (i < num_lines .and. .not. skip_combining) then
-                if (i + 1 <= size(lines)) then
-                    next_line = lines(i+1)(1:len_trim(lines(i+1)))
-                    
-                    ! Check if lines can be combined
-                    if (can_combine_lines(current_line, next_line, max_length)) then
-                        combined_line = combine_two_lines(current_line, next_line)
+            if (current_newline /= 0 .and. .not. skip_combining) then
+                next_pos = pos + current_newline
+                if (next_pos <= len(code)) then
+                    next_newline = index(code(next_pos:), new_line('a'))
+                    if (next_newline == 0) then
+                        next_end = len(code)
+                    else
+                        next_end = next_pos + next_newline - 2
+                    end if
+
+                    if (next_end >= next_pos) then
+                        next_line = code(next_pos:next_end)
+                    else
+                        next_line = ""
+                    end if
+
+                    if (can_combine_lines(trim(current_line), adjustl(next_line), &
+                                          max_length)) then
+                        combined_line = combine_two_lines(trim(current_line), &
+                                                          adjustl(next_line))
                         if (len_trim(combined_line) <= max_length) then
-                            if (len_trim(result) > 0) result = result // new_line('a')
+                            if (.not. first_line) result = result // new_line('a')
                             result = result // combined_line
-                            i = i + 2  ! Skip both lines
+                            first_line = .false.
                             can_combine = .true.
+
+                            if (next_newline == 0) exit
+                            pos = next_pos + next_newline
                         end if
                     end if
                 end if
             end if
-            
+
             if (.not. can_combine) then
-                if (len_trim(result) > 0) result = result // new_line('a')
-                result = result // current_line
-                i = i + 1
+                if (.not. first_line) result = result // new_line('a')
+                if (len_trim(current_line) > 0) then
+                    result = result // current_line(1:len_trim(current_line))
+                end if
+                first_line = .false.
+
+                if (current_newline == 0) exit
+                pos = pos + current_newline
             end if
         end do
-        
+
         code = result
-        
+
     end subroutine combine_short_lines
     
     function can_combine_lines(line1, line2, max_length) result(can_combine)
@@ -627,7 +663,8 @@ contains
         ! Allow combining for variable declarations on consecutive lines
         ! But be conservative - only if they're really short
         if (is_declaration(trim1) .and. is_declaration(trim2)) then
-            if (len_trim(line1) < max_length / 4 .and. len_trim(line2) < max_length / 4) then
+            if (len_trim(line1) < max_length / 4 .and. &
+                len_trim(line2) < max_length / 4) then
                 can_combine = .true.
                 return
             end if
@@ -635,7 +672,8 @@ contains
         
         ! Allow combining short assignment statements
         if (is_simple_statement(trim1) .and. is_simple_statement(trim2)) then
-            if (len_trim(line1) < max_length / 3 .and. len_trim(line2) < max_length / 3) then
+            if (len_trim(line1) < max_length / 3 .and. &
+                len_trim(line2) < max_length / 3) then
                 can_combine = .true.
                 return
             end if
@@ -760,10 +798,10 @@ contains
         character(len=*), intent(in) :: line
         character(len=:), allocatable, intent(inout) :: result
         integer, intent(in) :: max_length
-        
-        character(len=:), allocatable :: remaining, current_segment
-        integer :: break_pos, i, leading_spaces
-        logical :: found_break, in_string
+
+        character(len=:), allocatable :: remaining, current_segment, tail
+        integer :: break_pos, break_next_start, i, leading_spaces, limit
+        logical :: found_break, in_string, seen_nonspace
         character :: quote_char
         
         ! Count leading spaces
@@ -777,83 +815,97 @@ contains
         end do
         
         remaining = line
-        
+
         do while (len_trim(remaining) > 0)
             if (len_trim(remaining) <= max_length) then
-                result = result // remaining
+                result = result // remaining(1:len_trim(remaining))
                 exit
             end if
-            
-            ! Find a good break point
+
             found_break = .false.
+            break_pos = 0
+            break_next_start = 0
             in_string = .false.
+            seen_nonspace = .false.
             quote_char = ' '
-            
-            ! Scan backwards from max_length to find a break point
-            do i = min(max_length, len_trim(remaining)), 1, -1
-                ! Track string literals
-                if (remaining(i:i) == '"' .or. remaining(i:i) == "'") then
-                    if (.not. in_string) then
+
+            limit = min(max_length, len_trim(remaining))
+            i = 1
+            do while (i <= limit)
+                if (in_string) then
+                    if (remaining(i:i) == quote_char) then
+                        if (i < len_trim(remaining) .and. &
+                            remaining(i+1:i+1) == quote_char) then
+                            i = i + 1
+                        else
+                            in_string = .false.
+                            quote_char = ' '
+                        end if
+                    end if
+                else
+                    if (remaining(i:i) == '"' .or. remaining(i:i) == "'") then
                         in_string = .true.
                         quote_char = remaining(i:i)
-                    else if (remaining(i:i) == quote_char) then
-                        in_string = .false.
+                        seen_nonspace = .true.
+                    else
+                        if (remaining(i:i) /= ' ') seen_nonspace = .true.
+                        if (.not. seen_nonspace) then
+                            i = i + 1
+                            cycle
+                        end if
+
+                        if (remaining(i:i) == ' ' .and. i > 1 .and. &
+                            i < len_trim(remaining)) then
+                            break_pos = i - 1
+                            break_next_start = i + 1
+                            found_break = .true.
+                        else if (i < len_trim(remaining)) then
+                            select case (remaining(i:i))
+                            case (',', '+', '-', '/', ')')
+                                break_pos = i
+                                break_next_start = i + 1
+                                found_break = .true.
+                            case ('*')
+                                if (i < len_trim(remaining) .and. &
+                                    remaining(i+1:i+1) == '*') then
+                                    ! Skip ** operator
+                                else
+                                    break_pos = i
+                                    break_next_start = i + 1
+                                    found_break = .true.
+                                end if
+                            end select
+                        end if
                     end if
                 end if
-                
-                ! Don't break inside strings
-                if (in_string) cycle
-                
-                ! Good break points (after these characters)
-                if (i < len_trim(remaining) .and. &
-                    (remaining(i:i) == ',' .or. &
-                     remaining(i:i) == '+' .or. &
-                     remaining(i:i) == '-' .or. &
-                     remaining(i:i) == '*' .or. &
-                     remaining(i:i) == '/' .or. &
-                     remaining(i:i) == ')')) then
-                    
-                    ! Don't break ** operator
-                    if (remaining(i:i) == '*' .and. i < len(remaining) .and. remaining(i+1:i+1) == '*') then
-                        cycle
-                    end if
-                    
-                    current_segment = remaining(1:i) // ' &'
-                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(i+1:))
-                    found_break = .true.
-                    exit
-                end if
-                
-                ! Break at spaces (before the space)
-                if (remaining(i:i) == ' ' .and. i > 1 .and. i < len_trim(remaining)) then
-                    current_segment = remaining(1:i-1) // ' &'
-                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(i+1:))
-                    found_break = .true.
-                    exit
-                end if
+                i = i + 1
             end do
-            
-            ! If no good break found, force break
-            if (.not. found_break) then
-                if (max_length-2 > 0) then
-                    current_segment = remaining(1:max_length-2) // ' &'
-                    remaining = repeat(' ', leading_spaces + 4) // adjustl(remaining(max_length-1:))
-                else
-                    current_segment = remaining
-                    remaining = ""
-                end if
+
+            if (.not. found_break .or. break_pos <= 0) then
+                result = result // remaining(1:len_trim(remaining))
+                exit
             end if
-            
+
+            current_segment = remaining(1:break_pos) // ' &'
+            if (break_next_start <= len_trim(remaining)) then
+                tail = remaining(break_next_start:len_trim(remaining))
+                remaining = repeat(' ', leading_spaces + 4) // &
+                            trim(adjustl(tail))
+            else
+                remaining = ""
+            end if
+
             result = result // trim(current_segment)
             if (len_trim(remaining) > 0) then
                 result = result // new_line('a')
             end if
         end do
-        
+
     end subroutine break_fortran_line
     
     ! Helper functions
-    function should_add_blank_line_before(current_line, previous_line) result(needs_blank)
+    function should_add_blank_line_before(current_line, previous_line) &
+        result(needs_blank)
         character(len=*), intent(in) :: current_line, previous_line
         logical :: needs_blank
         
@@ -882,8 +934,10 @@ contains
         
         ! Add blank line before major control structures
         if (index(curr_trim, 'do ') == 1 .or. index(curr_trim, 'if ') == 1) then
-            if (index(prev_trim, 'integer') /= 1 .and. index(prev_trim, 'real') /= 1 .and. &
-                index(prev_trim, 'logical') /= 1 .and. index(prev_trim, 'character') /= 1) then
+            if (index(prev_trim, 'integer') /= 1 .and. &
+                index(prev_trim, 'real') /= 1 .and. &
+                index(prev_trim, 'logical') /= 1 .and. &
+                index(prev_trim, 'character') /= 1) then
                 needs_blank = .true.
             end if
         end if
@@ -1046,7 +1100,8 @@ contains
         
         if (this%indentation_score < 8.0_dp) then
             count = count + 1
-            temp_recommendations(count) = "Improve indentation consistency (use 4 spaces)"
+            temp_recommendations(count) = &
+                "Improve indentation consistency (use 4 spaces)"
         end if
         
         if (this%spacing_score < 8.0_dp) then
@@ -1066,7 +1121,8 @@ contains
         
         if (this%structure_score < 8.0_dp) then
             count = count + 1
-            temp_recommendations(count) = "Add 'implicit none' and proper end statements"
+            temp_recommendations(count) = &
+                "Add 'implicit none' and proper end statements"
         end if
         
         if (count == 0) then

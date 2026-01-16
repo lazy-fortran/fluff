@@ -76,30 +76,35 @@ contains
 
         ! Read file and format using fortfront
         integer :: unit, iostat
-        character(len=1000) :: line
+        integer :: file_size
         character(len=:), allocatable :: source_code
-        integer :: line_len
 
-        source_code = ""
         error_msg = ""
 
-        ! Read the entire file
-        open (newunit=unit, file=filename, status='old', action='read', iostat=iostat)
+        open (newunit=unit, file=filename, status="old", action="read", &
+              access="stream", form="unformatted", iostat=iostat)
         if (iostat /= 0) then
             error_msg = "Could not open file: "//filename
             return
         end if
 
-        do
-            read (unit, '(A)', iostat=iostat) line
-            if (iostat /= 0) exit
-            line_len = len_trim(line)
-            if (line_len > 0) then
-                source_code = source_code//line(:line_len)//new_line('a')
-            else
-                source_code = source_code//new_line('a')
+        inquire (unit=unit, size=file_size, iostat=iostat)
+        if (iostat /= 0) then
+            close (unit)
+            error_msg = "Could not stat file: "//filename
+            return
+        end if
+
+        allocate (character(len=file_size) :: source_code)
+        if (file_size > 0) then
+            read (unit, iostat=iostat) source_code
+            if (iostat /= 0) then
+                close (unit)
+                error_msg = "Could not read file: "//filename
+                return
             end if
-        end do
+        end if
+
         close (unit)
 
         ! Format the source code
