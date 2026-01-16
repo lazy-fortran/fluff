@@ -43,7 +43,7 @@ contains
         ! F005: mixed tabs/spaces - test consistent formatting
         call test_f005_valid_cases()
 
-        print *, "    OK Style rule false positive analysis completed"
+        print *, "[OK] Style rule false positive analysis completed"
 
     end subroutine analyze_style_rule_false_positives
 
@@ -62,7 +62,7 @@ contains
         ! P004: pure/elemental - test cases where not applicable
         call test_p004_valid_cases()
 
-        print *, "    OK Performance rule false positive analysis completed"
+        print *, "[OK] Performance rule false positive analysis completed"
 
     end subroutine analyze_performance_rule_false_positives
 
@@ -72,7 +72,7 @@ contains
         ! C001: undefined variable - test valid variable usage
         call test_c001_valid_cases()
 
-        print *, "    OK Correctness rule false positive analysis completed"
+        print *, "[OK] Correctness rule false positive analysis completed"
 
     end subroutine analyze_correctness_rule_false_positives
 
@@ -88,7 +88,7 @@ contains
         ! Test modern Fortran features
         call test_modern_features()
 
-        print *, "    OK Edge case false positive analysis completed"
+        print *, "[OK] Edge case false positive analysis completed"
 
     end subroutine analyze_edge_case_false_positives
 

@@ -20,7 +20,7 @@ program test_rule_f010_obsolete_features
     ! Test 4: Arithmetic IF statement (should trigger)
     call test_arithmetic_if()
 
-    print *, "All F010 tests passed!"
+    print *, "[OK] All F010 tests passed!"
 
 contains
 

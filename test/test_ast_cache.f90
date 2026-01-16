@@ -19,7 +19,7 @@ program test_ast_cache
     ! Test 4: Content hash verification
     call test_content_hash()
     
-    print *, "All AST cache tests passed!"
+    print *, "[OK] All AST cache tests passed!"
     
 contains
     
@@ -59,7 +59,7 @@ contains
             error stop "Failed: should not match different content"
         end if
         
-        print *, "  OK Basic cache operations"
+        print *, "[OK] Basic cache operations"
         
     end subroutine test_cache_operations
     
@@ -95,7 +95,7 @@ contains
             error stop "Failed: cache should be cleared"
         end if
         
-        print *, "  OK Cache invalidation"
+        print *, "[OK] Cache invalidation"
         
     end subroutine test_cache_invalidation
     
@@ -122,7 +122,7 @@ contains
             error stop "Failed: cache exceeded max capacity"
         end if
         
-        print *, "  OK Cache capacity and eviction"
+        print *, "[OK] Cache capacity and eviction"
         
     end subroutine test_cache_eviction
     
@@ -147,7 +147,7 @@ contains
             error stop "Failed: different content should have different hash"
         end if
         
-        print *, "  OK Content hash verification"
+        print *, "[OK] Content hash verification"
         
     end subroutine test_content_hash
     

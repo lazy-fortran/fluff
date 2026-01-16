@@ -23,7 +23,7 @@ program test_cli_argument_parsing
     ! Test 5: Parse output format
     call test_output_format()
     
-    print *, "All CLI argument parsing tests passed!"
+    print *, "[OK] All CLI argument parsing tests passed!"
     
 contains
     
@@ -52,7 +52,7 @@ contains
             error stop "Failed: file should be 'test.f90'"
         end if
         
-        print *, "  OK Basic check command parsing"
+        print *, "[OK] Basic check command parsing"
         
     end subroutine test_basic_check_command
     
@@ -79,7 +79,7 @@ contains
             error stop "Failed: fix should be true"
         end if
         
-        print *, "  OK Format command with options"
+        print *, "[OK] Format command with options"
         
     end subroutine test_format_command_with_options
     
@@ -104,7 +104,7 @@ contains
             error stop "Failed: incorrect files parsed"
         end if
         
-        print *, "  OK Multiple files parsing"
+        print *, "[OK] Multiple files parsing"
         
     end subroutine test_multiple_files
     
@@ -123,7 +123,7 @@ contains
             error stop "Failed: config file should be 'fluff.toml'"
         end if
         
-        print *, "  OK Config file option parsing"
+        print *, "[OK] Config file option parsing"
         
     end subroutine test_config_file_option
     
@@ -142,7 +142,7 @@ contains
             error stop "Failed: output format should be 'json'"
         end if
         
-        print *, "  OK Output format parsing"
+        print *, "[OK] Output format parsing"
         
     end subroutine test_output_format
     

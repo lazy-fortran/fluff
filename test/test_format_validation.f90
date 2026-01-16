@@ -28,9 +28,9 @@ program test_format_validation
     print *, "Success rate: ", real(passed_tests)/real(total_tests)*100.0, "%"
 
     if (passed_tests == total_tests) then
-        print *, "All format validation tests passed."
+        print *, "[OK] All format validation tests passed."
     else
-        print *, "Some validation tests failed."
+        print *, "[FAIL] Some validation tests failed."
     end if
 
 contains
@@ -386,7 +386,7 @@ contains
         open (newunit=unit, file=temp_path, status='replace', action='write', &
               iostat=iostat)
         if (iostat /= 0) then
-            print *, "  FAIL: file open for write"
+            print *, "[FAIL] file open for write"
             return
         end if
 
@@ -399,12 +399,12 @@ contains
 
         call formatter%format_file(temp_path, formatted_code, error_msg)
         if (error_msg /= "") then
-            print *, "  FAIL: file format error: ", error_msg
+            print *, "[FAIL] file format error: ", error_msg
             return
         end if
 
         if (index(formatted_code, "program test") == 0) then
-            print *, "  FAIL: formatted output missing program"
+            print *, "[FAIL] formatted output missing program"
             return
         end if
 
@@ -414,7 +414,7 @@ contains
             close (unit, status='delete')
         end if
 
-        print *, "  PASS: file formatting"
+        print *, "[OK] file formatting"
         passed_tests = passed_tests + 1
     end subroutine test_file_formatting
 
@@ -430,17 +430,17 @@ contains
         call formatter%format_source(input, formatted_code, error_msg)
 
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Format error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Format error: ", error_msg
             return
         end if
 
         call formatter%validate_format(input, formatted_code, is_valid)
 
         if (is_valid .eqv. should_validate) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Expected validation: ", &
+            print *, "[FAIL] ", test_name, " - Expected validation: ", &
                 should_validate, ", got: ", is_valid
         end if
 
@@ -455,23 +455,23 @@ contains
         ! First formatting
         call formatter%format_source(input, first_format, error_msg)
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - First format error: ", error_msg
+            print *, "[FAIL] ", test_name, " - First format error: ", error_msg
             return
         end if
 
         ! Second formatting (roundtrip)
         call formatter%format_source(first_format, second_format, error_msg)
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Second format error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Second format error: ", error_msg
             return
         end if
 
         ! Check idempotency
         if (first_format == second_format) then
-            print *, "  PASS: ", test_name, " - Roundtrip stable"
+            print *, "[OK] ", test_name, " - Roundtrip stable"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Roundtrip not stable"
+            print *, "[FAIL] ", test_name, " - Roundtrip not stable"
         end if
 
     end subroutine run_roundtrip_test
@@ -486,14 +486,14 @@ contains
         call formatter%format_source(input, formatted_code, error_msg)
 
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Format error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Format error: ", error_msg
             return
         end if
 
         call formatter%validate_format(input, formatted_code, is_valid)
 
         ! For interface testing, we just check that the validation runs
-        print *, "  PASS: ", test_name, " - Validation result: ", is_valid
+        print *, "[OK] ", test_name, " - Validation result: ", is_valid
         passed_tests = passed_tests + 1
 
     end subroutine run_interface_test
@@ -508,11 +508,11 @@ contains
         call formatter%compare_semantics(input1, input2, semantically_equal)
 
         if (semantically_equal .eqv. should_match) then
-            print *, "  PASS: ", test_name, " - Semantic comparison: ", &
+            print *, "[OK] ", test_name, " - Semantic comparison: ", &
                 semantically_equal
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Expected: ", should_match, &
+            print *, "[FAIL] ", test_name, " - Expected: ", should_match, &
                 ", got: ", semantically_equal
         end if
 
@@ -531,10 +531,10 @@ contains
         call formatter%analyze_format_diff(original, formatted, diff_type)
 
         if (index(diff_type, expected_diff_type) > 0) then
-            print *, "  PASS: ", test_name, " - Diff type: ", diff_type
+            print *, "[OK] ", test_name, " - Diff type: ", diff_type
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Expected: ", expected_diff_type, &
+            print *, "[FAIL] ", test_name, " - Expected: ", expected_diff_type, &
                 ", got: ", diff_type
         end if
 

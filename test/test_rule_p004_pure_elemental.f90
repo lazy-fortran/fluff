@@ -12,7 +12,7 @@ program test_rule_p004_pure_elemental
     call test_missing_pure_triggers()
     call test_already_pure_is_ok()
 
-    print *, "All P004 tests passed!"
+    print *, "[OK] All P004 tests passed!"
 
 contains
 
@@ -44,7 +44,7 @@ contains
             .true., &
             "missing pure on side-effect-free function should be "// &
             "flagged")
-        print *, "  + Missing pure"
+        print *, "[OK] Missing pure"
     end subroutine test_missing_pure_triggers
 
     subroutine test_already_pure_is_ok()
@@ -71,7 +71,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P004", .false., &
                                         "pure function should not be flagged")
-        print *, "  + Already pure"
+        print *, "[OK] Already pure"
     end subroutine test_already_pure_is_ok
 
 end program test_rule_p004_pure_elemental

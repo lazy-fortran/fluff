@@ -24,7 +24,7 @@ program test_clean_architecture
     ! Test 4: Proper error handling exists
     call test_error_handling()
     
-    print *, "All clean architecture tests passed!"
+    print *, "[OK] All clean architecture tests passed!"
     
 contains
     
@@ -40,7 +40,7 @@ contains
             error stop "Failed: Version should be 0.1.0"
         end if
         
-        print *, "  OK Core module is independent"
+        print *, "[OK] Core module is independent"
     end subroutine test_core_independence
     
     subroutine test_ast_dependencies()
@@ -53,7 +53,7 @@ contains
             error stop "Failed: AST context should not be initialized by default"
         end if
         
-        print *, "  OK AST module has clean dependencies"
+        print *, "[OK] AST module has clean dependencies"
     end subroutine test_ast_dependencies
     
     subroutine test_diagnostics_dependencies()
@@ -80,7 +80,7 @@ contains
             error stop "Failed: Diagnostic should produce string representation"
         end if
         
-        print *, "  OK Diagnostics module has clean dependencies"
+        print *, "[OK] Diagnostics module has clean dependencies"
     end subroutine test_diagnostics_dependencies
     
     subroutine test_error_handling()
@@ -103,7 +103,7 @@ contains
             error stop "Failed: Error message not preserved"
         end if
         
-        print *, "  OK Error handling is consistent"
+        print *, "[OK] Error handling is consistent"
     end subroutine test_error_handling
     
 end program test_clean_architecture

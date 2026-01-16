@@ -12,7 +12,7 @@ program test_rule_p003_array_temporaries
     call test_whole_array_expression_triggers()
     call test_elemental_loop_is_ok()
 
-    print *, "All P003 tests passed!"
+    print *, "[OK] All P003 tests passed!"
 
 contains
 
@@ -36,7 +36,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P003", .true., &
                                         "whole-array expression should be flagged")
-        print *, "  + Whole-array expression"
+        print *, "[OK] Whole-array expression"
     end subroutine test_whole_array_expression_triggers
 
     subroutine test_elemental_loop_is_ok()
@@ -62,7 +62,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P003", .false., &
                                         "element-wise loop should not be flagged")
-        print *, "  + Element-wise loop"
+        print *, "[OK] Element-wise loop"
     end subroutine test_elemental_loop_is_ok
 
 end program test_rule_p003_array_temporaries

@@ -68,7 +68,7 @@ contains
                               generate_f008_bad_example(), &
                               generate_f008_good_example())
 
-        print *, "    OK Style rule examples completed (F001-F008)"
+        print *, "[OK] Style rule examples completed (F001-F008)"
         
     end subroutine generate_style_rule_examples
     
@@ -117,7 +117,7 @@ contains
                               generate_p007_bad_example(), &
                               generate_p007_good_example())
         
-        print *, "    OK Performance rule examples completed (P001-P007)"
+        print *, "[OK] Performance rule examples completed (P001-P007)"
         
     end subroutine generate_performance_rule_examples
     
@@ -130,7 +130,7 @@ contains
                               generate_c001_bad_example(), &
                               generate_c001_good_example())
         
-        print *, "    OK Correctness rule examples completed (C001)"
+        print *, "[OK] Correctness rule examples completed (C001)"
         
     end subroutine generate_correctness_rule_examples
     

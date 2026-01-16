@@ -11,7 +11,7 @@ program test_toml_parsing
     ! Test 2: Invalid configuration handling  
     call test_invalid_config()
     
-    print *, "All namelist parsing tests passed!"
+    print *, "[OK] All namelist parsing tests passed!"
     
 contains
     
@@ -66,7 +66,7 @@ contains
             error stop "Failed: output_format should be json"
         end if
         
-        print *, "  OK Basic configuration parsing"
+        print *, "[OK] Basic configuration parsing"
     end subroutine test_basic_config
     
     
@@ -90,7 +90,7 @@ contains
             error stop "Failed: error message should mention configuration"
         end if
         
-        print *, "  OK Invalid configuration handling"
+        print *, "[OK] Invalid configuration handling"
     end subroutine test_invalid_config
     
 end program test_toml_parsing

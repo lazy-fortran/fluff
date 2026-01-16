@@ -20,7 +20,7 @@ program test_rule_f014_unnecessary_parentheses
     ! Test 4: Function call parentheses
     call test_function_call_parentheses()
 
-    print *, "All F014 tests passed!"
+    print *, "[OK] All F014 tests passed!"
 
 contains
 
@@ -73,7 +73,7 @@ contains
             error stop "Failed: F014 should be triggered for unnecessary parentheses"
         end if
 
-        print *, "  OK Unnecessary parentheses"
+        print *, "[OK] Unnecessary parentheses"
 
     end subroutine test_unnecessary_parentheses
 
@@ -127,7 +127,7 @@ contains
             error stop "Failed: F014 should not be triggered for necessary parentheses"
         end if
 
-        print *, "  OK Necessary parentheses"
+        print *, "[OK] Necessary parentheses"
 
     end subroutine test_necessary_parentheses
 
@@ -172,7 +172,7 @@ contains
                 "clarity parentheses"
         end if
 
-        print *, "  OK Expression clarity parentheses"
+        print *, "[OK] Expression clarity parentheses"
     end subroutine test_expression_clarity
 
     subroutine test_function_call_parentheses()
@@ -215,7 +215,7 @@ contains
                 "Failed: F014 should not be triggered for function call parentheses"
         end if
 
-        print *, "  OK Function call parentheses"
+        print *, "[OK] Function call parentheses"
     end subroutine test_function_call_parentheses
 
 end program test_rule_f014_unnecessary_parentheses

@@ -228,7 +228,7 @@ contains
         call parse_lsp_message(json_message, message_type, message_id, method, success)
 
         if (.not. success) then
-            print *, "  FAIL: ", test_name, " - Failed to parse message"
+            print *, "[FAIL] ", test_name, " - Failed to parse message"
             print *, "        Message was: '", json_message, "'"
             return
         end if
@@ -237,10 +237,10 @@ contains
         if (message_type == expected_type .and. &
             (expected_id == -1 .or. message_id == expected_id) .and. &
             (len(expected_method) == 0 .or. method == expected_method)) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Expected type='", expected_type, &
+            print *, "[FAIL] ", test_name, " - Expected type='", expected_type, &
                 "', got='", message_type, "'"
             print *, "        Expected id=", expected_id, ", got=", message_id
             print *, "        Expected method='", expected_method, "', got='", &
@@ -259,10 +259,10 @@ contains
         call process_initialize_request(json_message, success)
 
         if (success) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Initialize processing failed"
+            print *, "[FAIL] ", test_name, " - Initialize processing failed"
         end if
 
     end subroutine run_initialize_test
@@ -277,10 +277,10 @@ contains
         call process_document_sync(json_message, success)
 
         if (success) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Document sync processing failed"
+            print *, "[FAIL] ", test_name, " - Document sync processing failed"
         end if
 
     end subroutine run_document_test
@@ -295,10 +295,10 @@ contains
         call process_diagnostic_message(json_message, success)
 
         if (success) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Diagnostic processing failed"
+            print *, "[FAIL] ", test_name, " - Diagnostic processing failed"
         end if
 
     end subroutine run_diagnostic_test
@@ -316,10 +316,10 @@ contains
         call process_capabilities(full_json, success)
 
         if (success) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Capability processing failed"
+            print *, "[FAIL] ", test_name, " - Capability processing failed"
         end if
 
     end subroutine run_capability_test
@@ -335,10 +335,10 @@ contains
         call check_message_errors(json_message, error_type, has_error)
 
         if (has_error .and. error_type == expected_error_type) then
-            print *, "  PASS: ", test_name, " - Correctly detected error: ", error_type
+            print *, "[OK] ", test_name, " - Correctly detected error: ", error_type
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Error handling failed"
+            print *, "[FAIL] ", test_name, " - Error handling failed"
         end if
 
     end subroutine run_error_test

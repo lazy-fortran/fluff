@@ -29,7 +29,7 @@ program test_rule_f015_redundant_continue
     ! Test 7: Named fmt=/format= label and continue
     call test_named_format_label_continue()
 
-    print *, "All F015 tests passed!"
+    print *, "[OK] All F015 tests passed!"
 
 contains
 
@@ -87,7 +87,7 @@ contains
             error stop "Failed: F015 should be triggered for redundant continue"
         end if
 
-        print *, "  OK: Redundant continue statements"
+        print *, "[OK] Redundant continue statements"
 
     end subroutine test_redundant_continue
 
@@ -116,7 +116,7 @@ contains
                 "statements"
         end if
 
-        print *, "  OK: No continue statements"
+        print *, "[OK] No continue statements"
 
     end subroutine test_no_continue
 
@@ -143,7 +143,7 @@ contains
             error stop "Failed: F015 should not be triggered for labeled branch target"
         end if
 
-        print *, "  OK: Necessary continue statements"
+        print *, "[OK] Necessary continue statements"
     end subroutine test_necessary_continue
 
     subroutine test_loop_labels_continue()
@@ -169,7 +169,7 @@ contains
             error stop "Failed: F015 should not be triggered for DO end label"
         end if
 
-        print *, "  OK: Loop labels and continue"
+        print *, "[OK] Loop labels and continue"
     end subroutine test_loop_labels_continue
 
     subroutine test_io_label_targets_continue()
@@ -194,7 +194,7 @@ contains
             error stop "Failed: F015 should not flag I/O label target CONTINUE"
         end if
 
-        print *, "  OK: I/O label targets and continue"
+        print *, "[OK] I/O label targets and continue"
     end subroutine test_io_label_targets_continue
 
     subroutine test_positional_format_label_continue()
@@ -218,7 +218,7 @@ contains
             error stop "Failed: F015 should not flag positional FORMAT label CONTINUE"
         end if
 
-        print *, "  OK: Positional FORMAT label and continue"
+        print *, "[OK] Positional FORMAT label and continue"
     end subroutine test_positional_format_label_continue
 
     subroutine test_named_format_label_continue()
@@ -244,7 +244,7 @@ contains
             error stop "Failed: F015 should not flag fmt=/format= label CONTINUE"
         end if
 
-        print *, "  OK: Named fmt=/format= label and continue"
+        print *, "[OK] Named fmt=/format= label and continue"
     end subroutine test_named_format_label_continue
 
 end program test_rule_f015_redundant_continue

@@ -38,83 +38,83 @@ contains
         ctx = create_ast_context()
         call ctx%from_source(source, error_msg)
         if (len(error_msg) > 0) then
-            print *, "FAIL: from_source unexpected error: ", trim(error_msg)
+            print *, "[FAIL] from_source unexpected error: ", trim(error_msg)
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_text(stored, found)
         if (.not. found) then
-            print *, "FAIL: get_source_text found=false"
+            print *, "[FAIL] get_source_text found=false"
             test_source_text_api = .false.
             return
         end if
 
         if (index(stored, char(13)) > 0) then
-            print *, "FAIL: stored source contains CR character"
+            print *, "[FAIL] stored source contains CR character"
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_line(1, line, found)
         if (.not. found) then
-            print *, "FAIL: get_source_line(1) found=false"
+            print *, "[FAIL] get_source_line(1) found=false"
             test_source_text_api = .false.
             return
         end if
         if (line /= "program p") then
-            print *, "FAIL: get_source_line(1) mismatch: ", trim(line)
+            print *, "[FAIL] get_source_line(1) mismatch: ", trim(line)
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_line(2, line, found)
         if (.not. found) then
-            print *, "FAIL: get_source_line(2) found=false"
+            print *, "[FAIL] get_source_line(2) found=false"
             test_source_text_api = .false.
             return
         end if
         if (line /= "implicit none   ") then
-            print *, "FAIL: get_source_line(2) mismatch: ", trim(line)
+            print *, "[FAIL] get_source_line(2) mismatch: ", trim(line)
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_line(4, line, found)
         if (.not. found) then
-            print *, "FAIL: get_source_line(4) found=false"
+            print *, "[FAIL] get_source_line(4) found=false"
             test_source_text_api = .false.
             return
         end if
 
         if (line /= "x = 1") then
-            print *, "FAIL: get_source_line(4) mismatch: ", trim(line)
+            print *, "[FAIL] get_source_line(4) mismatch: ", trim(line)
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_line(6, line, found)
         if (.not. found) then
-            print *, "FAIL: get_source_line(6) found=false"
+            print *, "[FAIL] get_source_line(6) found=false"
             test_source_text_api = .false.
             return
         end if
 
         if (len(line) /= 0) then
-            print *, "FAIL: expected trailing empty line; got length=", len(line)
+            print *, "[FAIL] expected trailing empty line; got length=", len(line)
             test_source_text_api = .false.
             return
         end if
 
         call ctx%get_source_range(6, 1, 6, 1, text, found)
         if (.not. found) then
-            print *, "FAIL: get_source_range found=false"
+            print *, "[FAIL] get_source_range found=false"
             test_source_text_api = .false.
             return
         end if
 
         if (len(text) /= 0) then
-            print *, "FAIL: expected empty range; got length=", len(text)
+            print *, "[FAIL] expected empty range; got length=", len(text)
             test_source_text_api = .false.
             return
         end if
@@ -144,14 +144,14 @@ contains
         ctx_children = create_ast_context()
         call ctx_children%from_source(source_children, error_msg)
         if (len(error_msg) > 0) then
-            print *, "FAIL: from_source unexpected error: ", trim(error_msg)
+            print *, "[FAIL] from_source unexpected error: ", trim(error_msg)
             test_children_and_trivia_api = .false.
             return
         end if
 
         children = ctx_children%get_children(ctx_children%root_index)
         if (size(children) <= 0) then
-            print *, "FAIL: root has no children"
+            print *, "[FAIL] root has no children"
             test_children_and_trivia_api = .false.
             return
         end if
@@ -162,7 +162,7 @@ contains
         ctx_trivia = create_ast_context()
         call ctx_trivia%from_source(source_trivia, error_msg)
         if (len(error_msg) > 0) then
-            print *, "FAIL: from_source unexpected error: ", trim(error_msg)
+            print *, "[FAIL] from_source unexpected error: ", trim(error_msg)
             test_children_and_trivia_api = .false.
             return
         end if
@@ -176,26 +176,26 @@ contains
         end do
 
         if (assignment_index == 0) then
-            print *, "FAIL: did not find assignment node"
+            print *, "[FAIL] did not find assignment node"
             test_children_and_trivia_api = .false.
             return
         end if
 
         call ctx_trivia%get_trivia_for_node(assignment_index, leading, trailing, found)
         if (.not. found) then
-            print *, "FAIL: get_trivia_for_node found=false"
+            print *, "[FAIL] get_trivia_for_node found=false"
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (size(leading) /= 3) then
-            print *, "FAIL: expected 3 leading trivia tokens; got=", size(leading)
+            print *, "[FAIL] expected 3 leading trivia tokens; got=", size(leading)
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (leading(1)%kind /= CST_COMMENT) then
-            print *, "FAIL: expected first trivia CST_COMMENT; got kind=", &
+            print *, "[FAIL] expected first trivia CST_COMMENT; got kind=", &
                 leading(1)%kind
             test_children_and_trivia_api = .false.
             return
@@ -207,34 +207,34 @@ contains
         end if
 
         if (trim(leading(1)%text) /= "! header") then
-            print *, "FAIL: unexpected comment text: ", trim(leading(1)%text)
+            print *, "[FAIL] unexpected comment text: ", trim(leading(1)%text)
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (leading(2)%kind /= CST_NEWLINE) then
-            print *, "FAIL: expected second trivia CST_NEWLINE; got kind=", &
+            print *, "[FAIL] expected second trivia CST_NEWLINE; got kind=", &
                 leading(2)%kind
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (leading(3)%kind /= CST_WHITESPACE) then
-            print *, "FAIL: expected third trivia CST_WHITESPACE; got kind=", &
+            print *, "[FAIL] expected third trivia CST_WHITESPACE; got kind=", &
                 leading(3)%kind
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (leading(3)%text /= "   ") then
-            print *, "FAIL: unexpected indentation trivia: ", &
+            print *, "[FAIL] unexpected indentation trivia: ", &
                 trim(leading(3)%text)
             test_children_and_trivia_api = .false.
             return
         end if
 
         if (size(trailing) <= 0) then
-            print *, "FAIL: expected trailing trivia tokens"
+            print *, "[FAIL] expected trailing trivia tokens"
             test_children_and_trivia_api = .false.
             return
         end if
@@ -259,35 +259,35 @@ contains
         ctx = create_ast_context()
         call ctx%from_source(source, error_msg)
         if (len(error_msg) > 0) then
-            print *, "FAIL: from_source unexpected error: ", trim(error_msg)
+            print *, "[FAIL] from_source unexpected error: ", trim(error_msg)
             test_symbol_query_api = .false.
             return
         end if
 
         defined = ctx%is_symbol_defined("x")
         if (.not. defined) then
-            print *, "FAIL: expected x to be defined"
+            print *, "[FAIL] expected x to be defined"
             test_symbol_query_api = .false.
             return
         end if
 
         defined = ctx%is_symbol_defined("does_not_exist")
         if (defined) then
-            print *, "FAIL: expected does_not_exist to be undefined"
+            print *, "[FAIL] expected does_not_exist to be undefined"
             test_symbol_query_api = .false.
             return
         end if
 
         x_info = ctx%lookup_symbol("x")
         if (.not. x_info%is_defined) then
-            print *, "FAIL: lookup_symbol(x) returned is_defined=false"
+            print *, "[FAIL] lookup_symbol(x) returned is_defined=false"
             test_symbol_query_api = .false.
             return
         end if
 
         symbols = ctx%get_all_symbols()
         if (size(symbols) <= 0) then
-            print *, "FAIL: expected non-empty symbol list"
+            print *, "[FAIL] expected non-empty symbol list"
             test_symbol_query_api = .false.
             return
         end if

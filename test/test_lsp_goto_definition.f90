@@ -6,7 +6,7 @@ program test_lsp_goto_definition
     integer :: total_tests, passed_tests
     real(dp) :: success_rate
 
-    print *, "=== LSP Goto Definition Test Suite (RED Phase) ==="
+    print *, "=== LSP Goto Definition Test Suite ==="
 
     total_tests = 0
     passed_tests = 0
@@ -33,7 +33,7 @@ program test_lsp_goto_definition
     if (passed_tests == total_tests) then
         print *, "[OK] All LSP goto definition tests passed!"
     else
-        print *, "[FAIL] Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed"
     end if
 
 contains
@@ -286,19 +286,19 @@ contains
                              result_char, success)
 
         if (success .neqv. should_succeed) then
-            print *, "  FAIL: ", test_name, " - Definition lookup failed"
+            print *, "[FAIL] ", test_name, " - Definition lookup failed"
         else if (.not. should_succeed) then
-            print *, "  PASS: ", test_name, " - No definition as expected"
+            print *, "[OK] ", test_name, " - No definition as expected"
             passed_tests = passed_tests + 1
         else if (.not. allocated(result_uri)) then
-            print *, "  FAIL: ", test_name, " - Result URI not allocated"
+            print *, "[FAIL] ", test_name, " - Result URI not allocated"
         else if (result_uri == expected_uri .and. &
                  result_line == expected_line .and. &
                  result_char == expected_char) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Wrong location"
+            print *, "[FAIL] ", test_name, " - Wrong location"
             print *, "        Expected: ", expected_uri, ":", expected_line, ":", &
                 expected_char
             print *, "        Got:      ", result_uri, ":", result_line, ":", &

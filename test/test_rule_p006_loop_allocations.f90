@@ -12,7 +12,7 @@ program test_rule_p006_loop_allocations
     call test_allocate_inside_loop_triggers()
     call test_allocate_outside_loop_is_ok()
 
-    print *, "All P006 tests passed!"
+    print *, "[OK] All P006 tests passed!"
 
 contains
 
@@ -41,7 +41,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P006", .true., &
                                         "allocate inside loop should be flagged")
-        print *, "  + Allocate inside loop"
+        print *, "[OK] Allocate inside loop"
     end subroutine test_allocate_inside_loop_triggers
 
     subroutine test_allocate_outside_loop_is_ok()
@@ -69,7 +69,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P006", .false., &
                                         "allocate outside loop should not be flagged")
-        print *, "  + Allocate outside loop"
+        print *, "[OK] Allocate outside loop"
     end subroutine test_allocate_outside_loop_is_ok
 
 end program test_rule_p006_loop_allocations

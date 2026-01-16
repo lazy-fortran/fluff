@@ -20,7 +20,7 @@ program test_rule_f004_trailing_whitespace
     ! Test 4: Trailing tabs
     call test_trailing_tabs()
 
-    print *, "All F004 tests passed!"
+    print *, "[OK] All F004 tests passed!"
 
 contains
 
@@ -61,7 +61,7 @@ contains
         open (unit=99, file=path, status="old")
         close (99, status="delete")
 
-        print *, "  OK Trailing whitespace"
+        print *, "[OK] Trailing whitespace"
 
     end subroutine test_trailing_whitespace
 
@@ -96,7 +96,7 @@ contains
 
         call assert_equal_int(f004_count, 0, "Expected 0 F004 violations")
 
-        print *, "  OK No trailing whitespace"
+        print *, "[OK] No trailing whitespace"
 
     end subroutine test_no_trailing_whitespace
 
@@ -137,7 +137,7 @@ contains
         call assert_f004_location(diagnostics, 3, 17, 18)
         call assert_f004_location(diagnostics, 4, 14, 16)
 
-        print *, "  OK Multiple trailing spaces"
+        print *, "[OK] Multiple trailing spaces"
 
     end subroutine test_multiple_trailing_spaces
 
@@ -174,7 +174,7 @@ contains
         open (unit=99, file=path, status="old")
         close (99, status="delete")
 
-        print *, "  OK Trailing tabs"
+        print *, "[OK] Trailing tabs"
 
     end subroutine test_trailing_tabs
 

@@ -21,7 +21,7 @@ program test_diagnostic_formatting
     ! Test 5: Diagnostic with fix suggestions
     call test_diagnostic_with_fixes()
     
-    print *, "All diagnostic formatting tests passed!"
+    print *, "[OK] All diagnostic formatting tests passed!"
     
 contains
     
@@ -57,7 +57,7 @@ contains
             error stop "Formatted output should contain location information"
         end if
         
-        print *, "    OK Basic diagnostic formatting"
+        print *, "[OK] Basic diagnostic formatting"
         
     end subroutine test_basic_diagnostic_formatting
     
@@ -100,7 +100,7 @@ contains
             error stop "Formatted output should contain line numbers"
         end if
         
-        print *, "    OK Source code snippets in diagnostics"
+        print *, "[OK] Source code snippets in diagnostics"
         
     end subroutine test_source_code_snippets
     
@@ -140,7 +140,7 @@ contains
             error stop "SARIF output should be valid SARIF with ruleId field"
         end if
         
-        print *, "    OK Multiple output formats (text, JSON, SARIF)"
+        print *, "[OK] Multiple output formats (text, JSON, SARIF)"
         
     end subroutine test_multiple_output_formats
     
@@ -184,7 +184,7 @@ contains
             error stop "Info diagnostic should contain info indicator"
         end if
         
-        print *, "    OK Severity level formatting (error, warning, info)"
+        print *, "[OK] Severity level formatting (error, warning, info)"
         
     end subroutine test_severity_level_formatting
     
@@ -231,7 +231,7 @@ contains
             error stop "Formatted output should contain fix description"
         end if
         
-        print *, "    OK Diagnostic with fix suggestions"
+        print *, "[OK] Diagnostic with fix suggestions"
         
     end subroutine test_diagnostic_with_fixes
     

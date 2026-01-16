@@ -16,7 +16,7 @@ program test_rule_p001_column_major_access
     call test_rhs_array_read_triggers()
     call test_non_array_call_ok()
 
-    print *, "All P001 tests passed!"
+    print *, "[OK] All P001 tests passed!"
 
 contains
 
@@ -48,7 +48,7 @@ contains
                                         "outer loop varying leftmost index")
         call assert_diagnostic_location(diagnostics, "P001", 8, 24, &
                                         "P001 should point at array reference")
-        print *, "  + 2D incorrect ordering triggers"
+        print *, "[OK] 2D incorrect ordering triggers"
     end subroutine test_2d_incorrect_order_triggers
 
     subroutine test_2d_correct_order_ok()
@@ -77,7 +77,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P001", .false., &
                                         "innermost loop varies leftmost index")
-        print *, "  + 2D correct ordering ok"
+        print *, "[OK] 2D correct ordering ok"
     end subroutine test_2d_correct_order_ok
 
     subroutine test_2d_incorrect_order_under_if_triggers()
@@ -110,7 +110,7 @@ contains
                                         "inner loop nested under if triggers")
         call assert_diagnostic_location(diagnostics, "P001", 9, 28, &
                                         "P001 should point at array reference")
-        print *, "  + 2D incorrect ordering under if triggers"
+        print *, "[OK] 2D incorrect ordering under if triggers"
     end subroutine test_2d_incorrect_order_under_if_triggers
 
     subroutine test_3d_incorrect_order_triggers()
@@ -143,7 +143,7 @@ contains
                                         "3D incorrect ordering triggers")
         call assert_diagnostic_location(diagnostics, "P001", 9, 26, &
                                         "P001 should point at array reference")
-        print *, "  + 3D incorrect ordering triggers"
+        print *, "[OK] 3D incorrect ordering triggers"
     end subroutine test_3d_incorrect_order_triggers
 
     subroutine test_rhs_array_read_triggers()
@@ -175,7 +175,7 @@ contains
                                         "array reads should be checked")
         call assert_diagnostic_location(diagnostics, "P001", 9, 28, &
                                         "P001 should point at array reference")
-        print *, "  + RHS array read triggers"
+        print *, "[OK] RHS array read triggers"
     end subroutine test_rhs_array_read_triggers
 
     subroutine test_non_array_call_ok()
@@ -209,7 +209,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P001", .false., &
                                         "function call should not be flagged")
-        print *, "  + Function call not flagged"
+        print *, "[OK] Function call not flagged"
     end subroutine test_non_array_call_ok
 
 end program test_rule_p001_column_major_access

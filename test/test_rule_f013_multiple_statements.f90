@@ -20,7 +20,7 @@ program test_rule_f013_multiple_statements
     ! Test 4: Complex multi-statement lines
     call test_complex_multi_statements()
 
-    print *, "All F013 tests passed!"
+    print *, "[OK] All F013 tests passed!"
 
 contains
 
