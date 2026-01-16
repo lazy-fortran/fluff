@@ -26,6 +26,9 @@ program test_rule_f015_redundant_continue
     ! Test 6: Positional FORMAT label and continue
     call test_positional_format_label_continue()
 
+    ! Test 7: Named fmt=/format= label and continue
+    call test_named_format_label_continue()
+
     print *, "All F015 tests passed!"
 
 contains
@@ -79,7 +82,7 @@ contains
             error stop "Failed: F015 should be triggered for redundant continue"
         end if
 
-        print *, "  ✓ Redundant continue statements"
+        print *, "  OK: Redundant continue statements"
 
     end subroutine test_redundant_continue
 
@@ -131,7 +134,7 @@ contains
                 "statements"
         end if
 
-        print *, "  ✓ No continue statements"
+        print *, "  OK: No continue statements"
 
     end subroutine test_no_continue
 
@@ -176,7 +179,7 @@ contains
             error stop "Failed: F015 should not be triggered for labeled branch target"
         end if
 
-        print *, "  ✓ Necessary continue statements"
+        print *, "  OK: Necessary continue statements"
     end subroutine test_necessary_continue
 
     subroutine test_loop_labels_continue()
@@ -220,7 +223,7 @@ contains
             error stop "Failed: F015 should not be triggered for DO end label"
         end if
 
-        print *, "  ✓ Loop labels and continue"
+        print *, "  OK: Loop labels and continue"
     end subroutine test_loop_labels_continue
 
     subroutine test_io_label_targets_continue()
@@ -263,7 +266,7 @@ contains
             error stop "Failed: F015 should not flag I/O label target CONTINUE"
         end if
 
-        print *, "  ✓ I/O label targets and continue"
+        print *, "  OK: I/O label targets and continue"
     end subroutine test_io_label_targets_continue
 
     subroutine test_positional_format_label_continue()
@@ -305,7 +308,51 @@ contains
             error stop "Failed: F015 should not flag positional FORMAT label CONTINUE"
         end if
 
-        print *, "  ✓ Positional FORMAT label and continue"
+        print *, "  OK: Positional FORMAT label and continue"
     end subroutine test_positional_format_label_continue
+
+    subroutine test_named_format_label_continue()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+        integer :: i
+        logical :: found_f015
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer :: x"//new_line('a')// &
+                    "    x = 1"//new_line('a')// &
+                    "    read(10, fmt=20) x"//new_line('a')// &
+                    "    write(6, fmt=20) x"//new_line('a')// &
+                    "    write(6, format=20) x"//new_line('a')// &
+                    "20  continue"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+
+        call make_temp_fortran_path("fluff_test_f015_named_fmt", path)
+        call write_text_file(path, test_code)
+
+        call lint_file_checked(linter, path, diagnostics)
+
+        found_f015 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F015") then
+                    found_f015 = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(path)
+
+        if (found_f015) then
+            error stop "Failed: F015 should not flag fmt=/format= label CONTINUE"
+        end if
+
+        print *, "  OK: Named fmt=/format= label and continue"
+    end subroutine test_named_format_label_continue
 
 end program test_rule_f015_redundant_continue
