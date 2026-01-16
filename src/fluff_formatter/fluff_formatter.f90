@@ -1,8 +1,12 @@
 module fluff_formatter
     ! Code formatting engine
-    use fluff_ast
-    use fluff_format_quality
-    use fluff_user_feedback
+    use fluff_ast, only: fluff_ast_context_t
+    use fluff_format_quality, only: aesthetic_settings_t, &
+                                    apply_aesthetic_improvements, &
+                                    assess_format_quality, create_aesthetic_settings, &
+                                    create_quality_metrics, format_quality_t
+    use fluff_user_feedback, only: collect_interactive_feedback, create_user_feedback, &
+                                   user_feedback_t
     use fluff_formatter_style, only: detect_style_guide_from_source, &
                                      configure_clean_style, configure_standard_style, &
                                      configure_modern_style, configure_hpc_style, &
@@ -95,14 +99,18 @@ contains
             return
         end if
 
+        if (file_size <= 0) then
+            close (unit)
+            formatted_code = ""
+            return
+        end if
+
         allocate (character(len=file_size) :: source_code)
-        if (file_size > 0) then
-            read (unit, iostat=iostat) source_code
-            if (iostat /= 0) then
-                close (unit)
-                error_msg = "Could not read file: "//filename
-                return
-            end if
+        read (unit, iostat=iostat) source_code
+        if (iostat /= 0) then
+            close (unit)
+            error_msg = "Could not read file: "//filename
+            return
         end if
 
         close (unit)
