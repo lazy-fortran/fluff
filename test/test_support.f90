@@ -1,5 +1,5 @@
 module test_support
-    use, intrinsic :: iso_fortran_env, only: error_unit
+    use, intrinsic :: iso_fortran_env, only: error_unit, int64
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: linter_engine_t
     implicit none
@@ -13,6 +13,14 @@ module test_support
     public :: assert_diagnostic_location
     public :: assert_equal_int
 
+    integer(int64), parameter :: temp_path_clock_mod = 1000000000_int64
+    integer(int64), save :: temp_path_last_clock = -1_int64
+    integer(int64), save :: temp_path_seq = 0_int64
+    character(len=*), parameter :: temp_path_name_fmt = &
+                                   '(A,"_",I4.4,I2.2,I2.2,"_",I2.2,I2.2,I2.2'// &
+                                   ',"_",I3.3,"_",I9.9'// &
+                                   ',"_",I0)'
+
 contains
 
     subroutine make_temp_fortran_path(stem, path)
@@ -20,12 +28,25 @@ contains
         character(len=:), allocatable, intent(out) :: path
 
         integer :: values(8)
-        character(len=128) :: name
+        integer(int64) :: clock_count
+        integer(int64) :: clock_suffix
+        character(len=256) :: name
 
         call date_and_time(values=values)
-        write (name, '(A,"_",I4.4,I2.2,I2.2,"_",I2.2,I2.2,I2.2,"_",I3.3)') &
+        call system_clock(count=clock_count)
+
+        if (clock_count == temp_path_last_clock) then
+            temp_path_seq = temp_path_seq + 1_int64
+        else
+            temp_path_seq = 0_int64
+            temp_path_last_clock = clock_count
+        end if
+
+        clock_suffix = modulo(clock_count, temp_path_clock_mod)
+
+        write (name, temp_path_name_fmt) &
             trim(stem), values(1), values(2), values(3), values(5), values(6), &
-            values(7), values(8)
+            values(7), values(8), clock_suffix, temp_path_seq
         path = "/tmp/"//trim(name)//".f90"
     end subroutine make_temp_fortran_path
 
