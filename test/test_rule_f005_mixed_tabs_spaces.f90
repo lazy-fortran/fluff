@@ -1,6 +1,7 @@
 program test_rule_f005_mixed_tabs_spaces
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: linter_engine_t, create_linter_engine
+    use test_support, only: assert_equal_int
     implicit none
 
     print *, "Testing F005: Mixed tabs and spaces rule..."
@@ -199,16 +200,6 @@ contains
             end if
         end do
     end subroutine count_code
-
-    subroutine assert_equal_int(actual, expected, msg)
-        integer, intent(in) :: actual
-        integer, intent(in) :: expected
-        character(len=*), intent(in) :: msg
-        if (actual /= expected) then
-            print *, msg, " got=", actual, " expected=", expected
-            error stop msg
-        end if
-    end subroutine assert_equal_int
 
     subroutine assert_f005_location(diagnostics, line, start_col, end_col)
         type(diagnostic_t), allocatable, intent(in) :: diagnostics(:)
