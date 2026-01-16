@@ -26,9 +26,9 @@ program test_configuration_reload
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All configuration reload tests passed!"
+        print *, "[OK] All configuration reload tests passed!"
     else
-        print *, "❌ Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed (expected in RED phase)"
     end if
     
 contains

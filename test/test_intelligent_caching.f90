@@ -28,9 +28,9 @@ program test_intelligent_caching
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All intelligent caching tests passed!"
+        print *, "[OK] All intelligent caching tests passed!"
     else
-        print *, "❌ Some tests failed (TDD stubs in progress)"
+        print *, "[FAIL] Some tests failed (TDD stubs in progress)"
     end if
     
 contains

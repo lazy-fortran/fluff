@@ -30,11 +30,11 @@ program test_format_quality_analysis
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (quality_score >= 85) then
-        print *, "✅ Excellent formatting quality!"
+        print *, "[OK] Excellent formatting quality!"
     else if (quality_score >= 70) then
-        print *, "⚠️  Good formatting quality, some improvements needed"
+        print *, "[WARN]  Good formatting quality, some improvements needed"
     else
-        print *, "❌ Formatting quality needs significant improvement"
+        print *, "[FAIL] Formatting quality needs significant improvement"
     end if
     
     ! Generate quality improvement recommendations

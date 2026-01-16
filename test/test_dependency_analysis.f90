@@ -26,9 +26,9 @@ program test_dependency_analysis
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All dependency analysis tests passed!"
+        print *, "[OK] All dependency analysis tests passed!"
     else
-        print *, "❌ Some tests failed"
+        print *, "[FAIL] Some tests failed"
         error stop 1
     end if
     

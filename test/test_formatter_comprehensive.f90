@@ -30,9 +30,9 @@ program test_formatter_comprehensive
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
     
     if (passed_tests == total_tests) then
-        print *, "✅ All comprehensive formatter tests passed!"
+        print *, "[OK] All comprehensive formatter tests passed!"
     else
-        print *, "⚠️ Some tests failed"
+        print *, "[WARN] Some tests failed"
     end if
     
 contains

@@ -43,7 +43,7 @@ contains
             error stop "Failed: linter should be initialized"
         end if
         
-        print *, "  ✓ Check command initialization"
+        print *, "  OK Check command initialization"
         
     end subroutine test_check_command_init
     
@@ -63,7 +63,7 @@ contains
             error stop "Failed: formatter should be initialized"
         end if
         
-        print *, "  ✓ Format command initialization"
+        print *, "  OK Format command initialization"
         
     end subroutine test_format_command_init
     
@@ -85,7 +85,7 @@ contains
         ! Server command should fail for now (not implemented)
         ! We just verify it's recognized
         
-        print *, "  ✓ Server command recognized"
+        print *, "  OK Server command recognized"
         
     end subroutine test_server_command
     
@@ -103,7 +103,7 @@ contains
             error stop "Failed: help flag should be true"
         end if
         
-        print *, "  ✓ Help flag handling"
+        print *, "  OK Help flag handling"
         
     end subroutine test_help_flag
     
@@ -121,7 +121,7 @@ contains
             error stop "Failed: version flag should be true"
         end if
         
-        print *, "  ✓ Version flag handling"
+        print *, "  OK Version flag handling"
         
     end subroutine test_version_flag
     

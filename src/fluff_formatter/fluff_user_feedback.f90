@@ -373,7 +373,7 @@ contains
         print *, ""
         print *, "=== Key Insights ==="
         do i = 1, size(insights)
-            print *, "• ", trim(insights(i))
+            print *, "- ", trim(insights(i))
         end do
         
     end subroutine collector_print_report

@@ -30,7 +30,7 @@ contains
         type(formatter_engine_t) :: formatter
         character(len=:), allocatable :: input_code, formatted_code, error_msg
         
-        print *, "  🔧 Testing basic indentation formatting..."
+        print *, "  TOOLS Testing basic indentation formatting..."
         
         ! Initialize formatter with default options
         call formatter%initialize()
@@ -83,7 +83,7 @@ contains
             error stop "Should apply indentation to code blocks"
         end if
         
-        print *, "    ✓ Basic indentation formatting"
+        print *, "    OK Basic indentation formatting"
         
     end subroutine test_basic_indentation
     
@@ -94,7 +94,7 @@ contains
         ! Initialize formatter
         call formatter%initialize()
         
-        print *, "  🔧 Testing operator spacing..."
+        print *, "  TOOLS Testing operator spacing..."
         
         ! Input code with inconsistent indentation (without implicit none due to parser limitation)  
         input_code = "program test" // new_line('a') // &
@@ -125,7 +125,7 @@ contains
             error stop "Should preserve program end"
         end if
         
-        print *, "    ✓ Operator spacing"
+        print *, "    OK Operator spacing"
         
     end subroutine test_operator_spacing
     
@@ -136,7 +136,7 @@ contains
         ! Initialize formatter
         call formatter%initialize()
         
-        print *, "  🔧 Testing semantic preservation..."
+        print *, "  TOOLS Testing semantic preservation..."
         
         ! Input code that should preserve semantic meaning
         input_code = "program test" // new_line('a') // &
@@ -173,7 +173,7 @@ contains
             error stop "Should preserve program structure"
         end if
         
-        print *, "    ✓ Semantic preservation"
+        print *, "    OK Semantic preservation"
         
     end subroutine test_semantic_preservation
     
@@ -184,7 +184,7 @@ contains
         ! Initialize formatter
         call formatter%initialize()
         
-        print *, "  🔧 Testing comment preservation..."
+        print *, "  TOOLS Testing comment preservation..."
         
         ! Input code (skip comment test for now due to parser limitations)
         input_code = "program test" // new_line('a') // &
@@ -211,7 +211,7 @@ contains
             error stop "Should preserve assignment"
         end if
         
-        print *, "    ✓ Comment preservation"
+        print *, "    OK Comment preservation"
         
     end subroutine test_comment_preservation
     
@@ -223,7 +223,7 @@ contains
         ! Initialize formatter
         call formatter%initialize()
         
-        print *, "  🔧 Testing format options configuration..."
+        print *, "  TOOLS Testing format options configuration..."
         
         ! Test different indent sizes
         options%indent_size = 2
@@ -252,7 +252,7 @@ contains
             error stop "Should preserve indent size setting"
         end if
         
-        print *, "    ✓ Format options configuration"
+        print *, "    OK Format options configuration"
         
     end subroutine test_format_options
     

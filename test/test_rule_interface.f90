@@ -60,7 +60,7 @@ contains
             error stop "Failed: expected at least one violation"
         end if
 
-        print *, "  ✓ Rule execution lifecycle"
+        print *, "  OK Rule execution lifecycle"
     end subroutine test_rule_lifecycle
 
     subroutine test_rule_registration()
@@ -93,7 +93,7 @@ contains
             error stop "Failed: should have 1 registered rule"
         end if
 
-        print *, "  ✓ Rule registration"
+        print *, "  OK Rule registration"
     end subroutine test_rule_registration
 
     subroutine test_rule_context()
@@ -124,7 +124,7 @@ contains
             error stop "Failed: line count incorrect"
         end if
 
-        print *, "  ✓ Rule context access"
+        print *, "  OK Rule context access"
     end subroutine test_rule_context
 
     subroutine test_rule_metadata()
@@ -157,7 +157,7 @@ contains
             error stop "Failed: metadata should contain fixable flag"
         end if
 
-        print *, "  ✓ Rule metadata"
+        print *, "  OK Rule metadata"
     end subroutine test_rule_metadata
 
 end program test_rule_interface

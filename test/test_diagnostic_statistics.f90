@@ -22,7 +22,7 @@ contains
     subroutine test_basic_statistics_recording()
         type(diagnostic_stats_t) :: stats
         
-        print *, "  📊 Testing basic statistics recording..."
+        print *, "  STATS Testing basic statistics recording..."
         
         ! Record some creation events
         call stats%record_creation(0.001)
@@ -63,7 +63,7 @@ contains
             error stop "Total formatting time should be 0.025"
         end if
         
-        print *, "    ✓ Basic statistics recording"
+        print *, "    OK Basic statistics recording"
         
     end subroutine test_basic_statistics_recording
     
@@ -71,7 +71,7 @@ contains
         type(diagnostic_stats_t) :: stats
         character(len=:), allocatable :: summary
         
-        print *, "  📊 Testing statistics summary formatting..."
+        print *, "  STATS Testing statistics summary formatting..."
         
         ! Record some events
         call stats%record_creation(0.002)
@@ -96,7 +96,7 @@ contains
             error stop "Summary should contain cache hit count"
         end if
         
-        print *, "    ✓ Statistics summary formatting"
+        print *, "    OK Statistics summary formatting"
         
     end subroutine test_statistics_summary
     
@@ -107,7 +107,7 @@ contains
         type(diagnostic_stats_t) :: stats
         character(len=:), allocatable :: summary
         
-        print *, "  📊 Testing collection statistics integration..."
+        print *, "  STATS Testing collection statistics integration..."
         
         ! Setup diagnostic
         location%start%line = 10
@@ -145,7 +145,7 @@ contains
             error stop "Summary should not be empty"
         end if
         
-        print *, "    ✓ Collection statistics integration"
+        print *, "    OK Collection statistics integration"
         
     end subroutine test_collection_statistics
     

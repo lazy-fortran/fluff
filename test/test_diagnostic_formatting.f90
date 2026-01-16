@@ -29,7 +29,7 @@ contains
         type(diagnostic_t) :: diagnostic
         character(len=:), allocatable :: formatted_output
         
-        print *, "  🔧 Testing basic diagnostic formatting..."
+        print *, "  TOOLS Testing basic diagnostic formatting..."
         
         ! Create a basic diagnostic
         diagnostic%code = "F001"
@@ -57,7 +57,7 @@ contains
             error stop "Formatted output should contain location information"
         end if
         
-        print *, "    ✓ Basic diagnostic formatting"
+        print *, "    OK Basic diagnostic formatting"
         
     end subroutine test_basic_diagnostic_formatting
     
@@ -66,7 +66,7 @@ contains
         character(len=:), allocatable :: formatted_output
         character(len=:), allocatable :: source_lines
         
-        print *, "  🔧 Testing source code snippets in diagnostics..."
+        print *, "  TOOLS Testing source code snippets in diagnostics..."
         
         ! Create diagnostic with source context
         diagnostic%code = "F003"
@@ -100,7 +100,7 @@ contains
             error stop "Formatted output should contain line numbers"
         end if
         
-        print *, "    ✓ Source code snippets in diagnostics"
+        print *, "    OK Source code snippets in diagnostics"
         
     end subroutine test_source_code_snippets
     
@@ -108,7 +108,7 @@ contains
         type(diagnostic_t) :: diagnostic
         character(len=:), allocatable :: text_output, json_output, sarif_output
         
-        print *, "  🔧 Testing multiple output formats..."
+        print *, "  TOOLS Testing multiple output formats..."
         
         ! Create diagnostic
         diagnostic%code = "P001"
@@ -140,7 +140,7 @@ contains
             error stop "SARIF output should be valid SARIF with ruleId field"
         end if
         
-        print *, "    ✓ Multiple output formats (text, JSON, SARIF)"
+        print *, "    OK Multiple output formats (text, JSON, SARIF)"
         
     end subroutine test_multiple_output_formats
     
@@ -148,7 +148,7 @@ contains
         type(diagnostic_t) :: diagnostic_error, diagnostic_warning, diagnostic_info
         character(len=:), allocatable :: error_output, warning_output, info_output
         
-        print *, "  🔧 Testing severity level formatting..."
+        print *, "  TOOLS Testing severity level formatting..."
         
         ! Create diagnostics with different severity levels
         diagnostic_error%code = "C001"
@@ -184,7 +184,7 @@ contains
             error stop "Info diagnostic should contain info indicator"
         end if
         
-        print *, "    ✓ Severity level formatting (error, warning, info)"
+        print *, "    OK Severity level formatting (error, warning, info)"
         
     end subroutine test_severity_level_formatting
     
@@ -194,7 +194,7 @@ contains
         type(text_edit_t) :: edit
         character(len=:), allocatable :: formatted_output
         
-        print *, "  🔧 Testing diagnostic with fix suggestions..."
+        print *, "  TOOLS Testing diagnostic with fix suggestions..."
         
         ! Create diagnostic with fix
         diagnostic%code = "F001"
@@ -231,7 +231,7 @@ contains
             error stop "Formatted output should contain fix description"
         end if
         
-        print *, "    ✓ Diagnostic with fix suggestions"
+        print *, "    OK Diagnostic with fix suggestions"
         
     end subroutine test_diagnostic_with_fixes
     

@@ -50,7 +50,7 @@ contains
             error stop "Failed: line length 1000 should be invalid"
         end if
         
-        print *, "  ✓ Line length validation"
+        print *, "  OK Line length validation"
     end subroutine test_line_length_validation
     
     subroutine test_target_version_validation()
@@ -84,7 +84,7 @@ contains
             error stop "Failed: version 1995 should be invalid"
         end if
         
-        print *, "  ✓ Target version validation"
+        print *, "  OK Target version validation"
     end subroutine test_target_version_validation
     
     subroutine test_output_format_validation()
@@ -118,7 +118,7 @@ contains
             error stop "Failed: format 'xml' should be invalid"
         end if
         
-        print *, "  ✓ Output format validation"
+        print *, "  OK Output format validation"
     end subroutine test_output_format_validation
     
     subroutine test_rule_code_validation()
@@ -147,7 +147,7 @@ contains
             error stop "Failed: rule code X999 should be invalid"
         end if
         
-        print *, "  ✓ Rule code validation"
+        print *, "  OK Rule code validation"
     end subroutine test_rule_code_validation
     
 end program test_config_validation
