@@ -33,15 +33,38 @@ program test_rule_f015_redundant_continue
 
 contains
 
-    subroutine test_redundant_continue()
-        type(linter_engine_t) :: linter
+    subroutine lint_source_has_code(linter, temp_prefix, source, code, found)
+        type(linter_engine_t), intent(inout) :: linter
+        character(len=*), intent(in) :: temp_prefix
+        character(len=*), intent(in) :: source
+        character(len=*), intent(in) :: code
+        logical, intent(out) :: found
+
         type(diagnostic_t), allocatable :: diagnostics(:)
-        character(len=:), allocatable :: test_code
         character(len=:), allocatable :: path
         integer :: i
-        logical :: found_f015
 
-        ! Enable test - fortfront is now available
+        call make_temp_fortran_path(temp_prefix, path)
+        call write_text_file(path, source)
+        call lint_file_checked(linter, path, diagnostics)
+
+        found = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == code) then
+                    found = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(path)
+    end subroutine lint_source_has_code
+
+    subroutine test_redundant_continue()
+        type(linter_engine_t) :: linter
+        character(len=:), allocatable :: test_code
+        logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -57,26 +80,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        ! Create temporary file
-        call make_temp_fortran_path("fluff_test_f015", path)
-        call write_text_file(path, test_code)
-
-        ! Lint the file
-        call lint_file_checked(linter, path, diagnostics)
-
-        ! Check for F015 violation
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015", test_code, "F015", &
+                                  found_f015)
 
         if (.not. found_f015) then
             error stop "Failed: F015 should be triggered for redundant continue"
@@ -88,13 +93,8 @@ contains
 
     subroutine test_no_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
-
-        ! Enable test - fortfront is now available
 
         test_code = "program test"//new_line('a')// &
                     "    implicit none"//new_line('a')// &
@@ -108,26 +108,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        ! Create temporary file
-        call make_temp_fortran_path("fluff_test_f015_ok", path)
-        call write_text_file(path, test_code)
-
-        ! Lint the file
-        call lint_file_checked(linter, path, diagnostics)
-
-        ! Check for F015 violation
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_ok", test_code, "F015", &
+                                  found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered when no continue "// &
@@ -140,10 +122,7 @@ contains
 
     subroutine test_necessary_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
@@ -157,23 +136,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        call make_temp_fortran_path("fluff_test_f015_needed", path)
-        call write_text_file(path, test_code)
-
-        call lint_file_checked(linter, path, diagnostics)
-
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_needed", test_code, &
+                                  "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered for labeled branch target"
@@ -184,10 +148,7 @@ contains
 
     subroutine test_loop_labels_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
@@ -201,23 +162,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        call make_temp_fortran_path("fluff_test_f015_do_label", path)
-        call write_text_file(path, test_code)
-
-        call lint_file_checked(linter, path, diagnostics)
-
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_do_label", test_code, &
+                                  "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered for DO end label"
@@ -228,10 +174,7 @@ contains
 
     subroutine test_io_label_targets_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
@@ -244,23 +187,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        call make_temp_fortran_path("fluff_test_f015_io_end", path)
-        call write_text_file(path, test_code)
-
-        call lint_file_checked(linter, path, diagnostics)
-
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_io_end", test_code, &
+                                  "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag I/O label target CONTINUE"
@@ -271,10 +199,7 @@ contains
 
     subroutine test_positional_format_label_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
@@ -286,23 +211,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        call make_temp_fortran_path("fluff_test_f015_positional_fmt", path)
-        call write_text_file(path, test_code)
-
-        call lint_file_checked(linter, path, diagnostics)
-
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_positional_fmt", &
+                                  test_code, "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag positional FORMAT label CONTINUE"
@@ -313,10 +223,7 @@ contains
 
     subroutine test_named_format_label_continue()
         type(linter_engine_t) :: linter
-        type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
-        character(len=:), allocatable :: path
-        integer :: i
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
@@ -330,23 +237,8 @@ contains
                     "end program test"
 
         linter = create_linter_engine()
-
-        call make_temp_fortran_path("fluff_test_f015_named_fmt", path)
-        call write_text_file(path, test_code)
-
-        call lint_file_checked(linter, path, diagnostics)
-
-        found_f015 = .false.
-        if (allocated(diagnostics)) then
-            do i = 1, size(diagnostics)
-                if (diagnostics(i)%code == "F015") then
-                    found_f015 = .true.
-                    exit
-                end if
-            end do
-        end if
-
-        call delete_file_if_exists(path)
+        call lint_source_has_code(linter, "fluff_test_f015_named_fmt", test_code, &
+                                  "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag fmt=/format= label CONTINUE"
