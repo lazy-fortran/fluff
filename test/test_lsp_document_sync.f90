@@ -46,22 +46,22 @@ contains
                                                   "end program", success)
 
         if (.not. success) then
-            print *, "  FAIL: Document open"
+            print *, "[FAIL] Document open"
             return
         end if
 
         if (server%workspace%document_count /= 1) then
-            print *, "  FAIL: Document open - unexpected document_count"
+            print *, "[FAIL] Document open - unexpected document_count"
             return
         end if
 
         if (server%workspace%documents(1)%uri /= "file:///test.f90") then
-            print *, "  FAIL: Document open - unexpected uri"
+            print *, "[FAIL] Document open - unexpected uri"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Document open"
+        print *, "[OK] Document open"
 
         call server%pop_notification(notification, found)
         if (found) then
@@ -69,9 +69,9 @@ contains
             total_tests = total_tests + 1
             if (success) then
                 passed_tests = passed_tests + 1
-                print *, "  PASS: Diagnostics notification after open"
+                print *, "[OK] Diagnostics notification after open"
             else
-                print *, "  FAIL: Diagnostics notification after open"
+                print *, "[FAIL] Diagnostics notification after open"
                 return
             end if
         end if
@@ -85,47 +85,47 @@ contains
                                                     "end program", success)
 
         if (.not. success) then
-            print *, "  FAIL: Document change"
+            print *, "[FAIL] Document change"
             return
         end if
 
         if (server%workspace%documents(1)%version /= 2) then
-            print *, "  FAIL: Document change - version not updated"
+            print *, "[FAIL] Document change - version not updated"
             return
         end if
 
         if (index(server%workspace%documents(1)%content, "x = 2") == 0) then
-            print *, "  FAIL: Document change - content not updated"
+            print *, "[FAIL] Document change - content not updated"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Document change"
+        print *, "[OK] Document change"
 
         total_tests = total_tests + 1
         call server%handle_text_document_did_save("file:///test.f90", success)
         if (success) then
             passed_tests = passed_tests + 1
-            print *, "  PASS: Document save"
+            print *, "[OK] Document save"
         else
-            print *, "  FAIL: Document save"
+            print *, "[FAIL] Document save"
             return
         end if
 
         total_tests = total_tests + 1
         call server%handle_text_document_did_close("file:///test.f90", success)
         if (.not. success) then
-            print *, "  FAIL: Document close"
+            print *, "[FAIL] Document close"
             return
         end if
 
         if (server%workspace%document_count /= 0) then
-            print *, "  FAIL: Document close - document_count not decremented"
+            print *, "[FAIL] Document close - document_count not decremented"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Document close"
+        print *, "[OK] Document close"
     end subroutine test_document_lifecycle
 
     subroutine test_workspace_multiple_documents()
@@ -141,7 +141,7 @@ contains
                                                   "end program", success)
 
         if (.not. success) then
-            print *, "  FAIL: Open first document"
+            print *, "[FAIL] Open first document"
             return
         end if
 
@@ -151,28 +151,28 @@ contains
                                                   "end program", success)
 
         if (.not. success) then
-            print *, "  FAIL: Open second document"
+            print *, "[FAIL] Open second document"
             return
         end if
 
         if (server%workspace%document_count /= 2) then
-            print *, "  FAIL: Multiple documents - unexpected document_count"
+            print *, "[FAIL] Multiple documents - unexpected document_count"
             return
         end if
 
         call server%handle_text_document_did_close("file:///a.f90", success)
         if (.not. success) then
-            print *, "  FAIL: Close first document"
+            print *, "[FAIL] Close first document"
             return
         end if
 
         if (server%workspace%document_count /= 1) then
-            print *, "  FAIL: Multiple documents - close did not remove"
+            print *, "[FAIL] Multiple documents - close did not remove"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Multiple documents open/close"
+        print *, "[OK] Multiple documents open/close"
     end subroutine test_workspace_multiple_documents
 
     subroutine test_uri_parsing()
@@ -183,9 +183,9 @@ contains
         call uri_to_path("file:///home/user/project/main.f90", path, success)
         if (success .and. path == "/home/user/project/main.f90") then
             passed_tests = passed_tests + 1
-            print *, "  PASS: URI parsing"
+            print *, "[OK] URI parsing"
         else
-            print *, "  FAIL: URI parsing"
+            print *, "[FAIL] URI parsing"
             return
         end if
 
@@ -193,9 +193,9 @@ contains
         call uri_to_path("file:///C:/Users/user/project/main.f90", path, success)
         if (success .and. path == "C:/Users/user/project/main.f90") then
             passed_tests = passed_tests + 1
-            print *, "  PASS: Windows URI parsing"
+            print *, "[OK] Windows URI parsing"
         else
-            print *, "  FAIL: Windows URI parsing"
+            print *, "[FAIL] Windows URI parsing"
             return
         end if
 
@@ -203,9 +203,9 @@ contains
         call uri_to_path("file:///../relative/path.f90", path, success)
         if (success .and. path == "../relative/path.f90") then
             passed_tests = passed_tests + 1
-            print *, "  PASS: Relative path URI parsing"
+            print *, "[OK] Relative path URI parsing"
         else
-            print *, "  FAIL: Relative path URI parsing"
+            print *, "[FAIL] Relative path URI parsing"
             return
         end if
 
@@ -213,9 +213,9 @@ contains
         call uri_to_path("file:///path%20with%20spaces/file.f90", path, success)
         if (success .and. path == "/path with spaces/file.f90") then
             passed_tests = passed_tests + 1
-            print *, "  PASS: Percent decoding"
+            print *, "[OK] Percent decoding"
         else
-            print *, "  FAIL: Percent decoding"
+            print *, "[FAIL] Percent decoding"
             return
         end if
     end subroutine test_uri_parsing

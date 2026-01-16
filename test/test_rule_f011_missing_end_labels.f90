@@ -20,7 +20,7 @@ program test_rule_f011_missing_end_labels
     ! Test 4: Function end labels
     call test_function_end_labels()
 
-    print *, "All F011 tests passed!"
+    print *, "[OK] All F011 tests passed!"
 
 contains
 

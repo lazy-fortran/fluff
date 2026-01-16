@@ -6,7 +6,7 @@ program test_style_guides
     type(formatter_engine_t) :: formatter
     integer :: total_tests, passed_tests
     
-    print *, "=== Standard Style Guides Test Suite (RED Phase) ==="
+    print *, "=== Standard Style Guides Test Suite ==="
     
     total_tests = 0
     passed_tests = 0
@@ -29,7 +29,7 @@ program test_style_guides
     if (passed_tests == total_tests) then
         print *, "[OK] All style guide tests passed!"
     else
-        print *, "[FAIL] Some style guide tests failed (expected in RED phase)"
+        print *, "[FAIL] Some style guide tests failed"
     end if
     
 contains
@@ -341,17 +341,17 @@ contains
         call formatter%format_source(input, formatted_code, error_msg)
         
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Error: ", error_msg
             return
         end if
         
         ! For now, just check that formatting completed without error
         ! In the GREEN phase, we'll implement proper style validation
         if (len(formatted_code) > 0) then
-            print *, "  PASS: ", test_name, " (", style_name, " style)"
+            print *, "[OK] ", test_name, " (", style_name, " style)"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Empty output"
+            print *, "[FAIL] ", test_name, " - Empty output"
         end if
         
     end subroutine run_style_test
@@ -367,10 +367,10 @@ contains
         ! For now, just check that detection completes
         ! In the GREEN phase, we'll implement actual detection logic
         if (len(detected_style) > 0) then
-            print *, "  PASS: ", test_name, " - Detected: ", detected_style
+            print *, "[OK] ", test_name, " - Detected: ", detected_style
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - No style detected"
+            print *, "[FAIL] ", test_name, " - No style detected"
         end if
         
     end subroutine run_detection_test

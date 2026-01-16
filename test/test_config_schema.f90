@@ -17,7 +17,7 @@ program test_config_schema
     ! Test 4: Schema documentation
     call test_schema_documentation()
     
-    print *, "All configuration schema tests passed!"
+    print *, "[OK] All configuration schema tests passed!"
     
 contains
     
@@ -57,7 +57,7 @@ contains
             error stop "Failed: error should mention the invalid rule code"
         end if
         
-        print *, "  OK Comprehensive validation messages"
+        print *, "[OK] Comprehensive validation messages"
     end subroutine test_validation_messages
     
     subroutine test_config_defaults()
@@ -90,7 +90,7 @@ contains
             error stop "Failed: output_format should default to text"
         end if
         
-        print *, "  OK Configuration defaults"
+        print *, "[OK] Configuration defaults"
     end subroutine test_config_defaults
     
     subroutine test_config_profiles()
@@ -113,7 +113,7 @@ contains
             error stop "Failed: performance profile should select rules"
         end if
         
-        print *, "  OK Configuration profiles"
+        print *, "[OK] Configuration profiles"
     end subroutine test_config_profiles
     
     subroutine test_schema_documentation()
@@ -139,7 +139,7 @@ contains
             error stop "Failed: schema should show TOML structure"
         end if
         
-        print *, "  OK Schema documentation"
+        print *, "[OK] Schema documentation"
     end subroutine test_schema_documentation
     
 end program test_config_schema

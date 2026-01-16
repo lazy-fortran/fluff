@@ -20,7 +20,7 @@ program test_rule_f007_undefined_variable
     ! Test 4: Variable defined in different scope
     call test_scope_visibility()
 
-    print *, "All F007 tests passed!"
+    print *, "[OK] All F007 tests passed!"
 
 contains
 
@@ -65,7 +65,7 @@ contains
             error stop "Failed: F007 should be triggered for undefined variable"
         end if
 
-        print *, "  - Undefined variable usage"
+        print *, "[OK] Undefined variable usage"
 
     end subroutine test_undefined_variable
 
@@ -112,7 +112,7 @@ contains
             error stop "Failed: F007 should not be triggered when variables are defined"
         end if
 
-        print *, "  - Defined variable"
+        print *, "[OK] Defined variable"
 
     end subroutine test_defined_variable
 
@@ -152,7 +152,7 @@ contains
                 "Failed: expected 2+ F007 diagnostics for multiple undefined variables"
         end if
 
-        print *, "  - Multiple undefined variables"
+        print *, "[OK] Multiple undefined variables"
     end subroutine test_multiple_undefined
 
     subroutine test_scope_visibility()
@@ -200,7 +200,7 @@ contains
             error stop "Failed: expected F007 for out-of-scope variable"
         end if
 
-        print *, "  - Variable scope visibility"
+        print *, "[OK] Variable scope visibility"
     end subroutine test_scope_visibility
 
 end program test_rule_f007_undefined_variable

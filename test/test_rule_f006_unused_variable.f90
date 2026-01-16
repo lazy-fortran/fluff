@@ -20,7 +20,7 @@ program test_rule_f006_unused_variable
     ! Test 4: Unused parameter vs used variable
     call test_unused_parameter()
 
-    print *, "All F006 tests passed!"
+    print *, "[OK] All F006 tests passed!"
 
 contains
 
@@ -66,7 +66,7 @@ contains
             error stop "Failed: F006 should be triggered for unused variable"
         end if
 
-        print *, "  - Unused variable"
+        print *, "[OK] Unused variable"
 
     end subroutine test_unused_variable
 
@@ -112,7 +112,7 @@ contains
             error stop "Failed: F006 should not be triggered when variables are used"
         end if
 
-        print *, "  - Used variable"
+        print *, "[OK] Used variable"
 
     end subroutine test_used_variable
 
@@ -152,7 +152,7 @@ contains
                 "Failed: expected 2+ F006 diagnostics for multiple unused variables"
         end if
 
-        print *, "  - Multiple unused variables"
+        print *, "[OK] Multiple unused variables"
     end subroutine test_multiple_unused
 
     subroutine test_unused_parameter()
@@ -196,7 +196,7 @@ contains
                 "Failed: F006 should not be triggered for unused parameter-only cases"
         end if
 
-        print *, "  - Unused parameter"
+        print *, "[OK] Unused parameter"
     end subroutine test_unused_parameter
 
 end program test_rule_f006_unused_variable

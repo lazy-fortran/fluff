@@ -6,7 +6,7 @@ program test_lsp_hover
     integer :: total_tests, passed_tests
     real(dp) :: success_rate
 
-    print *, "=== LSP Hover Provider Test Suite (RED Phase) ==="
+    print *, "=== LSP Hover Provider Test Suite ==="
 
     total_tests = 0
     passed_tests = 0
@@ -33,7 +33,7 @@ program test_lsp_hover
     if (passed_tests == total_tests) then
         print *, "[OK] All LSP hover tests passed!"
     else
-        print *, "[FAIL] Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed"
     end if
 
 contains
@@ -247,18 +247,18 @@ contains
         call get_hover_info(code, line, character, hover_content, success)
 
         if (success .neqv. should_succeed) then
-            print *, "  FAIL: ", test_name, " - Hover result unexpected"
+            print *, "[FAIL] ", test_name, " - Hover result unexpected"
             print *, "        Success: ", success, " Expected: ", should_succeed
         else if (.not. should_succeed) then
-            print *, "  PASS: ", test_name, " - No hover as expected"
+            print *, "[OK] ", test_name, " - No hover as expected"
             passed_tests = passed_tests + 1
         else if (.not. allocated(hover_content)) then
-            print *, "  FAIL: ", test_name, " - Hover content not allocated"
+            print *, "[FAIL] ", test_name, " - Hover content not allocated"
         else if (index(hover_content, expected_hover) > 0) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Wrong hover content"
+            print *, "[FAIL] ", test_name, " - Wrong hover content"
             print *, "        Expected to contain: '", expected_hover, "'"
             print *, "        Got: '", hover_content, "'"
         end if
@@ -281,17 +281,17 @@ contains
         call format_hover_message(signature, documentation, formatted, success)
 
         if (success .neqv. should_succeed) then
-            print *, "  FAIL: ", test_name, " - Formatting result unexpected"
+            print *, "[FAIL] ", test_name, " - Formatting result unexpected"
         else if (.not. should_succeed) then
-            print *, "  PASS: ", test_name, " - Formatting failed as expected"
+            print *, "[OK] ", test_name, " - Formatting failed as expected"
             passed_tests = passed_tests + 1
         else if (.not. allocated(formatted)) then
-            print *, "  FAIL: ", test_name, " - Formatted content not allocated"
+            print *, "[FAIL] ", test_name, " - Formatted content not allocated"
         else if (formatted == expected) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Format doesn't match"
+            print *, "[FAIL] ", test_name, " - Format doesn't match"
         end if
 
     end subroutine run_format_test

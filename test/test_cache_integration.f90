@@ -14,7 +14,7 @@ program test_cache_integration
     ! Test 2: Cache invalidation on file change
     call test_cache_invalidation()
     
-    print *, "All cache integration tests passed!"
+    print *, "[OK] All cache integration tests passed!"
     
 contains
     
@@ -31,7 +31,7 @@ contains
         ! Note: We can't actually test performance without fortfront
         ! but we can verify the cache is being used
         
-        print *, "  OK Cache performance (structure verified)"
+        print *, "[OK] Cache performance (structure verified)"
         
     end subroutine test_cache_performance
     
@@ -46,7 +46,7 @@ contains
         ! Test that cache can be cleared
         call linter%ast_cache%clear()
         
-        print *, "  OK Cache invalidation"
+        print *, "[OK] Cache invalidation"
         
     end subroutine test_cache_invalidation
     

@@ -20,7 +20,7 @@ program test_rule_f012_naming_conventions
     ! Test 4: Mixed naming styles (should trigger)
     call test_mixed_naming_styles()
 
-    print *, "All F012 tests passed!"
+    print *, "[OK] All F012 tests passed!"
 
 contains
 

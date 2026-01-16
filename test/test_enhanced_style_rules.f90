@@ -35,7 +35,7 @@ program test_enhanced_style_rules
     if (passed_tests == total_tests) then
         print *, "[OK] All enhanced style rules tests passed!"
     else
-        print *, "[FAIL] Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed"
     end if
     
 contains
@@ -382,17 +382,17 @@ contains
         call formatter%format_source(input, formatted_code, error_msg)
         
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Error: ", error_msg
             return
         end if
         
         ! For RED phase, just check that formatting completes
         ! In GREEN phase, we'll add specific validations for each rule
         if (len(formatted_code) > 0) then
-            print *, "  PASS: ", test_name, " (", expected_feature, ")"
+            print *, "[OK] ", test_name, " (", expected_feature, ")"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Empty output"
+            print *, "[FAIL] ", test_name, " - Empty output"
         end if
         
     end subroutine run_style_test

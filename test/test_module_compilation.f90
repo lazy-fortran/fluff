@@ -28,6 +28,6 @@ program test_module_compilation
         error stop "Context creation failed"
     end if
     
-    print *, "All modules compiled successfully!"
+    print *, "[OK] All modules compiled successfully!"
     
 end program test_module_compilation

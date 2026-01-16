@@ -15,7 +15,7 @@ program test_diagnostic_statistics
     ! Test 3: Collection statistics integration
     call test_collection_statistics()
     
-    print *, "All diagnostic statistics tests passed!"
+    print *, "[OK] All diagnostic statistics tests passed!"
     
 contains
     
@@ -63,7 +63,7 @@ contains
             error stop "Total formatting time should be 0.025"
         end if
         
-        print *, "    OK Basic statistics recording"
+        print *, "[OK] Basic statistics recording"
         
     end subroutine test_basic_statistics_recording
     
@@ -96,7 +96,7 @@ contains
             error stop "Summary should contain cache hit count"
         end if
         
-        print *, "    OK Statistics summary formatting"
+        print *, "[OK] Statistics summary formatting"
         
     end subroutine test_statistics_summary
     
@@ -145,7 +145,7 @@ contains
             error stop "Summary should not be empty"
         end if
         
-        print *, "    OK Collection statistics integration"
+        print *, "[OK] Collection statistics integration"
         
     end subroutine test_collection_statistics
     

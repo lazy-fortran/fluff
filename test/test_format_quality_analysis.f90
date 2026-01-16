@@ -545,7 +545,7 @@ contains
         ! But this causes memory corruption in fortfront semantic analyzer
         
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Format error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Format error: ", error_msg
             return
         end if
         
@@ -567,7 +567,7 @@ contains
         quality_score = quality_score + aspect_score
         
         if (aspect_score >= 7) then
-            print *, "  PASS: ", test_name, " - Score: ", aspect_score, "/10"
+            print *, "[OK] ", test_name, " - Score: ", aspect_score, "/10"
             passed_tests = passed_tests + 1
         else
             print *, "  NEEDS IMPROVEMENT: ", test_name, " - Score: ", aspect_score, "/10"
@@ -771,10 +771,10 @@ contains
         
         print *, ""
         print *, "Recommended next steps:"
-        print *, "- Focus on spacing and indentation improvements"
-        print *, "- Enhance readability with better blank line usage"
-        print *, "- Implement advanced expression formatting"
-        print *, "- Add aesthetic quality metrics to formatter"
+        print *, "[WARN] Focus on spacing and indentation improvements"
+        print *, "[WARN] Enhance readability with better blank line usage"
+        print *, "[WARN] Implement advanced expression formatting"
+        print *, "[WARN] Add aesthetic quality metrics to formatter"
         
     end subroutine generate_quality_recommendations
     

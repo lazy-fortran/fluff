@@ -301,16 +301,16 @@ contains
         call formatter%format_source(input, actual, error_msg)
         
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Error: ", error_msg
             return
         end if
         
         ! Flexible matching - check key structural elements
         if (contains_key_elements(actual, expected)) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name
+            print *, "[FAIL] ", test_name
             print *, "    Expected structure elements from: ", expected
             print *, "    Actual: ", actual
             ! Still count as passed if basic structure is correct
@@ -330,16 +330,16 @@ contains
         call formatter%format_source(input, actual, error_msg)
         
         if (error_msg /= "") then
-            print *, "  FAIL: ", test_name, " - Error: ", error_msg
+            print *, "[FAIL] ", test_name, " - Error: ", error_msg
             return
         end if
         
         ! Just check that basic structure is preserved
         if (index(actual, "program test") > 0 .and. index(actual, "end program") > 0) then
-            print *, "  PASS: ", test_name, " (flexible)"
+            print *, "[OK] ", test_name, " (flexible)"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Structure not preserved"
+            print *, "[FAIL] ", test_name, " - Structure not preserved"
             print *, "    Actual: ", actual
         end if
         

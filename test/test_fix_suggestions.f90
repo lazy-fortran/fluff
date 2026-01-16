@@ -24,7 +24,7 @@ program test_fix_suggestions
     ! Test 6: Complex multi-edit fixes
     call test_complex_multi_edit_fixes()
     
-    print *, "All fix suggestion tests passed!"
+    print *, "[OK] All fix suggestion tests passed!"
     
 contains
     
@@ -80,7 +80,7 @@ contains
             error stop "Fix should be marked as safe"
         end if
         
-        print *, "    OK Basic fix generation"
+        print *, "[OK] Basic fix generation"
         
     end subroutine test_basic_fix_generation
     
@@ -124,7 +124,7 @@ contains
             error stop "Original code should be preserved"
         end if
         
-        print *, "    OK Fix application"
+        print *, "[OK] Fix application"
         
     end subroutine test_fix_application
     
@@ -193,7 +193,7 @@ contains
             error stop "Second fix should be unsafe"
         end if
         
-        print *, "    OK Multiple fixes per diagnostic"
+        print *, "[OK] Multiple fixes per diagnostic"
         
     end subroutine test_multiple_fixes_per_diagnostic
     
@@ -242,7 +242,7 @@ contains
             error stop "Should detect conflict between overlapping fixes"
         end if
         
-        print *, "    OK Fix conflict detection"
+        print *, "[OK] Fix conflict detection"
         
     end subroutine test_fix_conflict_detection
     
@@ -287,7 +287,7 @@ contains
             error stop "Unsafe fix should be marked as unsafe"
         end if
         
-        print *, "    OK Safe vs unsafe fixes"
+        print *, "[OK] Safe vs unsafe fixes"
         
     end subroutine test_safe_vs_unsafe_fixes
     
@@ -333,7 +333,7 @@ contains
         !     error stop "Should fix print statement"
         ! end if
         
-        print *, "    OK Complex multi-edit fixes"
+        print *, "[OK] Complex multi-edit fixes"
         
     end subroutine test_complex_multi_edit_fixes
     

@@ -46,30 +46,30 @@ contains
         call lint_to_notification("file:///test.f90", sample_code_ok(), expected, ok)
         total_tests = total_tests + 1
         if (.not. ok) then
-            print *, "  FAIL: Expected notification generation"
+            print *, "[FAIL] Expected notification generation"
             return
         end if
 
         call server%handle_text_document_did_open("file:///test.f90", "fortran", 1, &
                                                   sample_code_ok(), ok)
         if (.not. ok) then
-            print *, "  FAIL: Server didOpen"
+            print *, "[FAIL] Server didOpen"
             return
         end if
 
         call server%pop_notification(actual, found)
         if (.not. found) then
-            print *, "  FAIL: Server did not produce diagnostics notification"
+            print *, "[FAIL] Server did not produce diagnostics notification"
             return
         end if
 
         if (actual /= expected) then
-            print *, "  FAIL: Server diagnostics notification mismatch"
+            print *, "[FAIL] Server diagnostics notification mismatch"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Server diagnostics matches formatter"
+        print *, "[OK] Server diagnostics matches formatter"
     end subroutine test_server_publish_matches_formatter
 
     subroutine test_clear_diagnostics_notification()
@@ -82,37 +82,37 @@ contains
         total_tests = total_tests + 1
         call lsp_clear_diagnostics_notification("file:///test.f90", notification, ok)
         if (.not. ok) then
-            print *, "  FAIL: Clear notification generation"
+            print *, "[FAIL] Clear notification generation"
             return
         end if
 
         call json_parse(notification, ok, err)
         if (.not. ok) then
-            print *, "  FAIL: Clear notification JSON invalid"
+            print *, "[FAIL] Clear notification JSON invalid"
             return
         end if
 
         call json_get_member_json(notification, "params", params_json, found, ok)
         if (.not. ok .or. .not. found) then
-            print *, "  FAIL: Clear notification missing params"
+            print *, "[FAIL] Clear notification missing params"
             return
         end if
 
         call json_get_member_json(params_json, "diagnostics", &
                                   diagnostics_json, found, ok)
         if (.not. ok .or. .not. found) then
-            print *, "  FAIL: Clear notification missing diagnostics"
+            print *, "[FAIL] Clear notification missing diagnostics"
             return
         end if
 
         call json_array_length(diagnostics_json, n, ok)
         if (.not. ok .or. n /= 0) then
-            print *, "  FAIL: Clear notification diagnostics not empty"
+            print *, "[FAIL] Clear notification diagnostics not empty"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Clear diagnostics notification"
+        print *, "[OK] Clear diagnostics notification"
     end subroutine test_clear_diagnostics_notification
 
     subroutine test_realtime_updates()
@@ -126,26 +126,26 @@ contains
         call lint_to_notification("file:///rt.f90", sample_code_ok(), expected1, ok)
         total_tests = total_tests + 1
         if (.not. ok) then
-            print *, "  FAIL: Expected realtime notification 1"
+            print *, "[FAIL] Expected realtime notification 1"
             return
         end if
 
         call lint_to_notification("file:///rt.f90", sample_code_changed(), &
                                   expected2, ok)
         if (.not. ok) then
-            print *, "  FAIL: Expected realtime notification 2"
+            print *, "[FAIL] Expected realtime notification 2"
             return
         end if
 
         call server%handle_text_document_did_open("file:///rt.f90", "fortran", 1, &
                                                   sample_code_ok(), ok)
         if (.not. ok) then
-            print *, "  FAIL: Server didOpen realtime"
+            print *, "[FAIL] Server didOpen realtime"
             return
         end if
         call server%pop_notification(actual1, found)
         if (.not. found .or. actual1 /= expected1) then
-            print *, "  FAIL: Realtime open notification mismatch"
+            print *, "[FAIL] Realtime open notification mismatch"
             return
         end if
 
@@ -153,17 +153,17 @@ contains
                                                     sample_code_changed(), &
                                                     ok)
         if (.not. ok) then
-            print *, "  FAIL: Server didChange realtime"
+            print *, "[FAIL] Server didChange realtime"
             return
         end if
         call server%pop_notification(actual2, found)
         if (.not. found .or. actual2 /= expected2) then
-            print *, "  FAIL: Realtime change notification mismatch"
+            print *, "[FAIL] Realtime change notification mismatch"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Realtime diagnostics updates"
+        print *, "[OK] Realtime diagnostics updates"
     end subroutine test_realtime_updates
 
     subroutine test_single_diagnostic_format_json()
@@ -174,30 +174,30 @@ contains
         call lint_to_diagnostics(sample_code_ok(), diagnostics, ok)
         total_tests = total_tests + 1
         if (.not. ok) then
-            print *, "  FAIL: Lint failed for formatting test"
+            print *, "[FAIL] Lint failed for formatting test"
             return
         end if
 
         if (size(diagnostics) == 0) then
             passed_tests = passed_tests + 1
-            print *, "  PASS: Diagnostic formatting skipped with no diagnostics"
+            print *, "[OK] Diagnostic formatting skipped with no diagnostics"
             return
         end if
 
         call lsp_format_diagnostic(diagnostics(1), formatted, ok)
         if (.not. ok) then
-            print *, "  FAIL: Diagnostic formatting failed"
+            print *, "[FAIL] Diagnostic formatting failed"
             return
         end if
 
         call assert_valid_json(formatted, ok)
         if (.not. ok) then
-            print *, "  FAIL: Diagnostic formatting JSON invalid"
+            print *, "[FAIL] Diagnostic formatting JSON invalid"
             return
         end if
 
         passed_tests = passed_tests + 1
-        print *, "  PASS: Diagnostic formatting JSON"
+        print *, "[OK] Diagnostic formatting JSON"
     end subroutine test_single_diagnostic_format_json
 
     subroutine lint_to_notification(uri, content, notification, success)

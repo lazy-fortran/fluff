@@ -18,7 +18,7 @@ program test_metrics
     ! Test 4: Metrics reporting
     call test_metrics_report()
     
-    print *, "All metrics tests passed!"
+    print *, "[OK] All metrics tests passed!"
     
 contains
     
@@ -38,7 +38,7 @@ contains
         ! Test stop functionality
         call timer%stop()
         
-        print *, "  OK Timer functionality"
+        print *, "[OK] Timer functionality"
         
     end subroutine test_timer
     
@@ -76,7 +76,7 @@ contains
             error stop "Failed: stats should be reset"
         end if
         
-        print *, "  OK Rule statistics"
+        print *, "[OK] Rule statistics"
         
     end subroutine test_rule_stats
     
@@ -129,7 +129,7 @@ contains
             error stop "Failed: disabled collector should not record"
         end if
         
-        print *, "  OK Metrics collector"
+        print *, "[OK] Metrics collector"
         
     end subroutine test_metrics_collector
     
@@ -159,7 +159,7 @@ contains
             error stop "Failed: report should contain rule code"
         end if
         
-        print *, "  OK Metrics reporting"
+        print *, "[OK] Metrics reporting"
         
     end subroutine test_metrics_report
     

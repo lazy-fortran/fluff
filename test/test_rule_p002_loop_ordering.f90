@@ -15,7 +15,7 @@ program test_rule_p002_loop_ordering
     ! Test 2: Row-major efficient ordering (should not trigger)
     call test_row_major_efficient()
 
-    print *, "All P002 tests passed!"
+    print *, "[OK] All P002 tests passed!"
 
 contains
 
@@ -49,7 +49,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P002", .true., &
                                         "inefficient loop ordering should be flagged")
-        print *, "  + Column-major inefficient ordering"
+        print *, "[OK] Column-major inefficient ordering"
 
     end subroutine test_column_major_inefficient
 
@@ -83,7 +83,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P002", .false., &
                                         "efficient loop ordering should not be flagged")
-        print *, "  + Row-major efficient ordering"
+        print *, "[OK] Row-major efficient ordering"
 
     end subroutine test_row_major_efficient
 

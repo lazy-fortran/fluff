@@ -12,7 +12,7 @@ program test_rule_p007_mixed_precision
     call test_mixed_precision_triggers()
     call test_consistent_precision_is_ok()
 
-    print *, "All P007 tests passed!"
+    print *, "[OK] All P007 tests passed!"
 
 contains
 
@@ -38,7 +38,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P007", .true., &
                                         "mixed precision binary op should be flagged")
-        print *, "  + Mixed precision"
+        print *, "[OK] Mixed precision"
     end subroutine test_mixed_precision_triggers
 
     subroutine test_consistent_precision_is_ok()
@@ -63,7 +63,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P007", .false., &
                                         "consistent precision should not be flagged")
-        print *, "  + Consistent precision"
+        print *, "[OK] Consistent precision"
     end subroutine test_consistent_precision_is_ok
 
 end program test_rule_p007_mixed_precision

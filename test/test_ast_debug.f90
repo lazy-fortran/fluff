@@ -76,7 +76,7 @@ program test_ast_debug
     
     ! Explore all nodes in arena
     print *, ""
-    print *, "All nodes in arena:"
+    print *, "[OK] All nodes in arena:"
     do i = 1, arena%size
         print *, "  Index", i, "type:", get_node_type(arena, i), "parent:", get_parent(arena, i)
 

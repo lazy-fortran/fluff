@@ -18,7 +18,7 @@ program test_parallel_rule_execution
     ! Test 3: Result consistency
     call test_result_consistency()
 
-    print *, "All parallel rule execution tests passed!"
+    print *, "[OK] All parallel rule execution tests passed!"
 
 contains
 
@@ -57,7 +57,7 @@ contains
             error stop "Failed: invalid timing results"
         end if
 
-        print *, "  OK Parallel execution performance"
+        print *, "[OK] Parallel execution performance"
 
     end subroutine test_parallel_performance
 
@@ -91,7 +91,7 @@ contains
             end if
         end do
 
-        print *, "  OK Thread safety"
+        print *, "[OK] Thread safety"
 
     end subroutine test_thread_safety
 
@@ -124,7 +124,7 @@ contains
             error stop "Failed: serial and parallel results differ"
         end if
 
-        print *, "  OK Result consistency"
+        print *, "[OK] Result consistency"
 
     end subroutine test_result_consistency
 

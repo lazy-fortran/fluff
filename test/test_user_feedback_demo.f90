@@ -57,7 +57,7 @@ contains
     
     subroutine simulate_positive_feedback()
         print *, ""
-        print *, "--- Simulating Positive User Feedback ---"
+        print *, "=== Simulating Positive User Feedback ==="
         
         feedback = create_user_feedback()
         feedback%quality_rating = 9
@@ -80,7 +80,7 @@ contains
     
     subroutine simulate_constructive_feedback()
         print *, ""
-        print *, "--- Simulating Constructive User Feedback ---"
+        print *, "=== Simulating Constructive User Feedback ==="
         
         feedback = create_user_feedback()
         feedback%quality_rating = 6
@@ -103,7 +103,7 @@ contains
     
     subroutine simulate_negative_feedback()
         print *, ""
-        print *, "--- Simulating Critical User Feedback ---"
+        print *, "=== Simulating Critical User Feedback ==="
         
         feedback = create_user_feedback()
         feedback%quality_rating = 3
@@ -141,7 +141,7 @@ contains
         
         print *, "Based on collected feedback, here are key insights:"
         do i = 1, size(insights)
-            print *, "  - ", trim(insights(i))
+            print *, "  ", i, ". ", trim(insights(i))
         end do
         
         print *, ""

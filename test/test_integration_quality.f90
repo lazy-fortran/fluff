@@ -28,7 +28,7 @@ program test_integration_quality
     if (passed_tests == total_tests) then
         print *, "[OK] All integration quality tests passed!"
     else
-        print *, "[FAIL] Some tests failed (TDD stubs in progress)"
+        print *, "[FAIL] Some tests failed"
     end if
     
 contains
@@ -200,10 +200,10 @@ contains
         success = test_proc()
         
         if (success .eqv. should_succeed) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name
+            print *, "[FAIL] ", test_name
         end if
         
     end subroutine run_quality_test
