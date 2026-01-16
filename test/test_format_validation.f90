@@ -7,7 +7,7 @@ program test_format_validation
     type(formatter_engine_t) :: formatter
     integer :: total_tests, passed_tests
 
-    print *, "=== Format Validation Test Suite (GREEN Phase) ==="
+    print *, "=== Format Validation Test Suite ==="
 
     total_tests = 0
     passed_tests = 0
@@ -28,9 +28,9 @@ program test_format_validation
     print *, "Success rate: ", real(passed_tests)/real(total_tests)*100.0, "%"
 
     if (passed_tests == total_tests) then
-        print *, "✅ All format validation tests passed!"
+        print *, "All format validation tests passed."
     else
-        print *, "❌ Some validation tests failed (TDD stubs in progress)"
+        print *, "Some validation tests failed."
     end if
 
 contains
@@ -347,12 +347,14 @@ contains
         call run_diff_test("Diff: indentation", &
                            "program test"//new_line('a')// &
                            "implicit none"//new_line('a')// &
+                           "integer :: x"//new_line('a')// &
                            "if (x > 0) then"//new_line('a')// &
                            "print *, x"//new_line('a')// &
                            "end if"//new_line('a')// &
                            "end program", &
                            "program test"//new_line('a')// &
                            "    implicit none"//new_line('a')// &
+                           "    integer :: x"//new_line('a')// &
                            "    if (x > 0) then"//new_line('a')// &
                            "        print *, x"//new_line('a')// &
                            "    end if"//new_line('a')// &

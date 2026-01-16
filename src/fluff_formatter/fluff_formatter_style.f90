@@ -55,6 +55,7 @@ contains
         options%use_tabs = .false.
         options%indent_char = ' '
         options%standardize_types = .false.
+        options%line_length = 88
     end subroutine configure_clean_style
 
     subroutine configure_standard_style(options)
@@ -64,6 +65,7 @@ contains
         options%use_tabs = .false.
         options%indent_char = ' '
         options%standardize_types = .true.
+        options%line_length = 88
     end subroutine configure_standard_style
 
     subroutine configure_modern_style(options)
@@ -73,6 +75,7 @@ contains
         options%use_tabs = .false.
         options%indent_char = ' '
         options%standardize_types = .false.
+        options%line_length = 88
     end subroutine configure_modern_style
 
     subroutine configure_hpc_style(options)
@@ -82,6 +85,7 @@ contains
         options%use_tabs = .false.
         options%indent_char = ' '
         options%standardize_types = .true.
+        options%line_length = 88
     end subroutine configure_hpc_style
 
     subroutine configure_custom_style(options)
@@ -91,6 +95,7 @@ contains
         options%use_tabs = .false.
         options%indent_char = ' '
         options%standardize_types = .false.
+        options%line_length = 88
     end subroutine configure_custom_style
 
     subroutine scan_style_indicators(arena, has_class_types, has_modules, &
@@ -179,7 +184,7 @@ contains
         else if (has_iso_env .and. has_modules) then
             detected_style = "clean"
         else if (.not. has_modules .and. .not. has_interfaces) then
-            detected_style = "fortran77"
+            detected_style = "standard"
         else
             detected_style = "standard"
         end if

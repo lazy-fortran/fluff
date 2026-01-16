@@ -109,6 +109,9 @@ contains
 
     ! Format an AST
     subroutine formatter_format_ast(this, ast_ctx, formatted_code)
+        use codegen_api, only: get_indent_config, get_line_length_config, &
+                               get_type_standardization, set_indent_config, &
+                               set_line_length_config, set_type_standardization
         use fortfront, only: emit_fortran
         class(formatter_engine_t), intent(in) :: this
         type(fluff_ast_context_t), intent(inout) :: ast_ctx
@@ -117,12 +120,28 @@ contains
         character(len=:), allocatable :: temp_code
         character(len=:), allocatable :: improved_code
         character(len=:), allocatable :: next_code
+        integer :: saved_indent_size
+        integer :: saved_line_length
+        character(len=1) :: saved_indent_char
+        logical :: saved_standardize_types
         integer :: iter
         logical :: changed
 
         ! Use fortfront's formatting
         if (ast_ctx%is_initialized) then
+            call get_indent_config(saved_indent_size, saved_indent_char)
+            call get_line_length_config(saved_line_length)
+            call get_type_standardization(saved_standardize_types)
+
+            call set_indent_config(this%options%indent_size, this%options%indent_char)
+            call set_line_length_config(this%options%line_length)
+            call set_type_standardization(this%options%standardize_types)
+
             call emit_fortran(ast_ctx%arena, ast_ctx%root_index, temp_code)
+
+            call set_indent_config(saved_indent_size, saved_indent_char)
+            call set_line_length_config(saved_line_length)
+            call set_type_standardization(saved_standardize_types)
 
             if (this%enable_quality_improvements) then
                 improved_code = temp_code
@@ -183,6 +202,9 @@ contains
     ! Format a specific range of lines
     subroutine formatter_format_range(this, ast_ctx, start_line, end_line, &
                                       formatted_code)
+        use codegen_api, only: get_indent_config, get_line_length_config, &
+                               get_type_standardization, set_indent_config, &
+                               set_line_length_config, set_type_standardization
         use fortfront, only: emit_fortran
         class(formatter_engine_t), intent(in) :: this
         type(fluff_ast_context_t), intent(inout) :: ast_ctx
@@ -193,10 +215,26 @@ contains
         character(len=:), allocatable :: full_formatted
         character(len=1000) :: lines(10000)
         integer :: num_lines, i, line_start, line_end
+        integer :: saved_indent_size
+        integer :: saved_line_length
+        character(len=1) :: saved_indent_char
+        logical :: saved_standardize_types
 
         if (ast_ctx%is_initialized) then
             ! First format the entire file
+            call get_indent_config(saved_indent_size, saved_indent_char)
+            call get_line_length_config(saved_line_length)
+            call get_type_standardization(saved_standardize_types)
+
+            call set_indent_config(this%options%indent_size, this%options%indent_char)
+            call set_line_length_config(this%options%line_length)
+            call set_type_standardization(this%options%standardize_types)
+
             call emit_fortran(ast_ctx%arena, ast_ctx%root_index, full_formatted)
+
+            call set_indent_config(saved_indent_size, saved_indent_char)
+            call set_line_length_config(saved_line_length)
+            call set_type_standardization(saved_standardize_types)
 
             ! Split into lines and extract the range
             call split_lines_simple(full_formatted, lines, num_lines)
@@ -245,17 +283,29 @@ contains
         class(formatter_engine_t), intent(inout) :: this
         character(len=*), intent(in) :: option_name, option_value
 
+        integer :: iostat
+        integer :: value
+
         select case (trim(option_name))
         case ("indent_size")
-            read (option_value, *) this%options%indent_size
+            read (option_value, *, iostat=iostat) value
+            if (iostat == 0 .and. value > 0) then
+                this%options%indent_size = value
+                this%aesthetic_settings%indent_size = value
+            end if
         case ("line_length")
-            ! Note: format_options_t may not have line_length field
-            ! This is a placeholder for future enhancement
+            read (option_value, *, iostat=iostat) value
+            if (iostat == 0 .and. value > 0) then
+                this%options%line_length = value
+                this%aesthetic_settings%max_line_length = value
+            end if
         case ("use_tabs")
             if (trim(option_value) == "true") then
                 this%options%use_tabs = .true.
+                this%options%indent_char = achar(9)
             else
                 this%options%use_tabs = .false.
+                this%options%indent_char = ' '
             end if
         case ("standardize_types")
             if (trim(option_value) == "true") then
