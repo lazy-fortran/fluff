@@ -3,6 +3,7 @@ program test_rule_f004_trailing_whitespace
     use fluff_linter, only: linter_engine_t, create_linter_engine
     use fortfront, only: token_t, trivia_token_t, tokenize_core_with_trivia
     use lexer_token_types, only: TK_NEWLINE, TK_WHITESPACE
+    use test_support, only: assert_equal_int
     implicit none
 
     print *, "Testing F004: Trailing whitespace rule..."
@@ -265,16 +266,6 @@ contains
             end if
         end do
     end subroutine count_code
-
-    subroutine assert_equal_int(actual, expected, msg)
-        integer, intent(in) :: actual
-        integer, intent(in) :: expected
-        character(len=*), intent(in) :: msg
-        if (actual /= expected) then
-            print *, msg, " got=", actual, " expected=", expected
-            error stop msg
-        end if
-    end subroutine assert_equal_int
 
     subroutine assert_f004_location(diagnostics, line, start_col, end_col)
         type(diagnostic_t), allocatable, intent(in) :: diagnostics(:)
