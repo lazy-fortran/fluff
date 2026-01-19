@@ -23,7 +23,7 @@ program test_rule_f001_implicit_none
     ! Test 5: Interface blocks should not trigger
     call test_interface_block()
 
-    print *, "All F001 tests passed!"
+    print *, "[OK] All F001 tests passed!"
 
 contains
 
@@ -68,7 +68,7 @@ contains
             error stop "Failed: F001 should be triggered for missing implicit none"
         end if
 
-        print *, "  OK Missing implicit none in program"
+        print *, "[OK] Missing implicit none in program"
 
     end subroutine test_missing_implicit_none
 
@@ -115,7 +115,7 @@ contains
                 "is present"
         end if
 
-        print *, "  OK Has implicit none"
+        print *, "[OK] Has implicit none"
 
     end subroutine test_has_implicit_none
 
@@ -162,7 +162,7 @@ contains
                 "implicit none"
         end if
 
-        print *, "  OK Module missing implicit none"
+        print *, "[OK] Module missing implicit none"
 
     end subroutine test_module_missing_implicit_none
 
@@ -206,7 +206,7 @@ contains
                 "implicit none"
         end if
 
-        print *, "  OK Subroutine missing implicit none"
+        print *, "[OK] Subroutine missing implicit none"
 
     end subroutine test_subroutine_missing_implicit_none
 
@@ -254,7 +254,7 @@ contains
             error stop "Failed: F001 should not be triggered for interface blocks"
         end if
 
-        print *, "  OK Interface block handling"
+        print *, "[OK] Interface block handling"
 
     end subroutine test_interface_block
 

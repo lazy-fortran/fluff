@@ -22,7 +22,7 @@ program test_formatter_framework
     ! Test 5: Format options configuration
     call test_format_options()
     
-    print *, "All formatter framework tests passed!"
+    print *, "[OK] All formatter framework tests passed!"
     
 contains
     
@@ -83,7 +83,7 @@ contains
             error stop "Should apply indentation to code blocks"
         end if
         
-        print *, "    OK Basic indentation formatting"
+        print *, "[OK] Basic indentation formatting"
         
     end subroutine test_basic_indentation
     
@@ -125,7 +125,7 @@ contains
             error stop "Should preserve program end"
         end if
         
-        print *, "    OK Operator spacing"
+        print *, "[OK] Operator spacing"
         
     end subroutine test_operator_spacing
     
@@ -173,7 +173,7 @@ contains
             error stop "Should preserve program structure"
         end if
         
-        print *, "    OK Semantic preservation"
+        print *, "[OK] Semantic preservation"
         
     end subroutine test_semantic_preservation
     
@@ -211,7 +211,7 @@ contains
             error stop "Should preserve assignment"
         end if
         
-        print *, "    OK Comment preservation"
+        print *, "[OK] Comment preservation"
         
     end subroutine test_comment_preservation
     
@@ -252,7 +252,7 @@ contains
             error stop "Should preserve indent size setting"
         end if
         
-        print *, "    OK Format options configuration"
+        print *, "[OK] Format options configuration"
         
     end subroutine test_format_options
     

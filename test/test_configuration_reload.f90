@@ -7,7 +7,7 @@ program test_configuration_reload
     
     integer :: total_tests, passed_tests
     
-    print *, "=== Configuration Reload Test Suite (RED Phase) ==="
+    print *, "=== Configuration Reload Test Suite ==="
     
     total_tests = 0
     passed_tests = 0
@@ -28,7 +28,7 @@ program test_configuration_reload
     if (passed_tests == total_tests) then
         print *, "[OK] All configuration reload tests passed!"
     else
-        print *, "[FAIL] Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed"
     end if
     
 contains
@@ -160,10 +160,10 @@ contains
         success = test_proc()
         
         if (success .eqv. should_succeed) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name
+            print *, "[FAIL] ", test_name
         end if
         
     end subroutine run_config_test

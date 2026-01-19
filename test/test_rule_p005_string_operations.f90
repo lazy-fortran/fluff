@@ -12,7 +12,7 @@ program test_rule_p005_string_operations
     call test_loop_concatenation_triggers()
     call test_no_concatenation_is_ok()
 
-    print *, "All P005 tests passed!"
+    print *, "[OK] All P005 tests passed!"
 
 contains
 
@@ -43,7 +43,7 @@ contains
             "P005", &
             .true., &
             "string concatenation in loop should be flagged")
-        print *, "  + Loop concatenation"
+        print *, "[OK] Loop concatenation"
     end subroutine test_loop_concatenation_triggers
 
     subroutine test_no_concatenation_is_ok()
@@ -70,7 +70,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "P005", .false., &
                                         "no concatenation should not be flagged")
-        print *, "  + No concatenation"
+        print *, "[OK] No concatenation"
     end subroutine test_no_concatenation_is_ok
 
 end program test_rule_p005_string_operations

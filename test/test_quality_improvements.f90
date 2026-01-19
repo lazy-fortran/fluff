@@ -170,7 +170,7 @@ contains
         if (size(quality_before%recommendations) > 0) then
             print *, "    Recommendations:"
             do i = 1, min(3, size(quality_before%recommendations))
-                print *, "      - ", trim(quality_before%recommendations(i))
+                print *, "      ", i, ". ", trim(quality_before%recommendations(i))
             end do
         end if
         
@@ -189,7 +189,7 @@ contains
         call formatter%format_with_quality(input_code, formatted_code, error_msg, quality_after)
         
         if (error_msg /= "") then
-            print *, "  SKIP: ", test_name, " - Format error: ", error_msg
+            print *, "[WARN] ", test_name, " - Format error: ", error_msg
             return
         end if
         
@@ -198,7 +198,7 @@ contains
         print *, "    After:  ", quality_after%overall_score, "/10"
         
         if (quality_after%overall_score >= quality_before%overall_score) then
-            print *, "    OK Quality maintained or improved"
+            print *, "[OK] Quality maintained or improved"
             passed_tests = passed_tests + 1
         else
             print *, "    [WARN] Quality decreased"

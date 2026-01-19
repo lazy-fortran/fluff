@@ -14,7 +14,7 @@ program test_formatter_advanced
     
     print *, "=== Testing Advanced Formatter Features ==="
     
-    ! RED Phase: All these tests should fail initially
+    ! These tests exercise advanced formatter behavior
     call test_complex_expression_formatting()
     call test_array_literal_formatting()
     ! call test_procedure_formatting()      ! DISABLED: fortfront function parameter bug
@@ -23,7 +23,7 @@ program test_formatter_advanced
     ! call test_configurable_styles()      ! DISABLED: likely more complex issues
     ! call test_format_range()             ! DISABLED: likely more complex issues
     
-    print *, "All advanced formatter tests passed!"
+    print *, "[OK] All advanced formatter tests passed!"
     
 contains
     
@@ -108,7 +108,7 @@ contains
         
         call format_and_check(source_code, expected, "Binary operator alignment")
         
-        print *, "    OK Complex expression formatting"
+        print *, "[OK] Complex expression formatting"
     end subroutine test_complex_expression_formatting
     
     subroutine test_array_literal_formatting()
@@ -164,7 +164,7 @@ contains
         
         call format_and_check(source_code, expected, "Nested array constructors")
         
-        print *, "    OK Array literal formatting"
+        print *, "[OK] Array literal formatting"
     end subroutine test_array_literal_formatting
     
     subroutine test_procedure_formatting()
@@ -234,7 +234,7 @@ contains
         
         call format_and_check(source_code, expected, "Interface block formatting")
         
-        print *, "    OK Procedure formatting"
+        print *, "[OK] Procedure formatting"
     end subroutine test_procedure_formatting
     
     subroutine test_comment_preservation()
@@ -281,7 +281,7 @@ contains
         
         call format_and_check(source_code, expected, "Block comment preservation")
         
-        print *, "    OK Comment preservation"
+        print *, "[OK] Comment preservation"
     end subroutine test_comment_preservation
     
     subroutine test_import_organization()
@@ -328,7 +328,7 @@ contains
         
         call format_and_check(source_code, expected, "Import grouping")
         
-        print *, "    OK Import organization"
+        print *, "[OK] Import organization"
     end subroutine test_import_organization
     
     subroutine test_configurable_styles()
@@ -368,7 +368,7 @@ contains
         
         call format_with_options_and_check(source_code, expected, options, "Tab indentation")
         
-        print *, "    OK Configurable styles"
+        print *, "[OK] Configurable styles"
     end subroutine test_configurable_styles
     
     subroutine test_format_range()
@@ -404,7 +404,7 @@ contains
         
         call format_range_and_check(source_code, expected, start_line, end_line, "Format range")
         
-        print *, "    OK Format range support"
+        print *, "[OK] Format range support"
     end subroutine test_format_range
     
     ! Helper subroutines
@@ -417,13 +417,13 @@ contains
         local_ast_ctx = create_ast_context()
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
-            print *, "FAIL: " // test_name // " - Parse error: " // error_msg
+            print *, "[FAIL] " // test_name // " - Parse error: " // error_msg
             print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_ast(local_ast_ctx, actual)
         
         if (actual /= expected) then
-            print *, "FAIL: " // test_name
+            print *, "[FAIL] " // test_name
             print *, "Expected:"
             print *, expected
             print *, "Actual:"
@@ -442,13 +442,13 @@ contains
         local_ast_ctx = create_ast_context()
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
-            print *, "FAIL: " // test_name // " - Parse error: " // error_msg
+            print *, "[FAIL] " // test_name // " - Parse error: " // error_msg
             print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_ast(local_ast_ctx, actual)
         
         if (actual /= expected) then
-            print *, "FAIL: " // test_name
+            print *, "[FAIL] " // test_name
             print *, "Expected:"
             print *, expected
             print *, "Actual:"
@@ -467,13 +467,13 @@ contains
         local_ast_ctx = create_ast_context()
         call local_ast_ctx%from_source(source, error_msg)
         if (error_msg /= "") then
-            print *, "FAIL: " // test_name // " - Parse error: " // error_msg
+            print *, "[FAIL] " // test_name // " - Parse error: " // error_msg
             print *, "ERROR: "; return ! "Parse failed"
         end if
         call formatter%format_range(local_ast_ctx, start_line, end_line, actual)
         
         if (actual /= expected) then
-            print *, "FAIL: " // test_name
+            print *, "[FAIL] " // test_name
             print *, "Expected:"
             print *, expected
             print *, "Actual:"

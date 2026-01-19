@@ -14,7 +14,7 @@ program test_rule_f009_inconsistent_intent
     call test_intent_out_unassigned()
     call test_intent_out_assigned()
 
-    print *, "All F009 tests passed!"
+    print *, "[OK] All F009 tests passed!"
 
 contains
 
@@ -41,7 +41,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "F009", .true., &
                                         "intent(in) assignment should be flagged")
-        print *, "  + Intent(in) modified"
+        print *, "[OK] Intent(in) modified"
     end subroutine test_intent_in_modified
 
     subroutine test_intent_in_not_modified()
@@ -68,7 +68,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "F009", .false., &
                                         "no intent violations expected")
-        print *, "  + Intent(in) not modified"
+        print *, "[OK] Intent(in) not modified"
     end subroutine test_intent_in_not_modified
 
     subroutine test_intent_out_unassigned()
@@ -94,7 +94,7 @@ contains
         call assert_has_diagnostic_code(diagnostics, "F009", .true., &
                                         "intent(out) without assignment should be "// &
                                         "flagged")
-        print *, "  + Intent(out) unassigned"
+        print *, "[OK] Intent(out) unassigned"
     end subroutine test_intent_out_unassigned
 
     subroutine test_intent_out_assigned()
@@ -120,7 +120,7 @@ contains
 
         call assert_has_diagnostic_code(diagnostics, "F009", .false., &
                                         "no intent violations expected")
-        print *, "  + Intent(out) assigned"
+        print *, "[OK] Intent(out) assigned"
     end subroutine test_intent_out_assigned
 
 end program test_rule_f009_inconsistent_intent

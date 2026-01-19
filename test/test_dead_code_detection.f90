@@ -6,7 +6,7 @@ program test_dead_code_detection
     
     integer :: total_tests, passed_tests
     
-    print *, "=== Dead Code Detection Test Suite (RED Phase) ==="
+    print *, "=== Dead Code Detection Test Suite ==="
     
     total_tests = 0
     passed_tests = 0
@@ -230,10 +230,10 @@ contains
         found_dead_code = test_proc()
         
         if (found_dead_code .eqv. should_find_dead_code) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name
+            print *, "[FAIL] ", test_name
         end if
         
     end subroutine run_dead_code_test

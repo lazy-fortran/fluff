@@ -27,7 +27,7 @@ program test_rule_f003_line_length
     ! Test 6: Tabs count toward visual columns
     call test_tabs_column_calculation()
 
-    print *, "All F003 tests passed!"
+    print *, "[OK] All F003 tests passed!"
 
 contains
 
@@ -92,7 +92,7 @@ contains
             error stop "Failed: F003 location should point to the overflow span"
         end if
 
-        print *, "  OK Line too long"
+        print *, "[OK] Line too long"
 
     end subroutine test_line_too_long
 
@@ -139,7 +139,7 @@ contains
             error stop "Failed: F003 should not be triggered for lines within limit"
         end if
 
-        print *, "  OK Line within limit"
+        print *, "[OK] Line within limit"
 
     end subroutine test_line_within_limit
 
@@ -198,7 +198,7 @@ contains
             error stop "Failed: F003 location should point to the overflow span"
         end if
 
-        print *, "  OK Long physical line detected"
+        print *, "[OK] Long physical line detected"
 
     end subroutine test_continuation_lines
 
@@ -250,7 +250,7 @@ contains
                 "lines"
         end if
 
-        print *, "  OK Comment lines correctly ignored"
+        print *, "[OK] Comment lines correctly ignored"
 
     end subroutine test_comment_lines
 
@@ -300,7 +300,7 @@ contains
             error stop "Failed: F003 should respect configured line length"
         end if
 
-        print *, "  OK Custom line length respected"
+        print *, "[OK] Custom line length respected"
     end subroutine test_custom_line_length
 
     subroutine test_tabs_column_calculation()
@@ -357,7 +357,7 @@ contains
             error stop "Failed: F003 location end column should account for tabs"
         end if
 
-        print *, "  OK Tabs counted as visual columns"
+        print *, "[OK] Tabs counted as visual columns"
     end subroutine test_tabs_column_calculation
 
 end program test_rule_f003_line_length

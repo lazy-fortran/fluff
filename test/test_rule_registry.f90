@@ -20,7 +20,7 @@ program test_rule_registry
     ! Test 4: Find rule by code
     call test_find_by_code()
     
-    print *, "All rule registry tests passed!"
+    print *, "[OK] All rule registry tests passed!"
     
 contains
     
@@ -41,7 +41,7 @@ contains
             error stop "Failed: should discover built-in rules"
         end if
         
-        print *, "  OK Rule discovery found", final_count, "rules"
+        print *, "[OK] Rule discovery found", final_count, "rules"
     end subroutine test_rule_discovery
     
     subroutine test_rule_filtering()
@@ -71,7 +71,7 @@ contains
             end if
         end do
         
-        print *, "  OK Rule filtering by selection"
+        print *, "[OK] Rule filtering by selection"
     end subroutine test_rule_filtering
     
     subroutine test_execution_order()
@@ -98,7 +98,7 @@ contains
             end if
         end do
         
-        print *, "  OK Rule execution order"
+        print *, "[OK] Rule execution order"
     end subroutine test_execution_order
     
     subroutine test_find_by_code()
@@ -126,7 +126,7 @@ contains
             error stop "Failed: should not find non-existent rule"
         end if
         
-        print *, "  OK Find rule by code"
+        print *, "[OK] Find rule by code"
     end subroutine test_find_by_code
     
 end program test_rule_registry

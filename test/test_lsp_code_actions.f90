@@ -8,7 +8,7 @@ program test_lsp_code_actions
     integer :: total_tests, passed_tests
     real(dp) :: success_rate
 
-    print *, "=== LSP Code Actions Test Suite (RED Phase) ==="
+    print *, "=== LSP Code Actions Test Suite ==="
 
     total_tests = 0
     passed_tests = 0
@@ -35,7 +35,7 @@ program test_lsp_code_actions
     if (passed_tests == total_tests) then
         print *, "[OK] All LSP code action tests passed!"
     else
-        print *, "[FAIL] Some tests failed (expected in RED phase)"
+        print *, "[FAIL] Some tests failed"
     end if
 
 contains
@@ -245,22 +245,22 @@ contains
         if (success .and. action_count == expected_count) then
             if (expected_count > 0) then
                 if (.not. allocated(actions)) then
-                    print *, "  FAIL: ", test_name, " - Actions not allocated"
+                    print *, "[FAIL] ", test_name, " - Actions not allocated"
                 else if (size(actions) < 1) then
-                    print *, "  FAIL: ", test_name, " - No actions returned"
+                    print *, "[FAIL] ", test_name, " - No actions returned"
                 else if (index(actions(1), expected_action) > 0) then
-                    print *, "  PASS: ", test_name, " - Generated ", &
+                    print *, "[OK] ", test_name, " - Generated ", &
                         action_count, " actions"
                     passed_tests = passed_tests + 1
                 else
-                    print *, "  FAIL: ", test_name, " - Wrong action generated"
+                    print *, "[FAIL] ", test_name, " - Wrong action generated"
                 end if
             else
-                print *, "  PASS: ", test_name, " - No actions as expected"
+                print *, "[OK] ", test_name, " - No actions as expected"
                 passed_tests = passed_tests + 1
             end if
         else
-            print *, "  FAIL: ", test_name, " - Expected ", expected_count, ", got ", &
+            print *, "[FAIL] ", test_name, " - Expected ", expected_count, ", got ", &
                 action_count
         end if
 
@@ -284,10 +284,10 @@ contains
                                 formatted_action, success)
 
         if (success .eqv. should_succeed) then
-            print *, "  PASS: ", test_name
+            print *, "[OK] ", test_name
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Formatting result unexpected"
+            print *, "[FAIL] ", test_name, " - Formatting result unexpected"
         end if
 
     end subroutine run_format_test
@@ -308,17 +308,17 @@ contains
         call apply_code_action(original, result, edit_count, success)
 
         if (success .neqv. should_succeed) then
-            print *, "  FAIL: ", test_name, " - Application result unexpected"
+            print *, "[FAIL] ", test_name, " - Application result unexpected"
         else if (.not. should_succeed) then
-            print *, "  PASS: ", test_name, " - Application failed as expected"
+            print *, "[OK] ", test_name, " - Application failed as expected"
             passed_tests = passed_tests + 1
         else if (.not. allocated(result)) then
-            print *, "  FAIL: ", test_name, " - Result not allocated"
+            print *, "[FAIL] ", test_name, " - Result not allocated"
         else if (result == expected) then
-            print *, "  PASS: ", test_name, " - Applied ", edit_count, " edits"
+            print *, "[OK] ", test_name, " - Applied ", edit_count, " edits"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Result doesn't match expected"
+            print *, "[FAIL] ", test_name, " - Result doesn't match expected"
             print *, "        Expected:"
             print *, "        '", expected, "'"
             print *, "        Got:"
@@ -347,10 +347,10 @@ contains
                                    action_count, success)
 
         if (success .and. action_count == expected_count) then
-            print *, "  PASS: ", test_name, " - Generated ", action_count, " actions"
+            print *, "[OK] ", test_name, " - Generated ", action_count, " actions"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Expected ", expected_count, ", got ", &
+            print *, "[FAIL] ", test_name, " - Expected ", expected_count, ", got ", &
                 action_count
         end if
 
@@ -374,10 +374,10 @@ contains
         call apply_fix_all(file_uris, diagnostic_code, fixes_applied, success)
 
         if (success .eqv. should_succeed .and. fixes_applied == expected_fixes) then
-            print *, "  PASS: ", test_name, " - Applied ", fixes_applied, " fixes"
+            print *, "[OK] ", test_name, " - Applied ", fixes_applied, " fixes"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Fix-all result unexpected"
+            print *, "[FAIL] ", test_name, " - Fix-all result unexpected"
         end if
 
     end subroutine run_fixall_test
@@ -402,10 +402,10 @@ contains
                                           action_count, success)
 
         if (success .eqv. should_succeed .and. action_count == expected_count) then
-            print *, "  PASS: ", test_name, " - Found ", action_count, " actions"
+            print *, "[OK] ", test_name, " - Found ", action_count, " actions"
             passed_tests = passed_tests + 1
         else
-            print *, "  FAIL: ", test_name, " - Context handling failed"
+            print *, "[FAIL] ", test_name, " - Context handling failed"
         end if
 
     end subroutine run_context_test

@@ -20,7 +20,7 @@ program test_rule_f002_indentation
     ! Test 4: Mixed indentation levels (should trigger)
     call test_mixed_levels()
 
-    print *, "All F002 tests passed!"
+    print *, "[OK] All F002 tests passed!"
 
 contains
 
@@ -64,7 +64,7 @@ contains
             error stop "Failed: F002 should be triggered for inconsistent indentation"
         end if
 
-        print *, "  OK Inconsistent indentation"
+        print *, "[OK] Inconsistent indentation"
 
     end subroutine test_inconsistent_indentation
 
@@ -107,7 +107,7 @@ contains
             error stop "Failed: F002 should not be triggered for consistent indentation"
         end if
 
-        print *, "  OK Consistent 4-space indentation"
+        print *, "[OK] Consistent 4-space indentation"
 
     end subroutine test_consistent_4_spaces
 
@@ -149,7 +149,7 @@ contains
                 "2-space indentation"
         end if
 
-        print *, "  OK Consistent 2-space indentation"
+        print *, "[OK] Consistent 2-space indentation"
     end subroutine test_consistent_2_spaces
 
     subroutine test_mixed_levels()
@@ -189,7 +189,7 @@ contains
             error stop "Failed: F002 should be triggered for mixed indentation levels"
         end if
 
-        print *, "  OK Mixed indentation levels"
+        print *, "[OK] Mixed indentation levels"
     end subroutine test_mixed_levels
 
 end program test_rule_f002_indentation
