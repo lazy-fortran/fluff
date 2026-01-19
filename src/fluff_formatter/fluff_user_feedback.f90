@@ -1,7 +1,8 @@
 module fluff_user_feedback
     ! User feedback integration for format quality
-    use iso_fortran_env, only: dp => real64
-    use fluff_format_quality
+    use, intrinsic :: iso_fortran_env, only: dp => real64
+    use fluff_format_quality, only: format_quality_t
+    use fluff_rule_diagnostic_utils, only: to_lower_ascii
     implicit none
     private
     
@@ -91,14 +92,12 @@ contains
         ! Get helpfulness feedback
         print *, "Was the formatting helpful? (y/n): "
         read(*, '(A)') helpful_input
-        feedback%formatting_helpful = (trim(helpful_input) == 'y' .or. trim(helpful_input) == 'Y' .or. &
-                                     trim(helpful_input) == 'yes' .or. trim(helpful_input) == 'Yes')
-        
+        feedback%formatting_helpful = is_yes_response(helpful_input)
+
         ! Get recommendation feedback
         print *, "Would you recommend this formatter? (y/n): "
         read(*, '(A)') recommend_input
-        feedback%would_recommend = (trim(recommend_input) == 'y' .or. trim(recommend_input) == 'Y' .or. &
-                                   trim(recommend_input) == 'yes' .or. trim(recommend_input) == 'Yes')
+        feedback%would_recommend = is_yes_response(recommend_input)
         
         ! Get comments
         print *, "Any additional comments (press Enter to skip): "
@@ -379,6 +378,16 @@ contains
     end subroutine collector_print_report
     
     ! Helper functions
+    pure function is_yes_response(input) result(is_yes)
+        character(len=*), intent(in) :: input
+        logical :: is_yes
+        character(len=10) :: normalized
+
+        normalized = to_lower_ascii(trim(input))
+        is_yes = (trim(normalized) == 'y' .or. trim(normalized) == 'yes')
+
+    end function is_yes_response
+
     function get_satisfaction_level(rating) result(level)
         real(dp), intent(in) :: rating
         character(len=20) :: level
