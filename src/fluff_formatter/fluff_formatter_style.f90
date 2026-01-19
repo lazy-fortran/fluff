@@ -1,8 +1,8 @@
 module fluff_formatter_style
-    use fluff_ast, only: NODE_MODULE
+    use fluff_ast, only: NODE_MODULE, NODE_DERIVED_TYPE, NODE_INTERFACE_BLOCK, &
+                         NODE_USE_STATEMENT, get_use_module_name
     use fortfront, only: lex_source, parse_tokens, create_ast_arena, token_t, &
-                         ast_arena_t, use_statement_node, derived_type_node, &
-                         interface_block_node, get_node_type_id_from_arena, &
+                         ast_arena_t, get_node_type_id_from_arena, get_children, &
                          format_options_t
     implicit none
     private
@@ -41,9 +41,16 @@ contains
             call report_fortfront_failure("parse_tokens", error_msg)
         end if
 
-        call scan_style_indicators(arena, has_class_types, has_modules, &
-                                   has_interfaces, has_mpi, has_openmp, &
-                                   has_iso_env)
+        has_class_types = .false.
+        has_modules = .false.
+        has_interfaces = .false.
+        has_mpi = .false.
+        has_openmp = .false.
+        has_iso_env = .false.
+
+        call scan_style_indicators_recursive(arena, prog_index, 0, has_class_types, &
+                                             has_modules, has_interfaces, has_mpi, &
+                                             has_openmp, has_iso_env)
         call select_style_guide(has_class_types, has_modules, has_interfaces, &
                                 has_mpi, has_openmp, has_iso_env, detected_style)
     end subroutine detect_style_guide_from_source
@@ -98,38 +105,15 @@ contains
         options%line_length = 88
     end subroutine configure_custom_style
 
-    subroutine scan_style_indicators(arena, has_class_types, has_modules, &
-                                     has_interfaces, has_mpi, has_openmp, &
-                                     has_iso_env)
+    recursive subroutine scan_style_indicators_recursive(arena, node_index, depth, &
+                                                         has_class_types, &
+                                                         has_modules, &
+                                                         has_interfaces, &
+                                                         has_mpi, has_openmp, &
+                                                         has_iso_env)
         type(ast_arena_t), intent(in) :: arena
-        logical, intent(out) :: has_class_types
-        logical, intent(out) :: has_modules
-        logical, intent(out) :: has_interfaces
-        logical, intent(out) :: has_mpi
-        logical, intent(out) :: has_openmp
-        logical, intent(out) :: has_iso_env
-        integer :: i
-
-        has_class_types = .false.
-        has_modules = .false.
-        has_interfaces = .false.
-        has_mpi = .false.
-        has_openmp = .false.
-        has_iso_env = .false.
-
-        do i = 1, arena%size
-            if (.not. allocated(arena%entries(i)%node)) cycle
-            call update_style_flags(arena, i, has_class_types, has_modules, &
-                                    has_interfaces, has_mpi, has_openmp, &
-                                    has_iso_env)
-        end do
-    end subroutine scan_style_indicators
-
-    subroutine update_style_flags(arena, index, has_class_types, has_modules, &
-                                  has_interfaces, has_mpi, has_openmp, &
-                                  has_iso_env)
-        type(ast_arena_t), intent(in) :: arena
-        integer, intent(in) :: index
+        integer, intent(in) :: node_index
+        integer, intent(in) :: depth
         logical, intent(inout) :: has_class_types
         logical, intent(inout) :: has_modules
         logical, intent(inout) :: has_interfaces
@@ -137,19 +121,41 @@ contains
         logical, intent(inout) :: has_openmp
         logical, intent(inout) :: has_iso_env
 
-        if (get_node_type_id_from_arena(arena, index) == NODE_MODULE) then
-            has_modules = .true.
-        end if
+        integer, parameter :: MAX_DEPTH = 1000
+        integer :: node_type
+        integer, allocatable :: children(:)
+        character(len=:), allocatable :: module_name
+        integer :: i
 
-        select type (node => arena%entries(index)%node)
-        class is (derived_type_node)
+        if (node_index <= 0) return
+        if (depth > MAX_DEPTH) return
+
+        node_type = get_node_type_id_from_arena(arena, node_index)
+
+        select case (node_type)
+        case (NODE_MODULE)
+            has_modules = .true.
+        case (NODE_DERIVED_TYPE)
             has_class_types = .true.
-        class is (interface_block_node)
+        case (NODE_INTERFACE_BLOCK)
             has_interfaces = .true.
-        class is (use_statement_node)
-            call check_use_module(node%module_name, has_mpi, has_openmp, has_iso_env)
+        case (NODE_USE_STATEMENT)
+            call get_use_module_name(arena, node_index, module_name)
+            if (allocated(module_name)) then
+                call check_use_module(module_name, has_mpi, has_openmp, has_iso_env)
+            end if
         end select
-    end subroutine update_style_flags
+
+        children = get_children(arena, node_index)
+        do i = 1, size(children)
+            if (children(i) > 0) then
+                call scan_style_indicators_recursive(arena, children(i), depth + 1, &
+                                                     has_class_types, has_modules, &
+                                                     has_interfaces, has_mpi, &
+                                                     has_openmp, has_iso_env)
+            end if
+        end do
+    end subroutine scan_style_indicators_recursive
 
     subroutine check_use_module(module_name, has_mpi, has_openmp, has_iso_env)
         character(len=*), intent(in) :: module_name
