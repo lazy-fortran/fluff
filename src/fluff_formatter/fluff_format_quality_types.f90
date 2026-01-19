@@ -29,6 +29,7 @@ module fluff_format_quality_types
         logical :: improve_operator_spacing = .true.
         logical :: optimize_line_breaks = .true.
         logical :: combine_short_lines = .false.
+        logical :: preserve_leading_ampersand = .true.
         integer :: max_line_length = 88
         integer :: indent_size = 4
         real(dp) :: blank_line_ratio = 0.15_dp
@@ -53,6 +54,7 @@ contains
         settings%improve_operator_spacing = .true.
         settings%optimize_line_breaks = .true.
         settings%combine_short_lines = .false.
+        settings%preserve_leading_ampersand = .true.
         settings%max_line_length = 88
         settings%indent_size = 4
         settings%blank_line_ratio = 0.15_dp
@@ -62,12 +64,12 @@ contains
     subroutine calculate_overall_score(this)
         class(format_quality_t), intent(inout) :: this
 
-        this%overall_score = (this%indentation_score * 0.25_dp + &
-                             this%spacing_score * 0.20_dp + &
-                             this%readability_score * 0.25_dp + &
-                             this%structure_score * 0.15_dp + &
-                             this%consistency_score * 0.10_dp + &
-                             this%line_length_score * 0.05_dp)
+        this%overall_score = (this%indentation_score*0.25_dp + &
+                              this%spacing_score*0.20_dp + &
+                              this%readability_score*0.25_dp + &
+                              this%structure_score*0.15_dp + &
+                              this%consistency_score*0.10_dp + &
+                              this%line_length_score*0.05_dp)
 
     end subroutine calculate_overall_score
 
