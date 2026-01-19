@@ -14,6 +14,7 @@ module fluff_ast
         variable_usage_info_t, create_variable_usage_info, &
         get_variables_in_expression, &
         get_identifiers_in_subtree, &
+        use_statement_node, &
         NODE_PROGRAM, NODE_FUNCTION_DEF, NODE_ASSIGNMENT, NODE_BINARY_OP, &
         NODE_IDENTIFIER, NODE_LITERAL, NODE_ARRAY_LITERAL, &
         NODE_CALL_OR_SUBSCRIPT, NODE_SUBROUTINE_DEF, NODE_SUBROUTINE_CALL, &
@@ -79,6 +80,9 @@ module fluff_ast
     public :: NODE_FORALL, NODE_CASE_RANGE, NODE_CASE_DEFAULT, NODE_COMPLEX_LITERAL
     public :: NODE_INCLUDE_STATEMENT, NODE_CONTAINS, NODE_FORMAT_DESCRIPTOR
     public :: NODE_COMMENT, NODE_IMPLICIT_STATEMENT
+
+    ! Standalone helpers for arena access (centralizes fortfront internals)
+    public :: get_use_module_name
 
 contains
 
@@ -363,5 +367,20 @@ contains
             end if
         end do
     end subroutine convert_trivia_array
+
+    subroutine get_use_module_name(arena, node_index, module_name)
+        type(ast_arena_t), intent(in) :: arena
+        integer, intent(in) :: node_index
+        character(len=:), allocatable, intent(out) :: module_name
+
+        if (node_index <= 0) return
+        if (.not. allocated(arena%entries(node_index)%node)) return
+        select type (node => arena%entries(node_index)%node)
+        type is (use_statement_node)
+            if (allocated(node%module_name)) then
+                module_name = node%module_name
+            end if
+        end select
+    end subroutine get_use_module_name
 
 end module fluff_ast
