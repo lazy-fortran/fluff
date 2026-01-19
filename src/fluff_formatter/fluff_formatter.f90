@@ -5,6 +5,8 @@ module fluff_formatter
                                     apply_aesthetic_improvements, &
                                     assess_format_quality, create_aesthetic_settings, &
                                     create_quality_metrics, format_quality_t
+    use fluff_format_continuation, only: has_leading_ampersand_continuations, &
+                                         preserve_leading_ampersand_lines
     use fluff_user_feedback, only: collect_interactive_feedback, create_user_feedback, &
                                    user_feedback_t
     use fluff_formatter_style, only: detect_style_guide_from_source, &
@@ -186,11 +188,16 @@ contains
         character(len=:), allocatable :: current_code
         character(len=:), allocatable :: next_code
         character(len=:), allocatable :: prev_code
+        character(len=:), allocatable :: preserved_code
         integer :: iter
+        logical :: should_preserve
 
         error_msg = ""
         current_code = source_code
         prev_code = ""
+
+        should_preserve = this%aesthetic_settings%preserve_leading_ampersand .and. &
+                          has_leading_ampersand_continuations(source_code)
 
         do iter = 1, 4
             call ast_ctx%from_source(current_code, error_msg)
@@ -208,7 +215,13 @@ contains
             current_code = next_code
         end do
 
-        formatted_code = current_code
+        if (should_preserve) then
+            call preserve_leading_ampersand_lines(source_code, current_code, &
+                                                  preserved_code)
+            formatted_code = preserved_code
+        else
+            formatted_code = current_code
+        end if
 
     end subroutine formatter_format_source
 
