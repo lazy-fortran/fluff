@@ -4,6 +4,7 @@ module fluff_rule_f003
     use fluff_visual_columns, only: visual_columns
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename, current_line_length
+    use fluff_rule_diagnostic_utils, only: push_diagnostic
     implicit none
     private
 
@@ -17,11 +18,8 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
         type(diagnostic_t), allocatable :: buffer(:)
-        type(diagnostic_t), allocatable :: new_buffer(:)
+        type(diagnostic_t), allocatable :: trimmed(:)
         integer :: violation_count
-        integer :: capacity
-        integer :: copy_count
-        integer :: new_capacity
         integer :: line_num
         integer :: max_length
         integer :: line_length
@@ -37,7 +35,6 @@ contains
         if (max_length <= 0) max_length = 88
 
         violation_count = 0
-        capacity = 0
         line_num = 1
         do
             call ctx%get_source_line(line_num, line_text, found)
@@ -46,32 +43,25 @@ contains
             line_length = visual_columns(line_text)
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
-                    violation_count = violation_count + 1
-                    if (violation_count > capacity) then
-                        new_capacity = max(8, 2*capacity)
-                        allocate (new_buffer(new_capacity))
-                        copy_count = min(capacity, violation_count - 1)
-                        if (copy_count > 0) then
-                            new_buffer(1:copy_count) = buffer(1:copy_count)
-                        end if
-                        call move_alloc(new_buffer, buffer)
-                        capacity = new_capacity
-                    end if
-                    buffer(violation_count) = create_f003_diagnostic(line_num, &
-                                                                     line_length, &
-                                                                     max_length)
+                    call push_diagnostic(buffer, violation_count, &
+                                         create_f003_diagnostic(line_num, &
+                                                                line_length, &
+                                                                max_length))
                 end if
             end if
 
             line_num = line_num + 1
         end do
 
-        allocate (violations(violation_count))
         if (violation_count == 0) then
-            return
+            allocate (violations(0))
+        else if (allocated(buffer) .and. violation_count == size(buffer)) then
+            call move_alloc(buffer, violations)
+        else
+            allocate (trimmed(violation_count))
+            trimmed = buffer(1:violation_count)
+            call move_alloc(trimmed, violations)
         end if
-
-        violations = buffer(1:violation_count)
     end subroutine check_f003_line_length
 
     function create_f003_diagnostic(line_num, line_length, max_length) result(diag)
