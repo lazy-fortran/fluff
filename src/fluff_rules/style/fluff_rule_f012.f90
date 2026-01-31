@@ -4,6 +4,8 @@ module fluff_rule_f012
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fluff_rule_file_context, only: current_filename
+    use fluff_text_helpers, only: has_lowercase, has_uppercase, is_lowercase_letter, &
+                                  is_uppercase_letter
     use fortfront, only: declaration_node
     implicit none
     private
@@ -147,43 +149,5 @@ contains
         if (.not. has_lowercase(name)) return
         is_pascal = .true.
     end function is_pascal_case
-
-    pure logical function has_uppercase(name) result(has_upper)
-        character(len=*), intent(in) :: name
-        integer :: i
-
-        has_upper = .false.
-        do i = 1, len(name)
-            if (is_uppercase_letter(name(i:i))) then
-                has_upper = .true.
-                return
-            end if
-        end do
-    end function has_uppercase
-
-    pure logical function has_lowercase(name) result(has_lower)
-        character(len=*), intent(in) :: name
-        integer :: i
-
-        has_lower = .false.
-        do i = 1, len(name)
-            if (is_lowercase_letter(name(i:i))) then
-                has_lower = .true.
-                return
-            end if
-        end do
-    end function has_lowercase
-
-    pure logical function is_lowercase_letter(ch) result(ok)
-        character(len=1), intent(in) :: ch
-
-        ok = (ch >= "a" .and. ch <= "z")
-    end function is_lowercase_letter
-
-    pure logical function is_uppercase_letter(ch) result(ok)
-        character(len=1), intent(in) :: ch
-
-        ok = (ch >= "A" .and. ch <= "Z")
-    end function is_uppercase_letter
 
 end module fluff_rule_f012

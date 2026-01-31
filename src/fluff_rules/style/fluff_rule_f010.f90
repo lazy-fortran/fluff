@@ -4,6 +4,7 @@ module fluff_rule_f010
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
+    use fluff_text_helpers, only: starts_with
     use fluff_token_helpers, only: token_location, first_nontrivia_in_line, &
                                    next_nontrivia_same_line
     use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
@@ -88,18 +89,6 @@ contains
                                  severity=SEVERITY_WARNING))
         end if
     end subroutine check_legacy_comment
-
-    pure logical function starts_with(s, prefix) result(ok)
-        character(len=*), intent(in) :: s
-        character(len=*), intent(in) :: prefix
-
-        integer :: n
-
-        n = len(prefix)
-        ok = .false.
-        if (len(s) < n) return
-        ok = s(1:n) == prefix
-    end function starts_with
 
     subroutine scan_arithmetic_if(tokens, tmp, violation_count)
         type(token_t), allocatable, intent(in) :: tokens(:)
