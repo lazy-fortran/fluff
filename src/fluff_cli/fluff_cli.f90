@@ -266,13 +266,14 @@ contains
 
     ! Run check command
     subroutine run_check_command(app, exit_code)
+        use fluff_fix_applicator, only: apply_fixes_to_file
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
 
         type(fluff_config_t) :: config
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
-        integer :: i
+        integer :: i, fixes_applied
 
         exit_code = 0
 
@@ -297,6 +298,18 @@ contains
                     exit_code = 1
                 else if (allocated(diagnostics)) then
                     if (size(diagnostics) > 0) exit_code = 1
+
+                    if (app%args%fix) then
+                        call apply_fixes_to_file(app%args%files(i), diagnostics, &
+                                                 fixes_applied, error_msg)
+                        if (error_msg /= "") then
+                            print *, "Error applying fixes: ", error_msg
+                        else if (fixes_applied > 0 .and. .not. app%args%quiet) then
+                            print '(A,I0,A,A)', "Applied ", fixes_applied, &
+                                " fix(es) to ", trim(app%args%files(i))
+                        end if
+                    end if
+
                     call print_diagnostics(diagnostics, app%args%output_format)
                 end if
             end do
@@ -309,6 +322,7 @@ contains
 
     ! Run format command
     subroutine run_format_command(app, exit_code)
+        use fluff_fix_applicator, only: read_text_file, write_text_file
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
 
@@ -864,59 +878,6 @@ contains
         call lsp_write_framed_message(response)
     end subroutine handle_formatting_request_framed
 
-    subroutine read_text_file(file_path, content, error_msg)
-        character(len=*), intent(in) :: file_path
-        character(len=:), allocatable, intent(out) :: content
-        character(len=:), allocatable, intent(out) :: error_msg
-
-        integer :: unit, iostat_val
-        character(len=4096) :: line
-        logical :: first
-
-        content = ""
-        error_msg = ""
-        first = .true.
-
-        open (newunit=unit, file=file_path, status="old", action="read", &
-              iostat=iostat_val)
-        if (iostat_val /= 0) then
-            error_msg = "Could not open file"
-            return
-        end if
-
-        do
-            read (unit, '(A)', iostat=iostat_val) line
-            if (iostat_val /= 0) exit
-            if (first) then
-                content = trim(line)
-                first = .false.
-            else
-                content = content//new_line('a')//trim(line)
-            end if
-        end do
-
-        close (unit)
-    end subroutine read_text_file
-
-    subroutine write_text_file(file_path, content, error_msg)
-        character(len=*), intent(in) :: file_path
-        character(len=*), intent(in) :: content
-        character(len=:), allocatable, intent(out) :: error_msg
-
-        integer :: unit, iostat_val
-
-        error_msg = ""
-        open (newunit=unit, file=file_path, status="replace", action="write", &
-              iostat=iostat_val)
-        if (iostat_val /= 0) then
-            error_msg = "Could not open file for writing"
-            return
-        end if
-
-        write (unit, '(A)') content
-        close (unit)
-    end subroutine write_text_file
-
     subroutine print_unified_diff(file_path, original, formatted)
         character(len=*), intent(in) :: file_path
         character(len=*), intent(in) :: original
@@ -1034,7 +995,6 @@ contains
             sarif_output = collection%to_sarif()
             print *, sarif_output
         end select
-
     end subroutine print_diagnostics
 
 end module fluff_cli
