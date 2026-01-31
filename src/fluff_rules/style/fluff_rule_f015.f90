@@ -219,7 +219,6 @@ contains
         integer :: item_start
         integer :: item_end
         integer :: positional_count
-        character(len=:), allocatable :: keyword
 
         open_paren = 0
         i = next_nontrivia(tokens, stmt_idx + 1)
@@ -231,15 +230,7 @@ contains
             end if
         end if
 
-        if (open_paren <= 0) then
-            keyword = ""
-            if (allocated(tokens(stmt_idx)%text)) keyword = &
-                to_lower_ascii(trim(tokens(stmt_idx)%text))
-            if (.not. include_format) return
-            if (keyword /= "read" .and. keyword /= "write") return
-            call collect_positional_format_label(tokens, stmt_idx, referenced_labels)
-            return
-        end if
+        if (open_paren <= 0) return
 
         depth = 1
         positional_count = 0
@@ -276,41 +267,6 @@ contains
             i = i + 1
         end do
     end subroutine collect_io_label_targets
-
-    subroutine collect_positional_format_label(tokens, stmt_idx, referenced_labels)
-        type(token_t), intent(in) :: tokens(:)
-        integer, intent(in) :: stmt_idx
-        integer, allocatable, intent(inout) :: referenced_labels(:)
-
-        integer :: i
-        integer :: line
-        integer :: comma_idx
-        integer :: fmt_idx
-        integer :: label
-        logical :: ok
-
-        line = tokens(stmt_idx)%line
-        comma_idx = 0
-
-        do i = stmt_idx + 1, size(tokens)
-            if (tokens(i)%line /= line) exit
-            if (tokens(i)%kind /= TK_OPERATOR) cycle
-            if (.not. allocated(tokens(i)%text)) cycle
-            if (tokens(i)%text == ",") then
-                comma_idx = i
-                exit
-            end if
-        end do
-        if (comma_idx <= 0) return
-
-        fmt_idx = next_nontrivia_same_line(tokens, comma_idx + 1)
-        if (fmt_idx <= 0) return
-        if (tokens(fmt_idx)%kind /= TK_NUMBER) return
-        if (.not. allocated(tokens(fmt_idx)%text)) return
-        call parse_label(tokens(fmt_idx)%text, label, ok)
-        if (.not. ok) return
-        call push_int_unique(referenced_labels, label)
-    end subroutine collect_positional_format_label
 
     subroutine parse_io_control_item(tokens, item_start, item_end, &
                                      positional_count, referenced_labels, &
