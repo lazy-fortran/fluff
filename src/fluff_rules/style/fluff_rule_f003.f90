@@ -1,10 +1,11 @@
 module fluff_rule_f003
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
-    use fluff_visual_columns, only: visual_columns
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename, current_line_length
     use fluff_rule_diagnostic_utils, only: push_diagnostic
+    use fluff_text_helpers, only: is_comment_only_line, int_to_str
+    use fluff_visual_columns, only: visual_columns
     implicit none
     private
 
@@ -85,27 +86,5 @@ contains
                location=location, &
                severity=SEVERITY_WARNING)
     end function create_f003_diagnostic
-
-    logical function is_comment_only_line(line_text) result(is_comment)
-        character(len=*), intent(in) :: line_text
-
-        integer :: i
-        character(len=1) :: ch
-
-        is_comment = .false.
-        do i = 1, len(line_text)
-            ch = line_text(i:i)
-            if (ch == " " .or. ch == achar(9) .or. ch == achar(13)) cycle
-            is_comment = (ch == "!")
-            return
-        end do
-    end function is_comment_only_line
-
-    function int_to_str(i) result(str)
-        integer, intent(in) :: i
-        character(len=20) :: str
-
-        write (str, "(I0)") i
-    end function int_to_str
 
 end module fluff_rule_f003
