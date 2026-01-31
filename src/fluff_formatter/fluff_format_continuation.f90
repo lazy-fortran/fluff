@@ -229,8 +229,12 @@ contains
             c = line(pos:pos)
             if (in_string) then
                 if (c == quote_char) then
-                    if (pos < trim_len .and. line(pos + 1:pos + 1) == quote_char) then
-                        pos = pos + 1
+                    if (pos < trim_len) then
+                        if (line(pos + 1:pos + 1) == quote_char) then
+                            pos = pos + 1
+                        else
+                            in_string = .false.
+                        end if
                     else
                         in_string = .false.
                     end if
@@ -249,7 +253,8 @@ contains
 
         if (comment_start > 0) then
             pos = comment_start - 1
-            do while (pos > 0 .and. line(pos:pos) == ' ')
+            do while (pos > 0)
+                if (line(pos:pos) /= ' ') exit
                 pos = pos - 1
             end do
         else
