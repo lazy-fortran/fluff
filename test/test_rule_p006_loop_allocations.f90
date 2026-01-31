@@ -11,6 +11,8 @@ program test_rule_p006_loop_allocations
 
     call test_allocate_inside_loop_triggers()
     call test_allocate_outside_loop_is_ok()
+    call test_deallocate_inside_loop_triggers()
+    call test_nested_loop_allocate()
 
     print *, "[OK] All P006 tests passed!"
 
@@ -71,5 +73,73 @@ contains
                                         "allocate outside loop should not be flagged")
         print *, "[OK] Allocate outside loop"
     end subroutine test_allocate_outside_loop_is_ok
+
+    subroutine test_deallocate_inside_loop_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+        integer :: count, j
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "integer :: i"//new_line('a')// &
+                    "real, allocatable :: a(:)"//new_line('a')// &
+                    "allocate(a(10))"//new_line('a')// &
+                    "do i = 1, 10"//new_line('a')// &
+                    "    a = real(i)"//new_line('a')// &
+                    "    deallocate(a)"//new_line('a')// &
+                    "    allocate(a(10))"//new_line('a')// &
+                    "end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p006_dealloc", path)
+        call write_text_file(path, test_code)
+        call lint_file_checked(linter, path, diagnostics)
+        call delete_file_if_exists(path)
+
+        count = 0
+        if (allocated(diagnostics)) then
+            do j = 1, size(diagnostics)
+                if (diagnostics(j)%code == "P006") count = count + 1
+            end do
+        end if
+
+        if (count < 2) then
+            print *, "[FAIL] Expected at least 2 P006 diagnostics for alloc+dealloc"
+            error stop
+        end if
+        print *, "[OK] Deallocate inside loop triggers"
+    end subroutine test_deallocate_inside_loop_triggers
+
+    subroutine test_nested_loop_allocate()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "implicit none"//new_line('a')// &
+                    "integer :: i, j"//new_line('a')// &
+                    "real, allocatable :: a(:)"//new_line('a')// &
+                    "do i = 1, 10"//new_line('a')// &
+                    "    do j = 1, 10"//new_line('a')// &
+                    "        allocate(a(j))"//new_line('a')// &
+                    "        deallocate(a)"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p006_nested", path)
+        call write_text_file(path, test_code)
+        call lint_file_checked(linter, path, diagnostics)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P006", .true., &
+                                        "nested loop allocate should be flagged")
+        print *, "[OK] Nested loop allocate"
+    end subroutine test_nested_loop_allocate
 
 end program test_rule_p006_loop_allocations
