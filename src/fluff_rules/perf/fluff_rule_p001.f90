@@ -5,7 +5,8 @@ module fluff_rule_p001
     use fortfront, only: assignment_node, call_or_subscript_node, do_loop_node, &
                          identifier_node, binary_op_node, if_node, &
                          select_case_node, &
-                         case_block_node, case_default_node, where_node
+                         case_block_node, case_default_node, where_node, &
+                         print_statement_node, subroutine_call_node
     implicit none
     private
 
@@ -278,6 +279,56 @@ contains
                                               inner_var, &
                                               reported, reported_count, tmp, &
                                               violation_count)
+            return
+        type is (print_statement_node)
+            if (allocated(n%expression_indices)) then
+                do i = 1, size(n%expression_indices)
+                    if (n%expression_indices(i) > 0) then
+                        call collect_inefficient_accesses( &
+                            ctx, n%expression_indices(i), outer_var, inner_var, &
+                            reported, reported_count, tmp, violation_count)
+                    end if
+                end do
+            end if
+            return
+        type is (subroutine_call_node)
+            if (allocated(n%arg_indices)) then
+                do i = 1, size(n%arg_indices)
+                    if (n%arg_indices(i) > 0) then
+                        call collect_inefficient_accesses(ctx, n%arg_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, reported_count, &
+                                                          tmp, violation_count)
+                    end if
+                end do
+            end if
+            return
+        type is (if_node)
+            if (n%condition_index > 0) then
+                call collect_inefficient_accesses(ctx, n%condition_index, outer_var, &
+                                                  inner_var, reported, reported_count, &
+                                                  tmp, violation_count)
+            end if
+            if (allocated(n%then_body_indices)) then
+                do i = 1, size(n%then_body_indices)
+                    if (n%then_body_indices(i) > 0) then
+                        call collect_inefficient_accesses(ctx, n%then_body_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, reported_count, &
+                                                          tmp, violation_count)
+                    end if
+                end do
+            end if
+            if (allocated(n%else_body_indices)) then
+                do i = 1, size(n%else_body_indices)
+                    if (n%else_body_indices(i) > 0) then
+                        call collect_inefficient_accesses(ctx, n%else_body_indices(i), &
+                                                          outer_var, inner_var, &
+                                                          reported, reported_count, &
+                                                          tmp, violation_count)
+                    end if
+                end do
+            end if
             return
         end select
 
