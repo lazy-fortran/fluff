@@ -1,6 +1,7 @@
 module fluff_incremental_analyzer
     use fluff_core
     use fluff_lsp_performance
+    use fluff_incremental_types
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
                          lex_source, parse_tokens, analyze_semantics, &
                          create_ast_arena, create_semantic_context, &
@@ -16,87 +17,25 @@ module fluff_incremental_analyzer
     public :: work_schedule_t
     public :: resource_stats_t
 
-    ! Configuration for incremental analysis
-    type :: incremental_config_t
-        logical :: enable_caching = .true.
-        integer :: max_cache_size = 1000
-        logical :: enable_parallel = .false.
-        integer :: max_parallel_jobs = 4
-        real :: cache_timeout_hours = 24.0
-    end type incremental_config_t
-
-    ! Analysis results
-    type :: analysis_results_t
-        integer :: file_count = 0
-        integer :: error_count = 0
-        integer :: warning_count = 0
-        character(len=:), allocatable :: files(:)
-        logical :: is_valid = .true.
-    end type analysis_results_t
-
-    ! Cache statistics
-    type :: cache_stats_t
-        real :: hit_rate = 0.0
-        integer :: total_requests = 0
-        integer :: cache_hits = 0
-        integer :: cache_misses = 0
-    end type cache_stats_t
-
-    ! Work schedule for parallel processing
-    type :: work_schedule_t
-        integer :: task_count = 0
-        character(len=:), allocatable :: tasks(:)
-        integer, allocatable :: priorities(:)
-    end type work_schedule_t
-
-    ! Resource usage statistics
-    type :: resource_stats_t
-        integer :: memory_usage = 0
-        real :: cpu_usage = 0.0
-        integer :: active_jobs = 0
-    end type resource_stats_t
-
-    ! Dependency node
-    type :: dependency_node_t
-        character(len=:), allocatable :: file_path
-        character(len=:), allocatable :: dependencies(:)
-        integer :: dependency_count = 0
-        logical :: is_up_to_date = .false.
-        logical :: requires_analysis = .false.
-    end type dependency_node_t
-
-    ! Cached analysis result
-    type :: cached_result_t
-        character(len=:), allocatable :: file_path
-        type(analysis_results_t) :: results
-        integer :: timestamp
-        logical :: is_valid = .true.
-    end type cached_result_t
-
     ! Incremental analyzer
     type :: incremental_analyzer_t
         logical :: initialized = .false.
         type(incremental_config_t) :: config
 
-        ! Dependency tracking
         type(dependency_node_t), allocatable :: nodes(:)
         integer :: node_count = 0
         logical :: dependency_tracking_enabled = .false.
 
-        ! Change tracking
         character(len=:), allocatable :: changed_files(:)
         integer :: changed_count = 0
         logical :: needs_full_rebuild = .false.
 
-        ! Results caching
         type(cached_result_t), allocatable :: cache(:)
         integer :: cache_count = 0
         type(cache_stats_t) :: cache_stats
 
-        ! Performance monitoring
         type(lsp_performance_monitor_t) :: monitor
 
-        ! Parallel processing
         logical :: parallel_enabled = .false.
         type(work_schedule_t) :: current_schedule
         type(resource_stats_t) :: resource_stats
@@ -130,38 +69,31 @@ module fluff_incremental_analyzer
         procedure :: create_work_schedule
         procedure :: get_resource_stats
 
-        ! Private helper methods
         procedure, private :: mark_file_for_analysis
     end type incremental_analyzer_t
 
 contains
 
-    ! Create incremental analyzer
     function create_incremental_analyzer(config) result(analyzer)
         type(incremental_config_t), intent(in), optional :: config
         type(incremental_analyzer_t) :: analyzer
 
         analyzer%initialized = .true.
 
-        ! Set configuration
         if (present(config)) then
             analyzer%config = config
         else
-            ! Use defaults
             analyzer%config%enable_caching = .true.
             analyzer%config%max_cache_size = 1000
             analyzer%config%enable_parallel = .false.
         end if
 
-        ! Initialize arrays
-        allocate (analyzer%nodes(100))  ! Pre-allocate
+        allocate (analyzer%nodes(100))
         allocate (character(len=256) :: analyzer%changed_files(50))
         allocate (analyzer%cache(analyzer%config%max_cache_size))
 
-        ! Initialize performance monitoring
         analyzer%monitor = create_performance_monitor(.true.)
 
-        ! Initialize statistics
         analyzer%cache_stats%hit_rate = 0.0
         analyzer%cache_stats%total_requests = 0
         analyzer%cache_stats%cache_hits = 0
@@ -173,7 +105,6 @@ contains
 
     end function create_incremental_analyzer
 
-    ! Check if analyzer is initialized
     function is_initialized(this) result(initialized)
         class(incremental_analyzer_t), intent(in) :: this
         logical :: initialized
@@ -182,7 +113,6 @@ contains
 
     end function is_initialized
 
-    ! Initialize dependency tracking
     subroutine initialize_dependency_tracking(this)
         class(incremental_analyzer_t), intent(inout) :: this
 
@@ -191,7 +121,6 @@ contains
 
     end subroutine initialize_dependency_tracking
 
-    ! Check if dependency tracking is enabled
     function is_dependency_tracking_enabled(this) result(enabled)
         class(incremental_analyzer_t), intent(in) :: this
         logical :: enabled
@@ -200,7 +129,6 @@ contains
 
     end function is_dependency_tracking_enabled
 
-    ! Build dependency graph
     subroutine build_dependency_graph(this, files)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: files(:)
@@ -232,7 +160,6 @@ contains
 
     end subroutine build_dependency_graph
 
-    ! Get node count
     function get_node_count(this) result(count)
         class(incremental_analyzer_t), intent(in) :: this
         integer :: count
@@ -241,7 +168,6 @@ contains
 
     end function get_node_count
 
-    ! Update dependencies for a file using fortfront AST analysis
     subroutine update_dependencies(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -254,10 +180,8 @@ contains
         integer :: root_index, i, j, file_unit
         logical :: file_exists
 
-        ! Check if file exists
         inquire (file=file_path, exist=file_exists)
         if (.not. file_exists) then
-            ! For test purposes, mark as up-to-date even if file doesn't exist
             do i = 1, this%node_count
                 if (allocated(this%nodes(i)%file_path)) then
                     if (this%nodes(i)%file_path == file_path) then
@@ -270,7 +194,6 @@ contains
             return
         end if
 
-        ! Read source file
         open (newunit=file_unit, file=file_path, status='old', action='read')
         source_code = ""
         block
@@ -284,7 +207,6 @@ contains
         end block
         close (file_unit)
 
-        ! Parse with fortfront
         arena = create_ast_arena()
         call lex_source(source_code, tokens, error_msg)
         if (error_msg /= "") return
@@ -295,17 +217,14 @@ contains
         call create_semantic_context(semantic_ctx)
         call analyze_semantics(arena, root_index)
 
-        ! Extract dependencies using fortfront API
         identifiers = get_identifiers_in_subtree(arena, root_index)
 
-        ! Update dependency node
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
                 if (this%nodes(i)%file_path == file_path) then
                     this%nodes(i)%is_up_to_date = .true.
                     this%nodes(i)%dependency_count = size(identifiers)
 
-              ! Store dependencies (filter for 'use' statements and module dependencies)
                     j = 0
                     do while (j < size(identifiers) .and. j < &
                               size(this%nodes(i)%dependencies))
@@ -321,7 +240,6 @@ contains
 
     end subroutine update_dependencies
 
-    ! Check if file is up to date
     function is_up_to_date(this, file_path) result(up_to_date)
         class(incremental_analyzer_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
@@ -341,14 +259,12 @@ contains
 
     end function is_up_to_date
 
-    ! Add dependency relationship
     subroutine add_dependency(this, dependent_file, dependency_file)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: dependent_file, dependency_file
 
         integer :: i, node_idx
 
-        ! Find or create the dependent node
         node_idx = 0
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
@@ -359,7 +275,6 @@ contains
             end if
         end do
 
-        ! Create node if it doesn't exist
         if (node_idx == 0) then
             if (this%node_count < size(this%nodes)) then
                 this%node_count = this%node_count + 1
@@ -372,7 +287,6 @@ contains
             end if
         end if
 
-        ! Also ensure dependency file has a node
         block
             logical :: dep_exists
             dep_exists = .false.
@@ -398,19 +312,18 @@ contains
             end if
         end block
 
-        ! Add dependency if node found
         if (node_idx > 0) then
             if (this%nodes(node_idx)%dependency_count < &
                 size(this%nodes(node_idx)%dependencies)) then
                 this%nodes(node_idx)%dependency_count = &
                     this%nodes(node_idx)%dependency_count + 1
-                this%nodes(node_idx)%dependencies(this%nodes(node_idx)%dependency_count) = dependency_file
+                this%nodes(node_idx)%dependencies( &
+                    this%nodes(node_idx)%dependency_count) = dependency_file
             end if
         end if
 
     end subroutine add_dependency
 
-    ! Check for circular dependencies
     function has_circular_dependencies(this) result(has_cycles)
         class(incremental_analyzer_t), intent(in) :: this
         logical :: has_cycles
@@ -419,18 +332,15 @@ contains
 
         has_cycles = .false.
 
-   ! Simple cycle detection: check if any dependency appears in its own dependency chain
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
                 do j = 1, this%nodes(i)%dependency_count
                     if (.not. allocated(this%nodes(i)%dependencies)) cycle
                     if (j > size(this%nodes(i)%dependencies)) cycle
-                    ! Check if dependency depends back on this file
                     do k = 1, this%node_count
                         if (allocated(this%nodes(k)%file_path)) then
                             if (this%nodes(k)%file_path == &
                                 this%nodes(i)%dependencies(j)) then
-                                ! Check if node k depends on node i
                                 if (allocated(this%nodes(k)%dependencies)) then
                                     do l = 1, this%nodes(k)%dependency_count
                                         if (l <= size(this%nodes(k)%dependencies)) then
@@ -442,9 +352,9 @@ contains
                                         end if
                                     end do
                                 end if
-                                ! Check if k depends on i
-               if (any(this%nodes(k)%dependencies(1:this%nodes(k)%dependency_count) == &
-                                        this%nodes(i)%file_path)) then
+                                if (any(this%nodes(k)%dependencies( &
+                                    1:this%nodes(k)%dependency_count) == &
+                                    this%nodes(i)%file_path)) then
                                     has_cycles = .true.
                                     return
                                 end if
@@ -457,7 +367,6 @@ contains
 
     end function has_circular_dependencies
 
-    ! Get transitive dependencies
     function get_transitive_dependencies(this, file_path) result(deps)
         class(incremental_analyzer_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
@@ -475,7 +384,6 @@ contains
         queue_start = 1
         queue_end = 0
 
-        ! Find the starting node
         node_idx = 0
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
@@ -487,7 +395,6 @@ contains
         end do
 
         if (node_idx > 0) then
-            ! Add direct dependencies to queue
             do i = 1, this%nodes(node_idx)%dependency_count
                 if (i <= size(this%nodes(node_idx)%dependencies)) then
                     queue_end = queue_end + 1
@@ -497,13 +404,10 @@ contains
                 end if
             end do
 
-            ! Process queue to find transitive dependencies
             do while (queue_start <= queue_end)
-                ! Find node for current dependency
                 do i = 1, this%node_count
                     if (allocated(this%nodes(i)%file_path)) then
                         if (this%nodes(i)%file_path == queue(queue_start)) then
-                            ! Add its dependencies if not already added
                             do j = 1, this%nodes(i)%dependency_count
                                 if (j <= size(this%nodes(i)%dependencies)) then
                                     already_added = .false.
@@ -543,7 +447,6 @@ contains
 
     end function get_transitive_dependencies
 
-    ! Handle file change
     subroutine file_changed(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -556,7 +459,6 @@ contains
             this%changed_files(this%changed_count) = file_path
         end if
 
-        ! Check if node exists, create if not
         node_exists = .false.
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
@@ -568,7 +470,6 @@ contains
         end do
 
         if (.not. node_exists) then
-            ! Add node for this file
             if (this%node_count < size(this%nodes)) then
                 this%node_count = this%node_count + 1
                 this%nodes(this%node_count)%file_path = file_path
@@ -579,13 +480,11 @@ contains
                 this%nodes(this%node_count)%requires_analysis = .true.
             end if
         else
-            ! Mark file as requiring analysis
             call this%mark_file_for_analysis(file_path)
         end if
 
     end subroutine file_changed
 
-    ! Get affected files (including dependent files)
     function get_affected_files(this) result(files)
         class(incremental_analyzer_t), intent(in) :: this
         character(len=:), allocatable :: files(:)
@@ -598,7 +497,6 @@ contains
         allocate (temp_files(max_files))
         count = 0
 
-        ! Add changed files
         do i = 1, this%changed_count
             if (len_trim(this%changed_files(i)) > 0) then
                 count = count + 1
@@ -606,10 +504,8 @@ contains
             end if
         end do
 
-        ! Add files that depend on changed files
         do i = 1, this%changed_count
             if (len_trim(this%changed_files(i)) > 0) then
-                ! Find all files that depend on this changed file
                 do j = 1, this%node_count
                     if (allocated(this%nodes(j)%file_path) .and. &
                         allocated(this%nodes(j)%dependencies)) then
@@ -617,7 +513,6 @@ contains
                             if (k <= size(this%nodes(j)%dependencies)) then
                                 if (this%nodes(j)%dependencies(k) == &
                                     this%changed_files(i)) then
-                                    ! Check if not already added
                                     already_added = .false.
                                     block
                                         integer :: m
@@ -653,7 +548,6 @@ contains
 
     end function get_affected_files
 
-    ! Handle interface change using fortfront semantic analysis
     subroutine interface_changed(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -666,7 +560,6 @@ contains
         integer :: root_index, file_unit, i
         logical :: file_exists, interface_differs
 
-        ! Read current file and analyze its interface
         inquire (file=file_path, exist=file_exists)
         if (.not. file_exists) then
             this%needs_full_rebuild = .true.
@@ -674,7 +567,6 @@ contains
             return
         end if
 
-        ! Read source file
         open (newunit=file_unit, file=file_path, status='old', action='read')
         source_code = ""
         block
@@ -688,11 +580,9 @@ contains
         end block
         close (file_unit)
 
-        ! Analyze with fortfront
         arena = create_ast_arena()
         call lex_source(source_code, tokens, error_msg)
         if (error_msg /= "") then
-            ! Parse error - treat as major interface change
             this%needs_full_rebuild = .true.
             call this%file_changed(file_path)
             return
@@ -708,10 +598,8 @@ contains
         call create_semantic_context(semantic_ctx)
         call analyze_semantics(arena, root_index)
 
-     ! Extract interface signatures (simplified - could use more sophisticated analysis)
         current_interface = extract_interface_signatures(arena, root_index)
 
-        ! Compare with cached interface if available
         cached_interface = get_cached_interface(this, file_path)
         interface_differs = .not. interfaces_equal(current_interface, cached_interface)
 
@@ -724,7 +612,6 @@ contains
 
     end subroutine interface_changed
 
-    ! Handle configuration change
     subroutine config_changed(this, config_file)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: config_file
@@ -734,7 +621,6 @@ contains
 
     end subroutine config_changed
 
-    ! Check if full rebuild is required
     function requires_full_rebuild(this) result(requires_full)
         class(incremental_analyzer_t), intent(in) :: this
         logical :: requires_full
@@ -743,7 +629,6 @@ contains
 
     end function requires_full_rebuild
 
-    ! Get files to analyze
     function get_files_to_analyze(this) result(files)
         class(incremental_analyzer_t), intent(in) :: this
         character(len=:), allocatable :: files(:)
@@ -777,7 +662,6 @@ contains
 
     end function get_files_to_analyze
 
-    ! Mark file as analyzed
     subroutine mark_file_analyzed(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -796,7 +680,6 @@ contains
 
     end subroutine mark_file_analyzed
 
-    ! Merge analysis results
     subroutine merge_results(this, results1, results2, merged)
         class(incremental_analyzer_t), intent(inout) :: this
         type(analysis_results_t), intent(in) :: results1, results2
@@ -809,7 +692,6 @@ contains
 
     end subroutine merge_results
 
-    ! Cache analysis results
     subroutine cache_results(this, file_path, results)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -825,7 +707,6 @@ contains
 
     end subroutine cache_results
 
-    ! Check if cached results exist
     function has_cached_results(this, file_path) result(has_cache)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -844,7 +725,6 @@ contains
             end if
         end do
 
-        ! Update cache statistics
         this%cache_stats%total_requests = this%cache_stats%total_requests + 1
         if (has_cache) then
             this%cache_stats%cache_hits = this%cache_stats%cache_hits + 1
@@ -859,7 +739,6 @@ contains
 
     end function has_cached_results
 
-    ! Invalidate cache entry
     subroutine invalidate_cache(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -877,7 +756,6 @@ contains
 
     end subroutine invalidate_cache
 
-    ! Get cache statistics
     function get_cache_stats(this) result(stats)
         class(incremental_analyzer_t), intent(in) :: this
         type(cache_stats_t) :: stats
@@ -886,17 +764,14 @@ contains
 
     end function get_cache_stats
 
-    ! Get cache memory usage
     function get_cache_memory_usage(this) result(usage)
         class(incremental_analyzer_t), intent(in) :: this
         integer :: usage
 
-        ! Simple estimation
-        usage = this%cache_count*1024  ! 1KB per cached result
+        usage = this%cache_count*1024
 
     end function get_cache_memory_usage
 
-    ! Enable parallel analysis
     subroutine enable_parallel_analysis(this, enabled)
         class(incremental_analyzer_t), intent(inout) :: this
         logical, intent(in) :: enabled
@@ -906,7 +781,6 @@ contains
 
     end subroutine enable_parallel_analysis
 
-    ! Check if parallel analysis is enabled
     function is_parallel_enabled(this) result(enabled)
         class(incremental_analyzer_t), intent(in) :: this
         logical :: enabled
@@ -915,7 +789,6 @@ contains
 
     end function is_parallel_enabled
 
-    ! Create work schedule
     function create_work_schedule(this) result(schedule)
         class(incremental_analyzer_t), intent(in) :: this
         type(work_schedule_t) :: schedule
@@ -941,14 +814,13 @@ contains
                 if (this%nodes(i)%requires_analysis) then
                     count = count + 1
                     schedule%tasks(count) = this%nodes(i)%file_path
-                    schedule%priorities(count) = 1  ! Default priority
+                    schedule%priorities(count) = 1
                 end if
             end if
         end do
 
     end function create_work_schedule
 
-    ! Get resource statistics
     function get_resource_stats(this) result(stats)
         class(incremental_analyzer_t), intent(in) :: this
         type(resource_stats_t) :: stats
@@ -958,16 +830,12 @@ contains
 
     end function get_resource_stats
 
-    ! Private helper methods
-
-    ! Mark file for analysis
     subroutine mark_file_for_analysis(this, file_path)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
 
         integer :: i, j
 
-        ! Mark the file itself for analysis
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path)) then
                 if (this%nodes(i)%file_path == file_path) then
@@ -978,7 +846,6 @@ contains
             end if
         end do
 
-        ! Also mark files that depend on this file for analysis
         do i = 1, this%node_count
             if (allocated(this%nodes(i)%file_path) .and. &
                 allocated(this%nodes(i)%dependencies)) then
@@ -995,9 +862,6 @@ contains
 
     end subroutine mark_file_for_analysis
 
-    ! Helper functions for interface analysis
-
-    ! Extract interface signatures from AST using fortfront
     function extract_interface_signatures(arena, root_index) result(signatures)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: root_index
@@ -1007,10 +871,8 @@ contains
         character(len=256) :: signature
         integer :: i, sig_count
 
-        ! Get all identifiers in the AST
         identifiers = get_identifiers_in_subtree(arena, root_index)
 
-        ! Extract function/subroutine signatures, module exports, etc.
         sig_count = 0
         do i = 1, size(identifiers)
             if (is_public_interface_identifier(identifiers(i))) then
@@ -1035,12 +897,10 @@ contains
 
     end function extract_interface_signatures
 
-    ! Check if identifier represents a public interface element
     function is_public_interface_identifier(identifier) result(is_public)
         character(len=*), intent(in) :: identifier
         logical :: is_public
 
-        ! Simplified logic - in reality would check AST node types
         is_public = len_trim(identifier) > 0 .and. &
                     (index(identifier, 'function') > 0 .or. &
                      index(identifier, 'subroutine') > 0 .or. &
@@ -1048,7 +908,6 @@ contains
 
     end function is_public_interface_identifier
 
-    ! Get cached interface for a file
     function get_cached_interface(this, file_path) result(interface)
         class(incremental_analyzer_t), intent(in) :: this
         character(len=*), intent(in) :: file_path
@@ -1056,24 +915,20 @@ contains
 
         integer :: i
 
-        ! Search cache for interface
         do i = 1, this%cache_count
             if (allocated(this%cache(i)%file_path)) then
                 if (this%cache(i)%file_path == file_path) then
-                    ! Found cached interface - return it
                     allocate (character(len=256) :: interface(1))
-                    interface(1) = "cached_interface"  ! Simplified
+                    interface(1) = "cached_interface"
                     return
                 end if
             end if
         end do
 
-        ! No cached interface found
         allocate (character(len=1) :: interface(0))
 
     end function get_cached_interface
 
-    ! Compare two interface signatures
     function interfaces_equal(interface1, interface2) result(equal)
         character(len=*), intent(in) :: interface1(:), interface2(:)
         logical :: equal
@@ -1082,10 +937,8 @@ contains
 
         equal = .false.
 
-        ! Check if sizes match
         if (size(interface1) /= size(interface2)) return
 
-        ! Check if all signatures match
         do i = 1, size(interface1)
             if (interface1(i) /= interface2(i)) return
         end do
@@ -1094,7 +947,6 @@ contains
 
     end function interfaces_equal
 
-    ! Cache interface signatures for a file
     subroutine cache_interface(this, file_path, interface)
         class(incremental_analyzer_t), intent(inout) :: this
         character(len=*), intent(in) :: file_path
@@ -1102,7 +954,6 @@ contains
 
         integer :: i, cache_slot
 
-        ! Find existing cache slot or create new one
         cache_slot = 0
         do i = 1, this%cache_count
             if (allocated(this%cache(i)%file_path)) then
@@ -1122,7 +973,6 @@ contains
             this%cache(cache_slot)%file_path = file_path
             call system_clock(this%cache(cache_slot)%timestamp)
             this%cache(cache_slot)%is_valid = .true.
-            ! Store interface info in results (simplified)
             this%cache(cache_slot)%results%file_count = size(interface)
         end if
 

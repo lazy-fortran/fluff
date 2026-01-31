@@ -2,6 +2,7 @@ module fluff_dead_code_detection
     use fluff_core
     use fluff_diagnostics
     use fluff_ast
+    use fluff_dead_code_types
     use ast_nodes_misc, only: module_procedure_node, visibility_statement_node
     use ast_nodes_transfer, only: goto_node
     use fortfront, only: ast_arena_t, semantic_context_t, &
@@ -29,59 +30,8 @@ module fluff_dead_code_detection
     public :: unused_variable_t
     public :: unreachable_code_t
 
-    ! Unused variable information
-    type, public :: unused_variable_t
-        character(len=:), allocatable :: variable_name
-        character(len=:), allocatable :: scope_name
-        integer :: declaration_line = 0
-        integer :: declaration_column = 0
-        logical :: is_parameter = .false.
-        logical :: is_dummy_argument = .false.
-        logical :: has_initialization = .false.
-        character(len=:), allocatable :: variable_type
-    contains
-        procedure :: to_diagnostic => unused_variable_to_diagnostic
-    end type unused_variable_t
-
-    ! Unreachable code information
-    type, public :: unreachable_code_t
-        integer :: start_line = 0
-        integer :: end_line = 0
-        integer :: start_column = 0
-        integer :: end_column = 0
-        character(len=:), allocatable :: reason  ! e.g., "after_return"
-        character(len=:), allocatable :: code_snippet
-    contains
-        procedure :: to_diagnostic => unreachable_code_to_diagnostic
-    end type unreachable_code_t
-
-    ! Dead code analyzer for AST-based analysis
-    type, public :: dead_code_visitor_t
-        type(unused_variable_t), allocatable :: unused_variables(:)
-        type(unreachable_code_t), allocatable :: unreachable_code_blocks(:)
-        integer :: unused_count = 0
-        integer :: unreachable_count = 0
-        character(len=:), allocatable :: declared_variables(:)
-        character(len=:), allocatable :: used_variables(:)
-        character(len=:), allocatable :: self_assigned_only(:)
-        integer :: declared_count = 0
-        integer :: used_count = 0
-        integer :: self_assigned_count = 0
-        logical :: after_terminating_statement = .false.
-    contains
-        ! Additional procedures for analysis
-        procedure :: add_declared_variable => dc_add_declared_variable
-        procedure :: add_used_variable => dc_add_used_variable
-        procedure :: add_self_assigned_only => dc_add_self_assigned_only
-        procedure :: is_variable_used => dc_is_variable_used
-        procedure :: is_only_self_assigned => dc_is_only_self_assigned
-        procedure :: add_unreachable_code => dc_add_unreachable_code
-        procedure :: finalize_analysis => dc_finalize_analysis
-        procedure :: clear => dc_clear
-    end type dead_code_visitor_t
-
     ! Main dead code detector using AST analysis
-    type, public :: dead_code_detector_t
+    type :: dead_code_detector_t
         type(dead_code_visitor_t) :: visitor
         type(ast_arena_t) :: arena
         type(semantic_context_t) :: sem_ctx
@@ -110,7 +60,6 @@ module fluff_dead_code_detection
 
 contains
 
-    ! AST-based dead code detection using fortfront APIs
     function detector_analyze_source_ast(this, source_code, file_path) &
         result(found_dead_code)
         use fortfront, only: token_t
@@ -119,48 +68,35 @@ contains
         character(len=*), intent(in) :: file_path
         logical :: found_dead_code
 
-        ! Local variables
         character(len=:), allocatable :: source_copy
         type(token_t), allocatable :: tokens(:)
         character(len=:), allocatable :: error_msg
         integer :: i, prog_index
 
         found_dead_code = .false.
-
-        ! Clear previous results
         call this%clear()
 
-        ! Parse source code using fortfront AST API
         call lex_source(source_code, tokens, error_msg)
         if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
-            ! Skip analysis if parsing fails
             return
         end if
 
         this%arena = create_ast_arena()
         call parse_tokens(tokens, this%arena, prog_index, error_msg)
         if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
-            ! Skip analysis if parsing fails
             return
         end if
 
         call create_semantic_context(this%sem_ctx)
         call analyze_semantics(this%arena, prog_index)
 
-        ! Clear visitor state
         call this%visitor%clear()
-
-        ! 1. Detect unreachable code after return/stop statements
         call this%detect_unreachable_code()
-
         call this%detect_goto_unreachable_code_ast()
 
-        ! 2. Build call graph for unused procedure detection
         this%call_graph = build_call_graph_from_arena(this%arena, prog_index)
         call this%analyze_unused_procedures()
 
-        ! 3. Analyze variable usage for unused variables
-        ! Process all nodes to collect declarations and usages
         do i = 1, this%arena%size
             if (i > 0 .and. i <= this%arena%size .and. &
                 allocated(this%arena%entries(i)%node)) then
@@ -168,12 +104,8 @@ contains
             end if
         end do
 
-        ! Note: Some constructs may not be fully analyzed due to fortfront limitations
-
-        ! Finalize analysis to identify unused variables
         call this%visitor%finalize_analysis()
 
-        ! Check if we found any dead code
         found_dead_code = this%visitor%unused_count > 0 .or. &
                           this%visitor%unreachable_count > 0
 
@@ -190,7 +122,6 @@ contains
 
         idx = 1
 
-        ! Add unused variable diagnostics
         if (allocated(this%visitor%unused_variables)) then
             do i = 1, size(this%visitor%unused_variables)
                 diagnostics(idx) = this%visitor%unused_variables(i)%to_diagnostic()
@@ -198,7 +129,6 @@ contains
             end do
         end if
 
-        ! Add unreachable code diagnostics
         if (allocated(this%visitor%unreachable_code_blocks)) then
             do i = 1, size(this%visitor%unreachable_code_blocks)
                 diagnostics(idx) = &
@@ -216,44 +146,30 @@ contains
 
     end subroutine detector_clear
 
-    ! Detect unreachable code by analyzing control flow in AST
     subroutine detector_detect_unreachable_code(this)
         class(dead_code_detector_t), intent(inout) :: this
         integer :: i, node_type
 
-        ! Detect unreachable code using AST traversal
-
-        ! For each node, check if it's a terminating statement
         do i = 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
 
-            ! Get the node type using proper fortfront API
             node_type = get_node_type_id_from_arena(this%arena, i)
 
-            ! Check if this node is a terminating statement
             select case (node_type)
             case (NODE_RETURN)
-                ! Only mark subsequent code as unreachable if this is an unconditional return
-                ! (i.e., not inside a conditional block like if/then)
                 if (this%is_unconditional_terminator(i)) then
                     call this%mark_subsequent_unreachable(i)
-                else
-                    ! Return is conditional - don't mark subsequent code as unreachable
                 end if
             case (NODE_STOP)
-                ! Only mark subsequent code as unreachable if this is an unconditional stop
                 if (this%is_unconditional_terminator(i)) then
                     call this%mark_subsequent_unreachable(i)
                 end if
             case (NODE_CYCLE, NODE_EXIT)
-                ! These also make subsequent code unreachable in some cases
-                ! But only if unconditional
                 if (this%is_unconditional_terminator(i)) then
                     call this%mark_subsequent_unreachable(i)
                 end if
             end select
 
-            ! Also check for impossible conditions (if_node with literal false)
             select type (node => this%arena%entries(i)%node)
             type is (if_node)
                 call this%check_impossible_condition(i)
@@ -262,7 +178,6 @@ contains
 
     end subroutine detector_detect_unreachable_code
 
-    ! Mark subsequent statements in the same block as unreachable
     subroutine detector_mark_subsequent_unreachable(this, terminator_idx)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: terminator_idx
@@ -271,27 +186,19 @@ contains
 
         if (terminator_idx <= 0 .or. terminator_idx > this%arena%size) return
 
-        ! Mark subsequent unreachable statements
-
         terminator_depth = this%arena%entries(terminator_idx)%depth
         parent_idx = this%arena%entries(terminator_idx)%parent_index
         in_same_block = .true.
 
-        ! Look for sibling nodes after the terminator
         do i = terminator_idx + 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
 
-            ! Stop marking as unreachable if we've left the terminator's immediate block
-            ! If depth is less than terminator, we've exited to a parent scope
             if (this%arena%entries(i)%depth < terminator_depth) then
-                exit  ! Exited the conditional block - stop marking as unreachable
+                exit
             end if
 
-            ! Check if we're still in the same sequential block
-            ! We need to stop if we encounter an end statement or exit the block
             select type (node => this%arena%entries(i)%node)
             class is (ast_node)
-                ! Check for block-ending nodes
                 if (this%arena%entries(i)%node_type == "end" .or. &
                     this%arena%entries(i)%node_type == "else" .or. &
                     this%arena%entries(i)%node_type == "elseif" .or. &
@@ -301,12 +208,9 @@ contains
                 end if
             end select
 
-            ! Only mark code at the SAME depth and with same parent as unreachable
-            ! This ensures we stay within the conditional block
             if (this%arena%entries(i)%parent_index == parent_idx .and. &
                 this%arena%entries(i)%depth == terminator_depth .and. &
                 in_same_block) then
-                ! This is unreachable code within the same conditional block
                 select type (node => this%arena%entries(i)%node)
                 type is (print_statement_node)
                     call this%visitor%add_unreachable_code( &
@@ -326,7 +230,6 @@ contains
 
     end subroutine detector_mark_subsequent_unreachable
 
-    ! Check for impossible conditions like if (.false.)
     subroutine detector_check_impossible_condition(this, if_idx)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: if_idx
@@ -339,10 +242,8 @@ contains
                 if (allocated(this%arena%entries(cond_idx)%node)) then
                     select type (cond => this%arena%entries(cond_idx)%node)
                     type is (literal_node)
-                        ! Check if it's a literal false
                         if (cond%literal_kind == LITERAL_LOGICAL .and. &
                             (cond%value == ".false." .or. cond%value == ".FALSE.")) then
-                            ! Mark the then-block as unreachable
                             call this%mark_if_block_unreachable(if_idx, .true.)
                         end if
                     end select
@@ -352,7 +253,6 @@ contains
 
     end subroutine detector_check_impossible_condition
 
-    ! Mark if-block contents as unreachable
     subroutine detector_mark_if_block_unreachable(this, if_idx, is_then_block)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: if_idx
@@ -363,14 +263,11 @@ contains
         if_depth = this%arena%entries(if_idx)%depth
         in_target_block = .false.
 
-        ! Find the then-block contents
         do i = if_idx + 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
 
-            ! Exit if we've left the if statement
             if (this%arena%entries(i)%depth <= if_depth) exit
 
-            ! We're in the then block (first child block)
             if (this%arena%entries(i)%depth == if_depth + 1) then
                 in_target_block = is_then_block
             end if
@@ -387,27 +284,22 @@ contains
 
     end subroutine detector_mark_if_block_unreachable
 
-    ! Process AST node for dead code analysis
     subroutine detector_process_node(this, node_index)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: node_index
 
-        ! Check if node exists and get basic node information
         integer :: node_type_id
         character(len=50) :: node_type
         logical :: exists
 
-        ! Check if node exists using arena size
         if (node_index <= 0 .or. node_index > this%arena%size) return
         if (.not. allocated(this%arena%entries(node_index)%node)) return
 
-        ! Get node type for analysis
         node_type_id = get_node_type_id_from_arena(this%arena, node_index)
         node_type = "unknown"
 
     end subroutine detector_process_node
 
-    ! Process an array of node indices
     subroutine detector_process_indices(this, indices)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: indices(:)
@@ -422,7 +314,6 @@ contains
         end do
     end subroutine detector_process_indices
 
-    ! Process parameter declarations
     subroutine detector_process_parameter_declarations(this, param_indices)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: param_indices(:)
@@ -434,10 +325,8 @@ contains
                     select type (param_node => &
                                  this%arena%entries(param_indices(i))%node)
                     type is (parameter_declaration_node)
-                        ! Declare parameter as a variable
                         call this%visitor%add_declared_variable(param_node%name)
                     type is (declaration_node)
-                        ! Sometimes parameters are declaration nodes
                         call this%visitor%add_declared_variable(param_node%var_name)
                     end select
                 end if
@@ -445,7 +334,6 @@ contains
         end do
     end subroutine detector_process_parameter_declarations
 
-    ! Enhanced node processing using new fortfront APIs
     recursive subroutine detector_process_node_enhanced(this, node_index)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: node_index
@@ -460,11 +348,8 @@ contains
         if (node_index <= 0 .or. node_index > this%arena%size) return
         if (.not. allocated(this%arena%entries(node_index)%node)) return
 
-        ! Process based on node type
-
         select type (node => this%arena%entries(node_index)%node)
         type is (declaration_node)
-            ! Get declaration info using fortfront API
             found = get_declaration_info(this%arena, node_index, var_names, type_spec, &
                                          attributes)
             if (found .and. allocated(var_names)) then
@@ -474,58 +359,48 @@ contains
             end if
 
         type is (identifier_node)
-            ! Get identifier name using fortfront API
             found = get_identifier_name(this%arena, node_index, var_name)
             if (found .and. allocated(var_name)) then
                 call this%visitor%add_used_variable(var_name)
             end if
 
         type is (assignment_node)
-            ! Get assignment info using fortfront API
             found = get_assignment_indices(this%arena, node_index, target_index, &
                                            value_index, operator_str)
 
             if (found) then
                 is_self_assignment = .false.
 
-                ! Process target (left side) - this is a definition, not a use
                 if (target_index > 0) then
                     found = get_identifier_name(this%arena, target_index, &
                                                 target_var_name)
-                    ! Don't count assignment target as usage
                 end if
 
-                ! Check for self-assignment (x = x)
                 if (value_index > 0 .and. allocated(target_var_name)) then
                     found = get_identifier_name(this%arena, value_index, value_var_name)
                     if (found .and. allocated(value_var_name)) then
                         if (target_var_name == value_var_name) then
                             is_self_assignment = .true.
-                            ! Track this as a self-assigned variable
                             call this%visitor%add_self_assigned_only(target_var_name)
                         end if
                     end if
                 end if
 
-                ! Process value (right side). This counts as usage unless self-assignment.
                 if (value_index > 0 .and. .not. is_self_assignment) then
                     call this%process_node_enhanced(value_index)
                 end if
             end if
 
         type is (binary_op_node)
-            ! Get binary operation info using fortfront API
             found = get_binary_op_info(this%arena, node_index, left_index, &
                                        right_index, operator_str)
 
             if (found) then
-                ! Process both operands
                 if (left_index > 0) call this%process_node_enhanced(left_index)
                 if (right_index > 0) call this%process_node_enhanced(right_index)
             end if
 
         type is (call_or_subscript_node)
-            ! Process function/array reference using fortfront API
             found = get_call_info(this%arena, node_index, var_name, indices)
             if (found) then
                 if (allocated(var_name)) then
@@ -539,26 +414,19 @@ contains
             end if
 
         type is (subroutine_call_node)
-            ! Track subroutine calls - simplified due to field access limitations
 
         type is (print_statement_node)
-            ! Process print arguments - simplified due to field access limitations
 
         type is (if_node)
-            ! Process condition and body - limited due to field access limitations
-            ! We can still check for impossible conditions
             if (node%condition_index > 0) then
                 call this%process_node_enhanced(node%condition_index)
             end if
 
         type is (do_loop_node)
-            ! Process loop variable and body - simplified due to field access limitations
 
         type is (literal_node)
-            ! Literals don't contain identifiers to process
 
         type is (program_node)
-            ! Process program body using fortfront API
             found = get_program_info(this%arena, node_index, var_name, indices)
             if (found) then
                 if (allocated(indices)) then
@@ -567,42 +435,28 @@ contains
                     end do
                 end if
             end if
-            ! Note: Internal procedures will be analyzed by call graph
 
         type is (subroutine_def_node)
-            ! Process subroutine parameters and body - simplified due to field access limitations
-            ! Mark the subroutine name if available
             if (allocated(node%name)) then
-                ! Track that this is a defined subroutine
             end if
 
         type is (function_def_node)
-            ! Process function parameters and body - simplified due to field access limitations
-            ! Mark the function name if available
             if (allocated(node%name)) then
-                ! Track that this is a defined function
             end if
 
         type is (module_node)
-            ! Process module body - simplified due to field access limitations
 
         type is (return_node)
-            ! Return statements don't have identifiers but mark control flow
 
         type is (stop_node)
-            ! Stop statements may have error codes - simplified due to field access limitations
 
         type is (parameter_declaration_node)
-            ! Parameter declarations need special handling
-            ! They declare parameters, not regular variables
 
         class default
-            ! For other node types, process any children we can find
         end select
 
     end subroutine detector_process_node_enhanced
 
-    ! Helper to process internal procedures
     subroutine detector_process_internal_procedures(this, proc_indices)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: proc_indices(:)
@@ -610,7 +464,6 @@ contains
         logical :: is_called
         character(len=:), allocatable :: proc_name
 
-        ! Check each internal procedure for usage
         do i = 1, size(proc_indices)
             if (proc_indices(i) > 0 .and. proc_indices(i) <= this%arena%size) then
                 if (allocated(this%arena%entries(proc_indices(i))%node)) then
@@ -618,10 +471,8 @@ contains
                     select type (proc_node => this%arena%entries(proc_indices(i))%node)
                     type is (subroutine_def_node)
                         proc_name = proc_node%name
-                        ! Check if this procedure is called anywhere
                         is_called = this%is_procedure_called(proc_name)
                         if (.not. is_called) then
-                            ! Add as unused procedure
                             call this%visitor%add_unreachable_code( &
                                 proc_node%line, proc_node%line, proc_node%column, &
                                 proc_node%column + 10, &
@@ -630,10 +481,8 @@ contains
                         end if
                     type is (function_def_node)
                         proc_name = proc_node%name
-                        ! Check if this function is called anywhere
                         is_called = this%is_procedure_called(proc_name)
                         if (.not. is_called) then
-                            ! Add as unused procedure
                             call this%visitor%add_unreachable_code( &
                                 proc_node%line, proc_node%line, proc_node%column, &
                                 proc_node%column + 10, &
@@ -641,14 +490,12 @@ contains
                                 "Unused internal function '"//proc_name//"'")
                         end if
                     end select
-                    ! Process the procedure body regardless
                     call this%process_node_enhanced(proc_indices(i))
                 end if
             end if
         end do
     end subroutine detector_process_internal_procedures
 
-    ! Check if a procedure is called anywhere in the AST
     function detector_is_procedure_called(this, proc_name) result(is_called)
         class(dead_code_detector_t), intent(in) :: this
         character(len=*), intent(in) :: proc_name
@@ -656,7 +503,6 @@ contains
         is_called = is_procedure_used(this%call_graph, proc_name)
     end function detector_is_procedure_called
 
-    ! Analyze unused procedures using call graph
     subroutine detector_analyze_unused_procedures(this)
         class(dead_code_detector_t), intent(inout) :: this
         character(len=:), allocatable :: public_names(:)
@@ -1010,7 +856,6 @@ contains
         end select
     end function get_program_info
 
-    ! Check if a terminating statement (return/stop) is unconditional
     function detector_is_unconditional_terminator(this, terminator_idx) &
         result(is_unconditional)
         class(dead_code_detector_t), intent(in) :: this
@@ -1019,41 +864,31 @@ contains
         integer :: current_idx
 
         is_unconditional = .true.
-        ! Assume unconditional unless we find a conditional parent
 
         if (terminator_idx <= 0 .or. terminator_idx > this%arena%size) return
 
-        ! Traverse up the parent chain looking for conditional constructs
         current_idx = this%arena%entries(terminator_idx)%parent_index
 
         do while (current_idx > 0 .and. current_idx <= this%arena%size)
             if (allocated(this%arena%entries(current_idx)%node)) then
                 select type (ancestor => this%arena%entries(current_idx)%node)
                 type is (if_node)
-                    ! Found an if statement ancestor - this return is conditional
-                    ! For validation functions with early returns, the return is conditional
                     is_unconditional = .false.
                     return
                 type is (do_loop_node)
-                    ! Found a do loop ancestor - this return is conditional
                     is_unconditional = .false.
                     return
                 type is (select_case_node)
-                    ! Found a select case ancestor - this return is conditional
                     is_unconditional = .false.
                     return
                 type is (program_node)
-                    ! Reached the program level - stop searching
                     exit
                 type is (function_def_node)
-                    ! Reached the function level - stop searching
                     exit
                 type is (subroutine_def_node)
-                    ! Reached the subroutine level - stop searching
                     exit
                 end select
             end if
-            ! Move to the next parent
             current_idx = this%arena%entries(current_idx)%parent_index
         end do
 
@@ -1115,298 +950,4 @@ contains
         end do
     end subroutine detector_detect_goto_unreachable_code_ast
 
-    ! Helper procedures for visitor integration
-    subroutine add_unused_variable_to_visitor(visitor, var_name, scope, line, col, &
-                                              is_param, is_dummy)
-        type(dead_code_visitor_t), intent(inout) :: visitor
-        character(len=*), intent(in) :: var_name, scope
-        integer, intent(in) :: line, col
-        logical, intent(in) :: is_param, is_dummy
-
-        type(unused_variable_t), allocatable :: temp(:)
-        integer :: n
-
-        if (.not. allocated(visitor%unused_variables)) then
-            allocate (visitor%unused_variables(1))
-            n = 1
-        else
-            n = size(visitor%unused_variables)
-            allocate (temp(n + 1))
-            temp(1:n) = visitor%unused_variables
-            call move_alloc(temp, visitor%unused_variables)
-            n = n + 1
-        end if
-
-        visitor%unused_variables(n)%variable_name = var_name
-        visitor%unused_variables(n)%scope_name = scope
-        visitor%unused_variables(n)%declaration_line = line
-        visitor%unused_variables(n)%declaration_column = col
-        visitor%unused_variables(n)%is_parameter = is_param
-        visitor%unused_variables(n)%is_dummy_argument = is_dummy
-        visitor%unused_count = visitor%unused_count + 1
-
-    end subroutine add_unused_variable_to_visitor
-
-    subroutine add_unreachable_code_to_visitor(visitor, start_line, end_line, &
-                                               start_col, end_col, reason, snippet)
-        type(dead_code_visitor_t), intent(inout) :: visitor
-        integer, intent(in) :: start_line, end_line, start_col, end_col
-        character(len=*), intent(in) :: reason, snippet
-
-        type(unreachable_code_t), allocatable :: temp(:)
-        integer :: n
-
-        if (.not. allocated(visitor%unreachable_code_blocks)) then
-            allocate (visitor%unreachable_code_blocks(1))
-            n = 1
-        else
-            n = size(visitor%unreachable_code_blocks)
-            allocate (temp(n + 1))
-            temp(1:n) = visitor%unreachable_code_blocks
-            call move_alloc(temp, visitor%unreachable_code_blocks)
-            n = n + 1
-        end if
-
-        visitor%unreachable_code_blocks(n)%start_line = start_line
-        visitor%unreachable_code_blocks(n)%end_line = end_line
-        visitor%unreachable_code_blocks(n)%start_column = start_col
-        visitor%unreachable_code_blocks(n)%end_column = end_col
-        visitor%unreachable_code_blocks(n)%reason = reason
-        visitor%unreachable_code_blocks(n)%code_snippet = snippet
-        visitor%unreachable_count = visitor%unreachable_count + 1
-
-    end subroutine add_unreachable_code_to_visitor
-
-    ! Unused variable diagnostic conversion
-    function unused_variable_to_diagnostic(this) result(diag)
-        class(unused_variable_t), intent(in) :: this
-        type(diagnostic_t) :: diag
-
-        type(source_range_t) :: location
-
-        diag%code = "D001"
-        diag%message = "Unused variable '"//this%variable_name//"'"
-        diag%category = "dead_code"
-        diag%severity = SEVERITY_WARNING
-
-        location%start%line = this%declaration_line
-        location%start%column = this%declaration_column
-        location%end%line = this%declaration_line
-        location%end%column = this%declaration_column + len(this%variable_name) - 1
-        diag%location = location
-
-        ! No fix suggestions for RED phase
-        if (allocated(diag%fixes)) deallocate (diag%fixes)
-
-    end function unused_variable_to_diagnostic
-
-    ! Unreachable code diagnostic conversion
-    function unreachable_code_to_diagnostic(this) result(diag)
-        class(unreachable_code_t), intent(in) :: this
-        type(diagnostic_t) :: diag
-
-        type(source_range_t) :: location
-
-        diag%code = "D002"
-        diag%message = "Unreachable code detected ("//this%reason//")"
-        diag%category = "dead_code"
-        diag%severity = SEVERITY_WARNING
-
-        location%start%line = this%start_line
-        location%start%column = this%start_column
-        location%end%line = this%end_line
-        location%end%column = this%end_column
-        diag%location = location
-
-        ! No fix suggestions for RED phase
-        if (allocated(diag%fixes)) deallocate (diag%fixes)
-
-    end function unreachable_code_to_diagnostic
-
-    ! Helper methods for visitor
-    subroutine dc_add_declared_variable(this, var_name)
-        class(dead_code_visitor_t), intent(inout) :: this
-        character(len=*), intent(in) :: var_name
-
-        character(len=:), allocatable :: temp(:)
-        integer :: n, max_len, i
-
-        if (.not. allocated(this%declared_variables)) then
-            allocate (character(len=len(var_name)) :: this%declared_variables(1))
-            this%declared_variables(1) = var_name
-            this%declared_count = 1
-        else
-            n = this%declared_count
-            max_len = max(len(this%declared_variables), len(var_name))
-            allocate (character(len=max_len) :: temp(n + 1))
-
-            do i = 1, n
-                temp(i) = this%declared_variables(i)
-            end do
-            temp(n + 1) = var_name
-
-            call move_alloc(temp, this%declared_variables)
-            this%declared_count = n + 1
-        end if
-
-    end subroutine dc_add_declared_variable
-
-    subroutine dc_add_used_variable(this, var_name)
-        class(dead_code_visitor_t), intent(inout) :: this
-        character(len=*), intent(in) :: var_name
-
-        character(len=:), allocatable :: temp(:)
-        integer :: n, max_len, i
-
-        if (.not. allocated(this%used_variables)) then
-            allocate (character(len=len(var_name)) :: this%used_variables(1))
-            this%used_variables(1) = var_name
-            this%used_count = 1
-        else
-            n = this%used_count
-            max_len = max(len(this%used_variables), len(var_name))
-            allocate (character(len=max_len) :: temp(n + 1))
-
-            do i = 1, n
-                temp(i) = this%used_variables(i)
-            end do
-            temp(n + 1) = var_name
-
-            call move_alloc(temp, this%used_variables)
-            this%used_count = n + 1
-        end if
-
-    end subroutine dc_add_used_variable
-
-    function dc_is_variable_used(this, var_name) result(used)
-        class(dead_code_visitor_t), intent(in) :: this
-        character(len=*), intent(in) :: var_name
-        logical :: used
-        integer :: i
-
-        used = .false.
-        if (allocated(this%used_variables)) then
-            do i = 1, this%used_count
-                if (this%used_variables(i) == var_name) then
-                    used = .true.
-                    return
-                end if
-            end do
-        end if
-
-    end function dc_is_variable_used
-
-    subroutine dc_add_self_assigned_only(this, var_name)
-        class(dead_code_visitor_t), intent(inout) :: this
-        character(len=*), intent(in) :: var_name
-
-        character(len=:), allocatable :: temp(:)
-        integer :: n, max_len, i
-
-        if (.not. allocated(this%self_assigned_only)) then
-            allocate (character(len=len(var_name)) :: this%self_assigned_only(1))
-            this%self_assigned_only(1) = var_name
-            this%self_assigned_count = 1
-        else
-            n = this%self_assigned_count
-            max_len = max(len(this%self_assigned_only), len(var_name))
-            allocate (character(len=max_len) :: temp(n + 1))
-
-            do i = 1, n
-                temp(i) = this%self_assigned_only(i)
-            end do
-            temp(n + 1) = var_name
-
-            call move_alloc(temp, this%self_assigned_only)
-            this%self_assigned_count = n + 1
-        end if
-
-    end subroutine dc_add_self_assigned_only
-
-    function dc_is_only_self_assigned(this, var_name) result(is_self_only)
-        class(dead_code_visitor_t), intent(in) :: this
-        character(len=*), intent(in) :: var_name
-        logical :: is_self_only
-        integer :: i
-
-        is_self_only = .false.
-        if (allocated(this%self_assigned_only)) then
-            do i = 1, this%self_assigned_count
-                if (this%self_assigned_only(i) == var_name) then
-                    is_self_only = .true.
-                    return
-                end if
-            end do
-        end if
-
-    end function dc_is_only_self_assigned
-
-    subroutine dc_add_unreachable_code(this, start_line, end_line, start_col, end_col, &
-                                       reason, snippet)
-        class(dead_code_visitor_t), intent(inout) :: this
-        integer, intent(in) :: start_line, end_line, start_col, end_col
-        character(len=*), intent(in) :: reason, snippet
-
-        type(unreachable_code_t), allocatable :: temp(:)
-        integer :: n
-
-        if (.not. allocated(this%unreachable_code_blocks)) then
-            allocate (this%unreachable_code_blocks(1))
-            n = 0
-        else
-            n = size(this%unreachable_code_blocks)
-            allocate (temp(n + 1))
-            temp(1:n) = this%unreachable_code_blocks
-            call move_alloc(temp, this%unreachable_code_blocks)
-        end if
-
-        this%unreachable_code_blocks(n + 1)%start_line = start_line
-        this%unreachable_code_blocks(n + 1)%end_line = end_line
-        this%unreachable_code_blocks(n + 1)%start_column = start_col
-        this%unreachable_code_blocks(n + 1)%end_column = end_col
-        this%unreachable_code_blocks(n + 1)%reason = reason
-        this%unreachable_code_blocks(n + 1)%code_snippet = snippet
-
-        this%unreachable_count = n + 1
-
-    end subroutine dc_add_unreachable_code
-
-    subroutine dc_finalize_analysis(this)
-        class(dead_code_visitor_t), intent(inout) :: this
-        integer :: i
-
-        ! Check all declared variables for usage
-        if (allocated(this%declared_variables)) then
-            do i = 1, this%declared_count
-                ! Unused means not used at all or only used in self-assignments.
-                if (.not. this%is_variable_used(this%declared_variables(i)) .or. &
-                    this%is_only_self_assigned(this%declared_variables(i))) then
-                    call add_unused_variable_to_visitor(this, &
-                                                        this%declared_variables(i), &
-                                                            "program", 1, 1, &
-                                                            .false., .false.)
-                end if
-            end do
-        end if
-
-    end subroutine dc_finalize_analysis
-
-    subroutine dc_clear(this)
-        class(dead_code_visitor_t), intent(inout) :: this
-
-        if (allocated(this%unused_variables)) deallocate (this%unused_variables)
-        if (allocated(this%unreachable_code_blocks)) deallocate &
-            (this%unreachable_code_blocks)
-        if (allocated(this%declared_variables)) deallocate (this%declared_variables)
-        if (allocated(this%used_variables)) deallocate (this%used_variables)
-        if (allocated(this%self_assigned_only)) deallocate (this%self_assigned_only)
-
-        this%unused_count = 0
-        this%unreachable_count = 0
-        this%declared_count = 0
-        this%used_count = 0
-        this%self_assigned_count = 0
-        this%after_terminating_statement = .false.
-
-    end subroutine dc_clear
 end module fluff_dead_code_detection
