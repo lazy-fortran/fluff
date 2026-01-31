@@ -20,6 +20,9 @@ program test_rule_f006_unused_variable
     ! Test 4: Unused parameter vs used variable
     call test_unused_parameter()
 
+    ! Test 5: Loop control variables should not trigger F006
+    call test_loop_control_variables()
+
     print *, "[OK] All F006 tests passed!"
 
 contains
@@ -198,5 +201,52 @@ contains
 
         print *, "[OK] Unused parameter"
     end subroutine test_unused_parameter
+
+    subroutine test_loop_control_variables()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: tmpfile
+        integer :: i
+        logical :: found_f006
+
+        call make_temp_fortran_path("fluff_test_f006_loop", tmpfile)
+
+        test_code = "program nested"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer :: i, j, k"//new_line('a')// &
+                    "    do i = 1, 10"//new_line('a')// &
+                    "        do j = 1, 10"//new_line('a')// &
+                    "            do k = 1, 10"//new_line('a')// &
+                    "                print *, i, j, k"//new_line('a')// &
+                    "            end do"//new_line('a')// &
+                    "        end do"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end program nested"
+
+        linter = create_linter_engine()
+
+        call write_text_file(tmpfile, test_code)
+
+        call lint_file_checked(linter, tmpfile, diagnostics)
+
+        found_f006 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F006") then
+                    found_f006 = .true.
+                    exit
+                end if
+            end do
+        end if
+
+        call delete_file_if_exists(tmpfile)
+
+        if (found_f006) then
+            error stop "Failed: F006 should not trigger for loop control variables"
+        end if
+
+        print *, "[OK] Loop control variables"
+    end subroutine test_loop_control_variables
 
 end program test_rule_f006_unused_variable
