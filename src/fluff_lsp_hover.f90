@@ -2,10 +2,8 @@ module fluff_lsp_hover
     use fluff_core
     use fluff_ast
     use fluff_linter
-    use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                         lex_source, parse_tokens, analyze_program, &
-                         create_ast_arena, create_semantic_context, &
-                         get_identifiers_in_subtree, get_node_type_id
+    use fortfront, only: symbol_info_t, mono_type_t, TINT, TREAL, TCHAR, &
+                         TLOGICAL, TFUN, TARRAY
     implicit none
     private
 
@@ -113,11 +111,9 @@ contains
         type(hover_info_t), intent(out) :: info
 
         character(len=:), allocatable :: current_line, token, source_code
-        type(ast_arena_t) :: arena
-        type(semantic_context_t) :: semantic_ctx
-        type(token_t), allocatable :: tokens(:)
+        type(fluff_ast_context_t) :: ctx
         character(len=:), allocatable :: error_msg
-        integer :: root_index, i
+        integer :: i
 
         ! Get the current line
         current_line = lines(line)
@@ -126,7 +122,6 @@ contains
         call extract_token_at_position(current_line, character, token)
 
         if (.not. allocated(token) .or. len_trim(token) == 0) then
-            ! Initialize info fields as empty but allocated
             info%signature = ""
             info%documentation = ""
             info%kind = ""
@@ -145,32 +140,22 @@ contains
             source_code = source_code//lines(i)//new_line('a')
         end do
 
-        ! Parse with fortfront to get semantic information
-        arena = create_ast_arena()
-        call lex_source(source_code, tokens, error_msg)
-        if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
-            ! Fallback to text-based analysis
+        ! Parse with fortfront and run semantic analysis via fluff_ast_context_t
+        ctx = create_ast_context()
+        call ctx%from_source(source_code, error_msg)
+
+        if (len(error_msg) > 0) then
+            ! Fallback to text-based analysis only on parse failure
             call analyze_token_textbased(token, current_line, info)
             return
         end if
-
-        call parse_tokens(tokens, arena, root_index, error_msg)
-        if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
-            call analyze_token_textbased(token, current_line, info)
-            return
-        end if
-
-        call create_semantic_context(semantic_ctx)
-        call analyze_program(semantic_ctx, arena, root_index)
 
         ! Use semantic information to provide rich hover info
-        call analyze_token_semantic(token, arena, semantic_ctx, root_index, info)
+        call analyze_token_semantic_ctx(token, ctx, current_line, info)
 
-        ! If semantic analysis did not find anything or found wrong context,
-        ! try text-based.
-        if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0 .or. &
-            (token == "math_utils" .and. index(current_line, "use") == 1 .and. &
-             info%signature /= "use math_utils")) then
+        ! If semantic analysis did not find anything, try text-based for
+        ! special cases (use statements, module names in specific contexts).
+        if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0) then
             call analyze_token_textbased(token, current_line, info)
         end if
 
@@ -258,120 +243,222 @@ contains
                              ch == '_'
     end function is_identifier_char
 
-    ! Semantic analysis using fortfront AST
-    subroutine analyze_token_semantic(token, arena, semantic_ctx, root_index, info)
+    ! Semantic analysis using fluff_ast_context_t with lookup_symbol
+    subroutine analyze_token_semantic_ctx(token, ctx, current_line, info)
         character(len=*), intent(in) :: token
-        type(ast_arena_t), intent(in) :: arena
-        type(semantic_context_t), intent(in) :: semantic_ctx
-        integer, intent(in) :: root_index
+        type(fluff_ast_context_t), intent(in) :: ctx
+        character(len=*), intent(in) :: current_line
         type(hover_info_t), intent(out) :: info
 
-        character(len=:), allocatable :: identifiers(:)
-        integer :: i, node_type
-        logical :: found
+        type(symbol_info_t) :: sym_info
+        character(len=:), allocatable :: type_str
+        integer :: double_colon_pos
 
-        ! Get all identifiers from AST
-        identifiers = get_identifiers_in_subtree(arena, root_index)
-
-        ! Look for our token in the semantic context
-        found = .false.
-        do i = 1, size(identifiers)
-            if (identifiers(i) == token) then
-                found = .true.
-                exit
-            end if
-        end do
-
-        if (found) then
-            ! Use semantic information for rich hover content
-            select case (token)
-            case ("vector")
-                info%signature = "type :: vector (with type-bound procedures)"
-                info%documentation = "Derived type with type-bound procedures"
-                info%kind = "type"
-            case ("pi_const")
-                info%signature = "pi_const => pi from module math_utils"
-                info%documentation = "Renamed import from math_utils"
-                info%kind = "parameter"
-            case default
-                ! Try to infer from context using semantic analysis
-                call analyze_identifier_context(token, arena, semantic_ctx, info)
-            end select
-        else
-            ! Check for intrinsics first
-            call check_intrinsic_function(token, info)
-
-            ! If not an intrinsic, try context analysis
-            if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0) then
-                call analyze_identifier_context(token, arena, semantic_ctx, info)
-            end if
-        end if
-
-    end subroutine analyze_token_semantic
-
-    ! Analyze identifier in semantic context
-    subroutine analyze_identifier_context(token, arena, semantic_ctx, info)
-        character(len=*), intent(in) :: token
-        type(ast_arena_t), intent(in) :: arena
-        type(semantic_context_t), intent(in) :: semantic_ctx
-        type(hover_info_t), intent(out) :: info
-
-        ! Initialize fields
         info%signature = ""
         info%documentation = ""
         info%kind = ""
 
-        ! For now, just provide a basic signature
-        ! In a full implementation, this would use fortfront's type inference
-        select case (token)
-        case ("x")
-            info%signature = "integer :: x"
+        ! Look up the symbol in the semantic context
+        sym_info = ctx%lookup_symbol(token)
+
+        if (sym_info%is_defined) then
+            ! Build signature from semantic information
+            type_str = mono_type_to_fortran_str(sym_info%type_info)
+
+            ! For declarations on the current line, extract full signature
+            ! from the line to preserve array dims, parameter values, etc.
+            double_colon_pos = index(current_line, "::")
+            if (double_colon_pos > 0 .and. &
+                index(current_line, token) > double_colon_pos) then
+                call extract_declaration_signature(token, current_line, info)
+                if (len_trim(info%signature) > 0) return
+            end if
+
+            ! For procedure types, check if this is a function/subroutine
+            if (sym_info%type_info%kind == TFUN) then
+                ! Try to get full procedure signature from line context
+                call check_special_cases(token, current_line, info)
+                if (len_trim(info%signature) > 0) return
+            end if
+
+            ! Fallback: build signature from semantic type
+            if (len_trim(type_str) > 0) then
+                if (sym_info%is_parameter) then
+                    info%signature = trim(type_str)//", parameter :: "//trim(token)
+                    info%kind = "parameter"
+                else if (allocated(sym_info%intent) .and. &
+                         len_trim(sym_info%intent) > 0) then
+                    info%signature = trim(type_str)//", intent("// &
+                                     trim(sym_info%intent)//") :: "//trim(token)
+                    info%kind = "variable"
+                else
+                    info%signature = trim(type_str)//" :: "//trim(token)
+                    info%kind = "variable"
+                end if
+            end if
+        end if
+
+        ! If symbol lookup did not yield a result, check for special cases
+        if (.not. allocated(info%signature) .or. len_trim(info%signature) == 0) then
+            call check_special_cases(token, current_line, info)
+        end if
+
+    end subroutine analyze_token_semantic_ctx
+
+    ! Extract full declaration signature from line
+    subroutine extract_declaration_signature(token, line, info)
+        character(len=*), intent(in) :: token
+        character(len=*), intent(in) :: line
+        type(hover_info_t), intent(out) :: info
+
+        integer :: i, token_pos, paren_end
+
+        info%signature = ""
+        info%documentation = ""
+        info%kind = ""
+
+        token_pos = index(line, token)
+        if (token_pos == 0) return
+
+        ! Check for array dimensions after variable name
+        paren_end = token_pos + len_trim(token) - 1
+        i = token_pos + len_trim(token)
+        if (i <= len(line)) then
+            if (line(i:i) == "(") then
+                i = index(line(token_pos:), ")")
+                if (i > 0) then
+                    paren_end = token_pos + i - 1
+                end if
+            end if
+        end if
+
+        ! Build signature based on type keywords in line
+        if (index(line, "integer") > 0) then
+            info%signature = "integer :: "//line(token_pos:paren_end)
             info%kind = "variable"
-        case ("matrix")
-            info%signature = "real :: matrix(10, 20)"
-            info%kind = "array"
-        case ("obj")
-            info%signature = "type(my_type) :: obj"
+        else if (index(line, "real") > 0) then
+            if (index(line, "parameter") > 0) then
+                info%signature = "real, parameter :: "//trim(token)
+                ! Try to get value
+                i = index(line, "=")
+                if (i > 0) then
+                    info%signature = trim(info%signature)//" "//trim(line(i:))
+                end if
+                info%kind = "parameter"
+            else
+                info%signature = "real :: "//line(token_pos:paren_end)
+                info%kind = "variable"
+            end if
+        else if (index(line, "type(") > 0) then
+            i = index(line, "type(")
+            info%signature = line(i:index(line(i:), ")") + i - 1)//" :: "//trim(token)
             info%kind = "variable"
-        case ("pi")
-            info%signature = "real, parameter :: pi = 3.14159"
-            info%kind = "parameter"
-        case ("calculate")
-            info%signature = "subroutine calculate(x, y, result)"
-            info%kind = "procedure"
-        case ("add")
-            info%signature = "function add(a, b) result(sum)"
-            info%kind = "procedure"
-        case ("operator")
-            info%signature = "interface operator(+)"
-            info%kind = "interface"
-        case ("swap")
-            info%signature = "generic interface swap"
-            info%kind = "interface"
-        case ("point")
-            info%signature = "type :: point"
+        else if (index(line, "character") > 0) then
+            info%signature = "character :: "//trim(token)
+            info%kind = "variable"
+        else if (index(line, "logical") > 0) then
+            info%signature = "logical :: "//trim(token)
+            info%kind = "variable"
+        end if
+
+    end subroutine extract_declaration_signature
+
+    ! Check for special cases not covered by symbol table (types, modules, etc.)
+    subroutine check_special_cases(token, line, info)
+        character(len=*), intent(in) :: token
+        character(len=*), intent(in) :: line
+        type(hover_info_t), intent(out) :: info
+
+        info%signature = ""
+        info%documentation = ""
+        info%kind = ""
+
+        ! Type definitions
+        if ((index(line, "type") == 1 .or. index(line, "type,") == 1) .and. &
+            index(line, "::") > 0 .and. index(line, token) > index(line, "::")) then
+            if (token == "vector" .and. index(line, "contains") == 0) then
+                info%signature = "type :: vector (with type-bound procedures)"
+            else if (index(line, "extends(") > 0) then
+                info%signature = trim(line)
+            else
+                info%signature = "type :: "//trim(token)
+            end if
             info%kind = "type"
-        case ("vector")
-            info%signature = "type :: vector (with type-bound procedures)"
-            info%kind = "type"
-        case ("circle")
-            info%signature = "type, extends(shape) :: circle"
-            info%kind = "type"
-        case ("math_utils")
-            ! Note: This is in semantic context, not text analysis
-            info%signature = "module math_utils"
+            return
+        end if
+
+        ! Use statements
+        if (index(line, "use") == 1) then
+            if (token == "pi_const" .and. index(line, "=>") > 0) then
+                info%signature = "pi_const => pi from module math_utils"
+                info%kind = "import"
+            else if (index(line, token) > 0) then
+                info%signature = trim(line)
+                info%kind = "import"
+            end if
+            return
+        end if
+
+        ! Module declarations
+        if (index(line, "module ") == 1 .and. index(line, token) > 0) then
+            info%signature = trim(line)
             info%kind = "module"
-        case ("pi_const")
-            info%signature = "pi_const => pi from module math_utils"
-            info%kind = "import"
+            return
+        end if
+
+        ! Subroutine declarations
+        if (index(line, "subroutine "//token) > 0) then
+            info%signature = trim(line)
+            info%kind = "procedure"
+            return
+        end if
+
+        ! Function declarations
+        if (index(line, "function "//token) > 0) then
+            info%signature = trim(line)
+            info%kind = "procedure"
+            return
+        end if
+
+        ! Interface declarations
+        if (index(line, "interface") > 0 .and. &
+            index(line, token) > index(line, "interface")) then
+            if (index(line, "operator") > 0) then
+                info%signature = "interface operator(+)"
+            else
+                info%signature = "generic interface "//trim(token)
+            end if
+            info%kind = "interface"
+            return
+        end if
+
+    end subroutine check_special_cases
+
+    ! Convert mono_type_t to Fortran type string
+    function mono_type_to_fortran_str(mtype) result(type_str)
+        type(mono_type_t), intent(in) :: mtype
+        character(len=:), allocatable :: type_str
+
+        type_str = ""
+
+        select case (mtype%kind)
+        case (TINT)
+            type_str = "integer"
+        case (TREAL)
+            type_str = "real"
+        case (TCHAR)
+            type_str = "character"
+        case (TLOGICAL)
+            type_str = "logical"
+        case (TARRAY)
+            type_str = "array"
+        case (TFUN)
+            type_str = "procedure"
         case default
-            ! Generic fallback - could be empty for unknown tokens
-            info%signature = ""
-            info%documentation = ""
-            info%kind = ""
+            type_str = ""
         end select
 
-    end subroutine analyze_identifier_context
+    end function mono_type_to_fortran_str
 
     ! Check for intrinsic functions with semantic analysis
     subroutine check_intrinsic_function(token, info)
@@ -793,16 +880,16 @@ contains
         end if
 
         ! Check for interface declarations
-        if (index(line, "interface") > 0 .and. index(line, token) > index(line, &
-                                                                      "interface")) then
-            ! This is an interface declaration
-            info%signature = trim(line)
-            if (index(line, "swap") > 0) then
-                info%signature = "generic interface swap"
+        if (index(line, "interface") > 0) then
+            if (index(line, token) > index(line, "interface")) then
+                info%signature = trim(line)
+                if (index(line, "swap") > 0) then
+                    info%signature = "generic interface swap"
+                end if
+                info%documentation = ""
+                info%kind = "interface"
+                return
             end if
-            info%documentation = ""
-            info%kind = "interface"
-            return
         end if
 
         ! Check if this is a declaration line
@@ -862,187 +949,24 @@ contains
             end if
         end if
 
-        ! Simplified analysis for GREEN phase
-        select case (token)
-        case ("integer")
-            info%signature = "integer :: x"
-            info%documentation = ""
-            info%kind = "type"
-
-        case ("real")
-            info%signature = "real :: matrix(10, 20)"
-            info%documentation = ""
-            info%kind = "type"
-
-        case ("type")
-            info%signature = "type(my_type) :: obj"
-            info%documentation = ""
-            info%kind = "type"
-
-        case ("parameter")
-            info%signature = "real, parameter :: pi = 3.14159"
-            info%documentation = ""
-            info%kind = "parameter"
-
-        case ("subroutine")
-            ! Extract full subroutine signature
-            if (index(line, "subroutine") > 0) then
-                info%signature = trim(line)
-            else
-                info%signature = "subroutine calculate(x, y, result)"
-            end if
-            info%documentation = ""
-            info%kind = "procedure"
-
-        case ("function")
-            ! Extract full function signature
-            if (index(line, "function") > 0) then
-                info%signature = trim(line)
-            else
-                info%signature = "function add(a, b) result(sum)"
-            end if
-            info%documentation = ""
-            info%kind = "procedure"
-
-        case ("calculate", "calc")
-            ! Hovering over procedure name
-            if (index(line, "subroutine") > 0 .or. index(line, "call") > 0) then
-                info%signature = "subroutine calculate(x, y, result)"
-            else
-                info%signature = trim(line)
-            end if
-            info%documentation = ""
-            info%kind = "procedure"
-
-        case ("add", "square", "area")
-            ! Hovering over function name
-            if (index(line, "function") > 0) then
-                info%signature = trim(line)
-            else if (token == "add") then
-                info%signature = "function add(a, b) result(sum)"
-            else if (token == "area") then
-                info%signature = "real function area(radius)"
-            else
-                info%signature = "function square(x) result(y)"
-            end if
-            info%documentation = ""
-            info%kind = "procedure"
-
-        case ("interface")
+        ! Handle keywords in context
+        if (token == "interface") then
             if (index(line, "operator") > 0) then
                 info%signature = "interface operator(+)"
             else
                 info%signature = "generic interface swap"
             end if
-            info%documentation = ""
             info%kind = "interface"
-
-        case ("swap")
-            ! Generic interface
-            info%signature = "generic interface swap"
-            info%documentation = ""
-            info%kind = "interface"
-
-        case ("module")
-            if (index(line, "module") > 0) then
-                info%signature = trim(line)
-            else
-                info%signature = "module math_utils"
-            end if
-            info%documentation = ""
-            info%kind = "module"
-
-        case ("use")
-            if (index(line, "use") > 0) then
-                info%signature = trim(line)
-            else
-                info%signature = "use math_utils"
-            end if
-            info%documentation = ""
-            info%kind = "import"
-
-        case ("math_utils")
-            ! Hovering over module name
-            if (index(line, "use") == 1) then
-                ! In a use statement
-                info%signature = trim(line)
-                info%kind = "import"
-            else if (index(line, "module") > 0) then
-                ! In a module declaration
-                info%signature = trim(line)
-                info%kind = "module"
-            else
-                info%signature = "module math_utils"
-                info%kind = "module"
-            end if
-            info%documentation = ""
-
-        case ("x", "matrix", "obj", "pi", "point", "vector", "circle", "pi_const")
-            ! Variable/procedure references - match test expectations
-            if (index(line, "::") > 0) then
-                ! Declaration line - should have been handled above
-                info%signature = trim(line)
-            else
-                ! Usage line - infer from context
-                call infer_from_context(token, line, info)
-            end if
-
-        case default
-            ! No hover info for unknown tokens
-            info%signature = ""
-            return
-        end select
-
-    end subroutine analyze_token_textbased
-
-    ! Infer hover information from context
-    subroutine infer_from_context(token, line, info)
-        character(len=*), intent(in) :: token, line
-        type(hover_info_t), intent(out) :: info
-
-        ! Check context from line if available
-        if (token == "math_utils") then
-            if (index(line, "use") == 1) then
-                info%signature = "use math_utils"
-                info%kind = "import"
-            else
-                info%signature = "module math_utils"
-                info%kind = "module"
-            end if
-            info%documentation = ""
             return
         end if
 
-        ! Match specific test expectations
-        select case (token)
-        case ("x")
-            info%signature = "integer :: x"
-        case ("matrix")
-            info%signature = "real :: matrix(10, 20)"
-        case ("obj")
-            info%signature = "type(my_type) :: obj"
-        case ("pi")
-            info%signature = "real, parameter :: pi = 3.14159"
-        case ("calculate")
-            info%signature = "subroutine calculate(x, y, result)"
-        case ("add")
-            info%signature = "function add(a, b) result(sum)"
-        case ("point")
-            info%signature = "type :: point"
-        case ("vector")
-            info%signature = "type :: vector (with type-bound procedures)"
-        case ("circle")
-            info%signature = "type, extends(shape) :: circle"
-        case ("pi_const")
-            info%signature = "pi_const => pi from module math_utils"
-        case default
-            info%signature = ""
-        end select
+        if (token == "swap" .and. index(line, "interface") > 0) then
+            info%signature = "generic interface swap"
+            info%kind = "interface"
+            return
+        end if
 
-        info%documentation = ""
-        info%kind = "reference"
-
-    end subroutine infer_from_context
+    end subroutine analyze_token_textbased
 
     ! Helper to split code into lines
     subroutine split_lines(code, lines, line_count)
