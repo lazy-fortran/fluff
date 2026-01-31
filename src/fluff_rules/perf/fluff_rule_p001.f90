@@ -86,7 +86,6 @@ contains
 
         integer, allocatable :: children(:)
         integer :: i
-        integer :: j
         if (node_index <= 0) return
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
@@ -95,79 +94,21 @@ contains
             call push_unique_index(inner_loops, inner_count, node_index)
             return
         type is (if_node)
-            if (allocated(n%then_body_indices)) then
-                do i = 1, size(n%then_body_indices)
-                    call collect_inner_loops(ctx, n%then_body_indices(i), inner_loops, &
-                                             inner_count)
-                end do
-            end if
-            if (allocated(n%elseif_blocks)) then
-                do i = 1, size(n%elseif_blocks)
-                    if (allocated(n%elseif_blocks(i)%body_indices)) then
-                        associate (elseif_body => n%elseif_blocks(i)%body_indices)
-                            do j = 1, size(elseif_body)
-                                call collect_inner_loops(ctx, elseif_body(j), &
-                                                         inner_loops, inner_count)
-                            end do
-                        end associate
-                    end if
-                end do
-            end if
-            if (allocated(n%else_body_indices)) then
-                do i = 1, size(n%else_body_indices)
-                    call collect_inner_loops(ctx, n%else_body_indices(i), inner_loops, &
-                                             inner_count)
-                end do
-            end if
+            call collect_from_if_node(ctx, n, inner_loops, inner_count)
             return
         type is (select_case_node)
-            if (allocated(n%case_indices)) then
-                do i = 1, size(n%case_indices)
-                    call collect_inner_loops(ctx, n%case_indices(i), inner_loops, &
-                                             inner_count)
-                end do
-            end if
-            if (n%default_index > 0) then
-                call collect_inner_loops(ctx, n%default_index, inner_loops, inner_count)
-            end if
+            call collect_from_select_case_node(ctx, n, inner_loops, inner_count)
             return
         type is (case_block_node)
-            if (allocated(n%body_indices)) then
-                do i = 1, size(n%body_indices)
-                    call collect_inner_loops(ctx, n%body_indices(i), inner_loops, &
-                                             inner_count)
-                end do
-            end if
+            call collect_from_body_indices(ctx, n%body_indices, inner_loops, &
+                                           inner_count)
             return
         type is (case_default_node)
-            if (allocated(n%body_indices)) then
-                do i = 1, size(n%body_indices)
-                    call collect_inner_loops(ctx, n%body_indices(i), inner_loops, &
-                                             inner_count)
-                end do
-            end if
+            call collect_from_body_indices(ctx, n%body_indices, inner_loops, &
+                                           inner_count)
             return
         type is (where_node)
-            if (allocated(n%where_body_indices)) then
-                do i = 1, size(n%where_body_indices)
-                    call collect_inner_loops(ctx, n%where_body_indices(i), &
-                                             inner_loops, &
-                                             inner_count)
-                end do
-            end if
-            if (allocated(n%elsewhere_clauses)) then
-                do i = 1, size(n%elsewhere_clauses)
-                    if (allocated(n%elsewhere_clauses(i)%body_indices)) then
-                        associate (elsewhere_body => &
-                                   n%elsewhere_clauses(i)%body_indices)
-                            do j = 1, size(elsewhere_body)
-                                call collect_inner_loops(ctx, elsewhere_body(j), &
-                                                         inner_loops, inner_count)
-                            end do
-                        end associate
-                    end if
-                end do
-            end if
+            call collect_from_where_node(ctx, n, inner_loops, inner_count)
             return
         end select
 
@@ -178,6 +119,81 @@ contains
             end if
         end do
     end subroutine collect_inner_loops
+
+    subroutine collect_from_body_indices(ctx, body_indices, inner_loops, inner_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, allocatable, intent(in) :: body_indices(:)
+        integer, allocatable, intent(inout) :: inner_loops(:)
+        integer, intent(inout) :: inner_count
+
+        integer :: i
+
+        if (.not. allocated(body_indices)) return
+        do i = 1, size(body_indices)
+            call collect_inner_loops(ctx, body_indices(i), inner_loops, inner_count)
+        end do
+    end subroutine collect_from_body_indices
+
+    subroutine collect_from_if_node(ctx, n, inner_loops, inner_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        type(if_node), intent(in) :: n
+        integer, allocatable, intent(inout) :: inner_loops(:)
+        integer, intent(inout) :: inner_count
+
+        integer :: i
+
+        call collect_from_body_indices(ctx, n%then_body_indices, inner_loops, &
+                                       inner_count)
+
+        if (allocated(n%elseif_blocks)) then
+            do i = 1, size(n%elseif_blocks)
+                call collect_from_body_indices(ctx, n%elseif_blocks(i)%body_indices, &
+                                               inner_loops, inner_count)
+            end do
+        end if
+
+        call collect_from_body_indices(ctx, n%else_body_indices, inner_loops, &
+                                       inner_count)
+    end subroutine collect_from_if_node
+
+    subroutine collect_from_select_case_node(ctx, n, inner_loops, inner_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        type(select_case_node), intent(in) :: n
+        integer, allocatable, intent(inout) :: inner_loops(:)
+        integer, intent(inout) :: inner_count
+
+        integer :: i
+
+        if (allocated(n%case_indices)) then
+            do i = 1, size(n%case_indices)
+                call collect_inner_loops(ctx, n%case_indices(i), inner_loops, &
+                                         inner_count)
+            end do
+        end if
+        if (n%default_index > 0) then
+            call collect_inner_loops(ctx, n%default_index, inner_loops, inner_count)
+        end if
+    end subroutine collect_from_select_case_node
+
+    subroutine collect_from_where_node(ctx, n, inner_loops, inner_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        type(where_node), intent(in) :: n
+        integer, allocatable, intent(inout) :: inner_loops(:)
+        integer, intent(inout) :: inner_count
+
+        integer :: i
+
+        call collect_from_body_indices(ctx, n%where_body_indices, inner_loops, &
+                                       inner_count)
+
+        if (allocated(n%elsewhere_clauses)) then
+            do i = 1, size(n%elsewhere_clauses)
+                call collect_from_body_indices(ctx, &
+                                               n%elsewhere_clauses(i)%body_indices, &
+                                               inner_loops, inner_count)
+            end do
+        end if
+    end subroutine collect_from_where_node
 
     recursive subroutine collect_inefficient_accesses(ctx, node_index, outer_var, &
                                                       inner_var, reported, &
