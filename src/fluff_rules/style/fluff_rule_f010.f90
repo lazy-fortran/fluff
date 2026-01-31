@@ -4,6 +4,8 @@ module fluff_rule_f010
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
+    use fluff_token_helpers, only: token_location, first_nontrivia_in_line, &
+                                   next_nontrivia_same_line
     use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
     use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
                                  TK_WHITESPACE, TK_COMMENT
@@ -214,57 +216,5 @@ contains
             if (tokens(j)%text == ")") idx = j
         end do
     end function find_last_close_paren
-
-    integer function first_nontrivia_in_line(tokens, start_idx) result(idx)
-        type(token_t), intent(in) :: tokens(:)
-        integer, intent(in) :: start_idx
-
-        integer :: line
-        integer :: i
-
-        idx = 0
-        line = tokens(start_idx)%line
-        do i = start_idx, size(tokens)
-            if (tokens(i)%line /= line) exit
-            if (tokens(i)%kind == TK_NEWLINE) cycle
-            if (tokens(i)%kind == TK_WHITESPACE) cycle
-            idx = i
-            return
-        end do
-    end function first_nontrivia_in_line
-
-    integer function next_nontrivia_same_line(tokens, start_idx) result(idx)
-        type(token_t), intent(in) :: tokens(:)
-        integer, intent(in) :: start_idx
-
-        integer :: line
-        integer :: i
-
-        idx = 0
-        if (start_idx <= 0) return
-        if (start_idx > size(tokens)) return
-        line = tokens(start_idx)%line
-
-        do i = start_idx, size(tokens)
-            if (tokens(i)%line /= line) exit
-            if (tokens(i)%kind == TK_NEWLINE) cycle
-            if (tokens(i)%kind == TK_WHITESPACE) cycle
-            idx = i
-            return
-        end do
-    end function next_nontrivia_same_line
-
-    pure function token_location(tok) result(location)
-        type(token_t), intent(in) :: tok
-        type(source_range_t) :: location
-        integer :: end_col
-
-        location%start%line = tok%line
-        location%start%column = tok%column
-        location%end%line = tok%line
-        end_col = tok%column
-        if (allocated(tok%text)) end_col = end_col + len(tok%text) - 1
-        location%end%column = end_col
-    end function token_location
 
 end module fluff_rule_f010
