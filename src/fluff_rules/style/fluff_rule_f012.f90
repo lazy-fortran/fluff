@@ -7,10 +7,13 @@ module fluff_rule_f012
     use fluff_text_helpers, only: has_lowercase, has_uppercase, is_lowercase_letter, &
                                   is_uppercase_letter
     use fortfront, only: declaration_node
+    use ast_nodes_data, only: mixed_construct_container_node
     implicit none
     private
 
     public :: check_f012_naming_conventions
+
+    integer, parameter :: MAX_RECURSION_DEPTH = 500
 
 contains
 
@@ -21,6 +24,8 @@ contains
 
         type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
+        integer, allocatable :: start_indices(:)
+        integer :: i
 
         type(source_range_t) :: first_location
         logical :: has_first_location
@@ -28,9 +33,18 @@ contains
 
         allocate (tmp(0))
         violation_count = 0
+        snake_count = 0
+        camel_count = 0
+        pascal_count = 0
+        has_first_location = .false.
 
-        call count_declared_naming_styles(ctx, snake_count, camel_count, pascal_count, &
-                                          first_location, has_first_location)
+        call get_traversal_roots(ctx, ctx%root_index, start_indices)
+
+        do i = 1, size(start_indices)
+            if (start_indices(i) <= 0) cycle
+            call walk_naming_styles(ctx, start_indices(i), snake_count, camel_count, &
+                                    pascal_count, first_location, has_first_location, 0)
+        end do
 
         if (has_mixed_naming_styles(snake_count, camel_count, pascal_count)) then
             if (.not. has_first_location) then
@@ -51,49 +65,83 @@ contains
         if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f012_naming_conventions
 
-    subroutine count_declared_naming_styles(ctx, snake_count, camel_count, &
-                                            pascal_count, first_location, &
-                                            has_first_location)
+    subroutine get_traversal_roots(ctx, root_index, start_indices)
         type(fluff_ast_context_t), intent(in) :: ctx
-        integer, intent(out) :: snake_count
-        integer, intent(out) :: camel_count
-        integer, intent(out) :: pascal_count
-        type(source_range_t), intent(out) :: first_location
-        logical, intent(out) :: has_first_location
+        integer, intent(in) :: root_index
+        integer, allocatable, intent(out) :: start_indices(:)
 
+        if (root_index <= 0) then
+            allocate (start_indices(0))
+            return
+        end if
+        if (.not. allocated(ctx%arena%entries(root_index)%node)) then
+            allocate (start_indices(0))
+            return
+        end if
+
+        select type (n => ctx%arena%entries(root_index)%node)
+        type is (mixed_construct_container_node)
+            if (allocated(n%explicit_program_indices)) then
+                start_indices = n%explicit_program_indices
+            else
+                allocate (start_indices(0))
+            end if
+        class default
+            allocate (start_indices(1))
+            start_indices(1) = root_index
+        end select
+    end subroutine get_traversal_roots
+
+    recursive subroutine walk_naming_styles(ctx, node_index, snake_count, camel_count, &
+                                            pascal_count, first_location, &
+                                            has_first_location, depth)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        integer, intent(inout) :: snake_count
+        integer, intent(inout) :: camel_count
+        integer, intent(inout) :: pascal_count
+        type(source_range_t), intent(inout) :: first_location
+        logical, intent(inout) :: has_first_location
+        integer, intent(in) :: depth
+
+        integer, allocatable :: children(:)
         integer :: i
         integer :: j
         character(len=:), allocatable :: name
 
-        snake_count = 0
-        camel_count = 0
-        pascal_count = 0
-        has_first_location = .false.
+        if (node_index <= 0) return
+        if (depth > MAX_RECURSION_DEPTH) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
-        do i = 1, ctx%arena%size
-            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
-            select type (n => ctx%arena%entries(i)%node)
-            type is (declaration_node)
-                if (n%is_multi_declaration .and. allocated(n%var_names)) then
-                    do j = 1, size(n%var_names)
-                        name = trim(n%var_names(j))
-                        call count_one(name, snake_count, camel_count, pascal_count)
-                        if (.not. has_first_location .and. len_trim(name) > 0) then
-                            first_location = ctx%get_node_location(i)
-                            has_first_location = .true.
-                        end if
-                    end do
-                else if (allocated(n%var_name)) then
-                    name = trim(n%var_name)
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (declaration_node)
+            if (n%is_multi_declaration .and. allocated(n%var_names)) then
+                do j = 1, size(n%var_names)
+                    name = trim(n%var_names(j))
                     call count_one(name, snake_count, camel_count, pascal_count)
                     if (.not. has_first_location .and. len_trim(name) > 0) then
-                        first_location = ctx%get_node_location(i)
+                        first_location = ctx%get_node_location(node_index)
                         has_first_location = .true.
                     end if
+                end do
+            else if (allocated(n%var_name)) then
+                name = trim(n%var_name)
+                call count_one(name, snake_count, camel_count, pascal_count)
+                if (.not. has_first_location .and. len_trim(name) > 0) then
+                    first_location = ctx%get_node_location(node_index)
+                    has_first_location = .true.
                 end if
-            end select
+            end if
+        end select
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            call walk_naming_styles(ctx, children(i), snake_count, camel_count, &
+                                    pascal_count, first_location, has_first_location, &
+                                    depth + 1)
         end do
-    end subroutine count_declared_naming_styles
+    end subroutine walk_naming_styles
 
     subroutine count_one(name, snake_count, camel_count, pascal_count)
         character(len=*), intent(in) :: name
