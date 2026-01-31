@@ -7,6 +7,7 @@ module test_support
 
     public :: make_temp_fortran_path
     public :: write_text_file
+    public :: read_text_file
     public :: delete_file_if_exists
     public :: lint_file_checked
     public :: assert_has_diagnostic_code
@@ -60,6 +61,36 @@ contains
         write (unit, '(A)') text
         close (unit)
     end subroutine write_text_file
+
+    subroutine read_text_file(path, content, error_msg)
+        character(len=*), intent(in) :: path
+        character(len=:), allocatable, intent(out) :: content
+        character(len=:), allocatable, intent(out) :: error_msg
+
+        integer :: unit, ios, file_size
+
+        error_msg = ""
+        open (newunit=unit, file=path, status="old", action="read", &
+              access="stream", form="unformatted", iostat=ios)
+        if (ios /= 0) then
+            error_msg = "Could not open file"
+            return
+        end if
+
+        inquire (unit=unit, size=file_size)
+        if (file_size > 0) then
+            allocate (character(len=file_size) :: content)
+            read (unit, iostat=ios) content
+            if (ios /= 0) then
+                error_msg = "Could not read file"
+                close (unit)
+                return
+            end if
+        else
+            content = ""
+        end if
+        close (unit)
+    end subroutine read_text_file
 
     subroutine delete_file_if_exists(path)
         character(len=*), intent(in) :: path
