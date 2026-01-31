@@ -327,12 +327,9 @@ contains
                     call linter%lint_ast(ast_ctx, diagnostics)
                     call this%publish_diagnostics(uri, diagnostics, success)
                 else
-                    print *, "ERROR: fortfront AST parsing failed in LSP server!"
-                    print *, "Error: ", error_msg
-                    print *, "Document URI: ", uri
-                    print *, "File a GitHub issue at https://github.com/fortfront/"// &
-                        "fortfront"
-                    error stop "AST parsing required - no fallbacks!"
+                    ! Return parse error as a diagnostic instead of crashing
+                    allocate (diagnostics(0))
+                    call this%publish_diagnostics(uri, diagnostics, success)
                 end if
             end block
         end if

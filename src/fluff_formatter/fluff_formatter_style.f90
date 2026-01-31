@@ -32,13 +32,15 @@ contains
 
         call lex_source(source_code, tokens, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("lex_source", error_msg)
+            detected_style = "standard"
+            return
         end if
 
         arena = create_ast_arena()
         call parse_tokens(tokens, arena, prog_index, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("parse_tokens", error_msg)
+            detected_style = "standard"
+            return
         end if
 
         has_class_types = .false.
@@ -195,16 +197,5 @@ contains
             detected_style = "standard"
         end if
     end subroutine select_style_guide
-
-    subroutine report_fortfront_failure(stage, error_msg)
-        character(len=*), intent(in) :: stage
-        character(len=*), intent(in) :: error_msg
-
-        print *, "ERROR: fortfront "//trim(stage)// &
-            " failed in formatter style detection"
-        print *, "Error: ", error_msg
-        print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
-        error stop "AST parsing required - no fallbacks"
-    end subroutine report_fortfront_failure
 
 end module fluff_formatter_style

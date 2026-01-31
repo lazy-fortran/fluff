@@ -202,7 +202,9 @@ contains
         do iter = 1, 4
             call ast_ctx%from_source(current_code, error_msg)
             if (error_msg /= "") then
-                call report_fortfront_failure("tooling_load_ast_from_string", error_msg)
+                error_msg = "Parse error: "//error_msg
+                formatted_code = source_code
+                return
             end if
 
             call this%format_ast(ast_ctx, next_code)
@@ -514,15 +516,5 @@ contains
         lines(num_lines) = text(start_pos:)
 
     end subroutine split_lines_dynamic
-
-    subroutine report_fortfront_failure(stage, error_msg)
-        character(len=*), intent(in) :: stage
-        character(len=*), intent(in) :: error_msg
-
-        print *, "ERROR: fortfront "//trim(stage)//" failed in formatter"
-        print *, "Error: ", error_msg
-        print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
-        error stop "AST parsing required - no fallbacks"
-    end subroutine report_fortfront_failure
 
 end module fluff_formatter

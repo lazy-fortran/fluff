@@ -139,11 +139,10 @@ contains
                                       this%config%tab_width)
 
         if (allocated(error_msg) .and. len(error_msg) > 0) then
-            print *, "ERROR: fortfront AST parsing failed in linter!"
-            print *, "Error: ", error_msg
-            print *, "File: ", filename
-            print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
-            error stop "AST parsing required - no fallbacks!"
+            ! Return parse error gracefully instead of crashing
+            error_msg = "Parse error in "//trim(filename)//": "//error_msg
+            allocate (diagnostics(0))
+            return
         end if
 
         ! Lint the AST
