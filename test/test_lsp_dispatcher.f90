@@ -72,6 +72,12 @@ contains
             return
         end if
 
+        call json_has_member(result_json, "serverInfo", found, ok)
+        if (.not. ok .or. .not. found) then
+            print *, "[FAIL] Initialize - missing serverInfo"
+            return
+        end if
+
         if (.not. dispatcher%server%is_initialized) then
             print *, "[FAIL] Initialize - server not marked initialized"
             return

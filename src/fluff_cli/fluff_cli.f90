@@ -555,6 +555,28 @@ contains
 
     end subroutine run_server_command
 
+    ! Extract root path from initialize message and initialize server
+    subroutine extract_root_path_and_initialize(message, server, result_json)
+        use fluff_lsp_server, only: fluff_lsp_server_t
+        character(len=*), intent(in) :: message
+        type(fluff_lsp_server_t), intent(inout) :: server
+        character(len=:), allocatable, intent(out) :: result_json
+
+        character(len=:), allocatable :: params_json, root_path
+        logical :: found, ok
+
+        call json_get_member_json(message, "params", params_json, found, ok)
+        if (ok .and. found) then
+            call json_get_string_member(params_json, "rootPath", root_path, &
+                                        found, ok)
+            if (.not. found .or. .not. ok) root_path = "."
+        else
+            root_path = "."
+        end if
+        call server%initialize(root_path)
+        result_json = server%get_initialize_result()
+    end subroutine extract_root_path_and_initialize
+
     ! Handle LSP requests
     subroutine handle_lsp_request(server, id, method, message, success)
         use fluff_lsp_server, only: fluff_lsp_server_t
@@ -564,15 +586,14 @@ contains
         character(len=*), intent(in) :: method, message
         logical, intent(out) :: success
 
-        character(len=:), allocatable :: response, capabilities
+        character(len=:), allocatable :: response, result_json
 
         success = .true.
 
         select case (method)
         case ("initialize")
-            ! Return server capabilities
-            capabilities = server%get_server_capabilities()
-            response = create_json_response(id, capabilities)
+            call extract_root_path_and_initialize(message, server, result_json)
+            response = create_json_response(id, result_json)
             write (output_unit, '(A)') response
 
         case ("shutdown")
@@ -602,15 +623,14 @@ contains
         character(len=*), intent(in) :: method, message
         logical, intent(out) :: success
 
-        character(len=:), allocatable :: response, capabilities
+        character(len=:), allocatable :: response, result_json
 
         success = .true.
 
         select case (method)
         case ("initialize")
-            ! Return server capabilities
-            capabilities = server%get_server_capabilities()
-            response = create_json_response(id, capabilities)
+            call extract_root_path_and_initialize(message, server, result_json)
+            response = create_json_response(id, result_json)
             call lsp_write_framed_message(response)
 
         case ("shutdown")
