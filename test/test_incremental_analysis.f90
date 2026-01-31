@@ -1,7 +1,6 @@
 program test_incremental_analysis
     use fluff_core
     use fluff_incremental_analyzer
-    use fluff_file_watcher
     implicit none
     
     integer :: total_tests, passed_tests
