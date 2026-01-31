@@ -40,6 +40,7 @@ module fluff_lsp_server
     type :: fluff_lsp_server_t
         type(workspace_t) :: workspace
         logical :: is_initialized = .false.
+        logical :: is_shutdown = .false.
         logical :: supports_hover = .true.
         logical :: supports_formatting = .true.
         logical :: supports_diagnostics = .true.
@@ -47,6 +48,7 @@ module fluff_lsp_server
         logical :: has_pending_notification = .false.
     contains
         procedure :: initialize => lsp_server_initialize
+        procedure :: shutdown => lsp_server_shutdown
         procedure :: handle_text_document_did_open
         procedure :: handle_text_document_did_change
         procedure :: handle_text_document_did_save
@@ -55,6 +57,7 @@ module fluff_lsp_server
         procedure :: publish_diagnostics
         procedure :: format_document
         procedure :: get_server_capabilities
+        procedure :: get_initialize_result
         procedure :: pop_notification
     end type fluff_lsp_server_t
 
@@ -201,8 +204,34 @@ contains
 
         call this%workspace%initialize(root_path)
         this%is_initialized = .true.
+        this%is_shutdown = .false.
 
     end subroutine lsp_server_initialize
+
+    subroutine lsp_server_shutdown(this)
+        class(fluff_lsp_server_t), intent(inout) :: this
+
+        this%is_shutdown = .true.
+        this%is_initialized = .false.
+
+        if (allocated(this%workspace%documents)) then
+            deallocate (this%workspace%documents)
+        end if
+        this%workspace%document_count = 0
+
+    end subroutine lsp_server_shutdown
+
+    function get_initialize_result(this) result(result_json)
+        class(fluff_lsp_server_t), intent(in) :: this
+        character(len=:), allocatable :: result_json
+
+        character(len=:), allocatable :: capabilities
+
+        capabilities = this%get_server_capabilities()
+        result_json = '{"capabilities":'//capabilities// &
+                      ',"serverInfo":{"name":"fluff","version":"0.1.0"}}'
+
+    end function get_initialize_result
 
     subroutine handle_text_document_did_open(this, uri, language_id, version, &
                                              content, success)
