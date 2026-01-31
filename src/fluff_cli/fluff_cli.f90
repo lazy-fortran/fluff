@@ -360,15 +360,16 @@ contains
     ! Run server command
     subroutine run_server_command(app, exit_code)
         use fluff_lsp_server, only: fluff_lsp_server_t
-        use iso_fortran_env, only: input_unit, output_unit, error_unit
+        use fluff_lsp_framing, only: lsp_read_framed_message, lsp_write_framed_message
+        use iso_fortran_env, only: error_unit
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
 
         type(fluff_lsp_server_t) :: lsp_server
         character(len=:), allocatable :: outgoing
-        character(len=10000) :: line
+        character(len=:), allocatable :: message, error_msg
         character(len=:), allocatable :: message_type, method
-        integer :: message_id, iostat
+        integer :: message_id
         logical :: success, server_running
         logical :: found_outgoing
 
@@ -380,25 +381,28 @@ contains
 
         ! Main server loop - read from stdin, write to stdout
         do while (server_running)
-            ! Read JSON-RPC message from stdin
-            read (input_unit, '(A)', iostat=iostat) line
+            ! Read framed JSON-RPC message from stdin
+            call lsp_read_framed_message(message, success, error_msg)
 
-            if (iostat /= 0) then
-                ! End of input - exit gracefully
+            if (.not. success) then
+                ! End of input or read error - exit gracefully
+                if (app%args%verbose) then
+                    write (error_unit, '(A)') "Read error: "//error_msg
+                end if
                 server_running = .false.
                 cycle
             end if
 
-            ! Skip empty lines
-            if (len_trim(line) == 0) cycle
+            ! Skip empty messages
+            if (len_trim(message) == 0) cycle
 
             ! Parse JSON-RPC message
-            call parse_lsp_message(trim(line), message_type, message_id, &
+            call parse_lsp_message(message, message_type, message_id, &
                                    method, success)
 
             if (.not. success) then
                 if (app%args%verbose) then
-                    write (error_unit, '(A)') "Failed to parse message: "//trim(line)
+                    write (error_unit, '(A)') "Failed to parse message: "//message
                 end if
                 cycle
             end if
@@ -406,16 +410,16 @@ contains
             ! Handle different message types
             select case (message_type)
             case ("request")
-                call handle_lsp_request(lsp_server, message_id, method, &
-                                        trim(line), success)
+                call handle_lsp_request_framed(lsp_server, message_id, method, &
+                                               message, success)
                 if (method == "shutdown") then
                     server_running = .false.
                 end if
 
             case ("notification")
-                call handle_lsp_notification(lsp_server, method, trim(line), success)
+                call handle_lsp_notification(lsp_server, method, message, success)
                 call lsp_server%pop_notification(outgoing, found_outgoing)
-                if (found_outgoing) write (output_unit, '(A)') outgoing
+                if (found_outgoing) call lsp_write_framed_message(outgoing)
 
             case default
                 if (app%args%verbose) then
@@ -462,6 +466,44 @@ contains
         end select
 
     end subroutine handle_lsp_request
+
+    ! Handle LSP requests with Content-Length framing
+    subroutine handle_lsp_request_framed(server, id, method, message, success)
+        use fluff_lsp_server, only: fluff_lsp_server_t
+        use fluff_lsp_framing, only: lsp_write_framed_message
+        use iso_fortran_env, only: error_unit
+        type(fluff_lsp_server_t), intent(inout) :: server
+        integer, intent(in) :: id
+        character(len=*), intent(in) :: method, message
+        logical, intent(out) :: success
+
+        character(len=:), allocatable :: response, capabilities
+
+        success = .true.
+
+        select case (method)
+        case ("initialize")
+            ! Return server capabilities
+            capabilities = server%get_server_capabilities()
+            response = create_json_response(id, capabilities)
+            call lsp_write_framed_message(response)
+
+        case ("shutdown")
+            ! Acknowledge shutdown
+            response = create_json_response(id, 'null')
+            call lsp_write_framed_message(response)
+
+        case ("textDocument/formatting")
+            call handle_formatting_request_framed(server, id, message, success)
+
+        case default
+            ! Method not found error
+            response = create_json_error_response(id, -32601, "Method not found")
+            call lsp_write_framed_message(response)
+            write (error_unit, '(A)') "Unknown method: "//method
+        end select
+
+    end subroutine handle_lsp_request_framed
 
     ! Handle LSP notifications
     subroutine handle_lsp_notification(server, method, message, success)
@@ -761,6 +803,66 @@ contains
 
         write (output_unit, '(A)') response
     end subroutine handle_formatting_request
+
+    subroutine handle_formatting_request_framed(server, id, message, success)
+        use fluff_lsp_server, only: fluff_lsp_server_t
+        use fluff_lsp_framing, only: lsp_write_framed_message
+        type(fluff_lsp_server_t), intent(inout) :: server
+        integer, intent(in) :: id
+        character(len=*), intent(in) :: message
+        logical, intent(out) :: success
+
+        character(len=:), allocatable :: formatted_content, response
+
+        character(len=:), allocatable :: err
+        character(len=:), allocatable :: params_json, text_document_json
+        character(len=:), allocatable :: uri, formatted_json
+        logical :: ok, found
+
+        call json_parse(message, ok, err)
+        if (.not. ok) then
+            success = .false.
+            response = create_json_error_response(id, -32700, "Parse error")
+            call lsp_write_framed_message(response)
+            return
+        end if
+
+        call json_get_member_json(message, "params", params_json, found, ok)
+        if (.not. ok .or. .not. found) then
+            success = .false.
+            response = create_json_error_response(id, -32602, "Invalid params")
+            call lsp_write_framed_message(response)
+            return
+        end if
+
+        call json_get_member_json(params_json, "textDocument", text_document_json, &
+                                  found, ok)
+        if (.not. ok .or. .not. found) then
+            success = .false.
+            response = create_json_error_response(id, -32602, "Invalid params")
+            call lsp_write_framed_message(response)
+            return
+        end if
+
+        call json_get_string_member(text_document_json, "uri", uri, found, ok)
+        if (.not. ok .or. .not. found) then
+            success = .false.
+            response = create_json_error_response(id, -32602, "Invalid params")
+            call lsp_write_framed_message(response)
+            return
+        end if
+
+        call server%format_document(uri, formatted_content, success)
+
+        if (success) then
+            call json_escape_string(formatted_content, formatted_json)
+            response = create_json_response(id, formatted_json)
+        else
+            response = create_json_error_response(id, -32603, "Formatting failed")
+        end if
+
+        call lsp_write_framed_message(response)
+    end subroutine handle_formatting_request_framed
 
     subroutine read_text_file(file_path, content, error_msg)
         character(len=*), intent(in) :: file_path
