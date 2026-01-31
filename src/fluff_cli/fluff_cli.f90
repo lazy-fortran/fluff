@@ -19,7 +19,6 @@ module fluff_cli
         character(len=:), allocatable :: files(:)    ! Files to process
         logical :: fix = .false.
         logical :: diff = .false.
-        logical :: watch = .false.
         logical :: version = .false.
         logical :: help = .false.
         logical :: help_requested = .false.         ! Alias for help
@@ -96,8 +95,6 @@ contains
                     this%fix = .true.
                 case ("--diff")
                     this%diff = .true.
-                case ("--watch")
-                    this%watch = .true.
                 case ("--version")
                     this%version = .true.
                     this%version_requested = .true.
@@ -346,7 +343,6 @@ contains
         print *, "  -v, --version      Show version"
         print *, "  --fix              Apply fixes automatically"
         print *, "  --diff             Show diffs instead of rewriting files"
-        print *, "  --watch            Watch files for changes"
         print *, "  --config FILE      Use configuration file"
         print *, "  --output-format    Output format (text, json, sarif)"
 
