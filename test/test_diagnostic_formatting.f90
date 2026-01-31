@@ -20,7 +20,10 @@ program test_diagnostic_formatting
     
     ! Test 5: Diagnostic with fix suggestions
     call test_diagnostic_with_fixes()
-    
+
+    ! Test 6: Filename display in diagnostics (fixes #204)
+    call test_filename_display()
+
     print *, "[OK] All diagnostic formatting tests passed!"
     
 contains
@@ -232,7 +235,61 @@ contains
         end if
         
         print *, "[OK] Diagnostic with fix suggestions"
-        
+
     end subroutine test_diagnostic_with_fixes
-    
+
+    subroutine test_filename_display()
+        type(diagnostic_t) :: diagnostic
+        type(source_range_t) :: loc
+        character(len=:), allocatable :: text_output, sarif_output, str_output
+
+        print *, "  TOOLS Testing filename display in diagnostics (fixes #204)..."
+
+        loc%start%line = 1
+        loc%start%column = 1
+        loc%end%line = 1
+        loc%end%column = 15
+
+        diagnostic = create_diagnostic( &
+            code="F001", &
+            message="Missing implicit none statement", &
+            file_path="test_module.f90", &
+            location=loc, &
+            severity=SEVERITY_WARNING &
+        )
+
+        text_output = format_diagnostic(diagnostic, OUTPUT_FORMAT_TEXT)
+        if (index(text_output, "test_module.f90:") == 0) then
+            print *, "ERROR: Text output does not contain filename"
+            print *, "  Got: ", text_output
+            error stop "Text format should display actual filename, not 'file'"
+        end if
+        if (index(text_output, "file:1:1") > 0) then
+            error stop "Text format shows 'file' instead of actual filename"
+        end if
+
+        str_output = diagnostic%to_string()
+        if (index(str_output, "test_module.f90:") == 0) then
+            print *, "ERROR: to_string output does not contain filename"
+            print *, "  Got: ", str_output
+            error stop "to_string should display actual filename, not 'file'"
+        end if
+        if (index(str_output, "file:1:1") > 0) then
+            error stop "to_string shows 'file' instead of actual filename"
+        end if
+
+        sarif_output = format_diagnostic(diagnostic, OUTPUT_FORMAT_SARIF)
+        if (index(sarif_output, '"uri": "test_module.f90"') == 0) then
+            print *, "ERROR: SARIF output does not contain filename in URI"
+            print *, "  Got: ", sarif_output
+            error stop "SARIF format should display actual filename in URI"
+        end if
+        if (index(sarif_output, '"uri": "file"') > 0) then
+            error stop "SARIF format shows 'file' instead of actual filename"
+        end if
+
+        print *, "[OK] Filename display in diagnostics"
+
+    end subroutine test_filename_display
+
 end program test_diagnostic_formatting

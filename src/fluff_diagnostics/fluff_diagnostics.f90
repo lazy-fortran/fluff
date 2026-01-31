@@ -173,14 +173,14 @@ contains
     function diagnostic_to_string(this) result(str)
         class(diagnostic_t), intent(in) :: this
         character(len=:), allocatable :: str
-        character(len=100) :: buffer
-        
+        character(len=1000) :: buffer
+
         write(buffer, '(A,":",I0,":",I0,": ",A," [",A,"] ",A)') &
-            "file", this%location%start%line, this%location%start%column, &
+            this%file_path, this%location%start%line, this%location%start%column, &
             severity_to_string(this%severity), this%code, this%message
-            
+
         str = trim(buffer)
-        
+
     end function diagnostic_to_string
     
     ! Convert diagnostic to JSON
@@ -211,9 +211,9 @@ contains
     ! Print diagnostic to stdout
     subroutine diagnostic_print(this)
         class(diagnostic_t), intent(in) :: this
-        
+
         character(len=:), allocatable :: severity_str
-        
+
         select case (this%severity)
         case (SEVERITY_ERROR)
             severity_str = "ERROR"
@@ -224,17 +224,17 @@ contains
         case (SEVERITY_HINT)
             severity_str = "HINT"
         end select
-        
+
         if (allocated(this%code)) then
             print '(a,":",i0,":",i0," [",a,"] ",a," (",a,")")', &
-                "file", this%location%start%line, this%location%start%column, &
+                this%file_path, this%location%start%line, this%location%start%column, &
                 severity_str, this%message, this%code
         else
             print '(a,":",i0,":",i0," [",a,"] ",a)', &
-                "file", this%location%start%line, this%location%start%column, &
+                this%file_path, this%location%start%line, this%location%start%column, &
                 severity_str, this%message
         end if
-        
+
     end subroutine diagnostic_print
     
     ! Apply fix to source code
@@ -500,7 +500,7 @@ contains
                    '  "level": "' // severity_to_sarif_level(diagnostic%severity) // '",' // new_line('a') // &
                    '  "locations": [{' // new_line('a') // &
                    '    "physicalLocation": {' // new_line('a') // &
-                   '      "artifactLocation": {"uri": "file"},' // new_line('a') // &
+                   '      "artifactLocation": {"uri": "' // diagnostic%file_path // '"},' // new_line('a') // &
                    '      "region": {"startLine": ' // trim(start_line_str) // &
                    ', "startColumn": ' // trim(start_col_str) // &
                    ', "endLine": ' // trim(end_line_str) // &
