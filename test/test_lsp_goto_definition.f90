@@ -207,25 +207,25 @@ contains
         print *, ""
         print *, "Testing goto definition for interfaces..."
 
-        ! Test 1: Operator interface
-        call run_definition_test("Operator interface", &
-                                 "interface operator(+)"//new_line('a')// &
-                                 "module procedure add_vectors"//new_line('a')// &
+        ! Test 1: Named interface - user clicks on "swap" in call statement
+        call run_definition_test("Named interface", &
+                                 "interface swap"//new_line('a')// &
+                                 "module procedure swap_int"//new_line('a')// &
                                  "end interface"//new_line('a')// &
-                                 "v3 = v1 + v2"//new_line('a')// &
+                                 "call swap(a, b)"//new_line('a')// &
                                  "", &
-                                 4, 8, "file:///test.f90", 1, 10, .true.)
+                                 4, 5, "file:///test.f90", 1, 10, .true.)
 
-        ! Test 2: Assignment interface
-        call run_definition_test("Assignment interface", &
-                                 "interface assignment(=)"//new_line('a')// &
-                                 "module procedure assign_custom"//new_line('a')// &
+        ! Test 2: Module procedure in interface
+        call run_definition_test("Module procedure in interface", &
+                                 "interface"//new_line('a')// &
+                                 "module procedure helper"//new_line('a')// &
                                  "end interface"//new_line('a')// &
-                                 "a = b"//new_line('a')// &
+                                 "call helper()"//new_line('a')// &
                                  "", &
-                                 4, 2, "file:///test.f90", 1, 10, .true.)
+                                 4, 5, "file:///test.f90", 2, 17, .true.)
 
-        ! Test 3: Abstract interface
+        ! Test 3: Abstract interface - callback is on line 2 at col 11
         call run_definition_test("Abstract interface", &
                                  "abstract interface"//new_line('a')// &
                                  "subroutine callback(x)"//new_line('a')// &
@@ -234,7 +234,7 @@ contains
                                  "end interface"//new_line('a')// &
                                  "procedure(callback) :: my_callback"//new_line('a')// &
                                  "", &
-                                 6, 10, "file:///test.f90", 1, 9, .true.)
+                                 6, 10, "file:///test.f90", 2, 11, .true.)
 
     end subroutine test_interface_definition
 
