@@ -15,6 +15,9 @@ program test_rule_p001_column_major_access
     call test_3d_incorrect_order_triggers()
     call test_rhs_array_read_triggers()
     call test_non_array_call_ok()
+    call test_print_statement_read_triggers()
+    call test_subroutine_arg_read_triggers()
+    call test_if_condition_read_triggers()
 
     print *, "[OK] All P001 tests passed!"
 
@@ -211,5 +214,100 @@ contains
                                         "function call should not be flagged")
         print *, "[OK] Function call not flagged"
     end subroutine test_non_array_call_ok
+
+    subroutine test_print_statement_read_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+                    "    real :: matrix(n, m)"//new_line('a')// &
+                    "    integer :: i, j"//new_line('a')// &
+                    "    do i = 1, n"//new_line('a')// &
+                    "        do j = 1, m"//new_line('a')// &
+                    "            print *, matrix(i, j)"//new_line('a')// &
+                    "        end do"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p001_print_read", path)
+        call write_text_file(path, test_code)
+        call lint_file_checked(linter, path, diagnostics)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P001", .true., &
+                                        "print statement array reads should be checked")
+        print *, "[OK] Print statement array read triggers"
+    end subroutine test_print_statement_read_triggers
+
+    subroutine test_subroutine_arg_read_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+                    "    real :: matrix(n, m)"//new_line('a')// &
+                    "    integer :: i, j"//new_line('a')// &
+                    "    do i = 1, n"//new_line('a')// &
+                    "        do j = 1, m"//new_line('a')// &
+                    "            call process(matrix(i, j))"//new_line('a')// &
+                    "        end do"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "contains"//new_line('a')// &
+                    "    subroutine process(val)"//new_line('a')// &
+                    "        real, intent(in) :: val"//new_line('a')// &
+                    "    end subroutine process"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p001_call_read", path)
+        call write_text_file(path, test_code)
+        call lint_file_checked(linter, path, diagnostics)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P001", .true., &
+                                        "subroutine arg array reads should be checked")
+        print *, "[OK] Subroutine argument array read triggers"
+    end subroutine test_subroutine_arg_read_triggers
+
+    subroutine test_if_condition_read_triggers()
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: test_code
+        character(len=:), allocatable :: path
+
+        test_code = "program test"//new_line('a')// &
+                    "    implicit none"//new_line('a')// &
+                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+                    "    real :: matrix(n, m)"//new_line('a')// &
+                    "    integer :: count"//new_line('a')// &
+                    "    integer :: i, j"//new_line('a')// &
+                    "    count = 0"//new_line('a')// &
+                    "    do i = 1, n"//new_line('a')// &
+                    "        do j = 1, m"//new_line('a')// &
+                    "            if (matrix(i, j) > 0.0) then"//new_line('a')// &
+                    "                count = count + 1"//new_line('a')// &
+                    "            end if"//new_line('a')// &
+                    "        end do"//new_line('a')// &
+                    "    end do"//new_line('a')// &
+                    "end program test"
+
+        linter = create_linter_engine()
+        call make_temp_fortran_path("fluff_test_p001_if_read", path)
+        call write_text_file(path, test_code)
+        call lint_file_checked(linter, path, diagnostics)
+        call delete_file_if_exists(path)
+
+        call assert_has_diagnostic_code(diagnostics, "P001", .true., &
+                                        "if condition array reads should be checked")
+        print *, "[OK] If condition array read triggers"
+    end subroutine test_if_condition_read_triggers
 
 end program test_rule_p001_column_major_access
