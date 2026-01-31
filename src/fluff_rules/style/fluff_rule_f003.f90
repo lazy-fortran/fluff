@@ -2,7 +2,8 @@ module fluff_rule_f003
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
-    use fluff_rule_file_context, only: current_filename, current_line_length
+    use fluff_rule_file_context, only: current_filename, current_line_length, &
+                                       current_tab_width
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fluff_text_helpers, only: is_comment_only_line, int_to_str
     use fluff_visual_columns, only: visual_columns
@@ -24,6 +25,7 @@ contains
         integer :: line_num
         integer :: max_length
         integer :: line_length
+        integer :: tab_width
         logical :: found
         character(len=:), allocatable :: line_text
 
@@ -35,13 +37,16 @@ contains
         max_length = current_line_length
         if (max_length <= 0) max_length = 88
 
+        tab_width = current_tab_width
+        if (tab_width <= 0) tab_width = 4
+
         violation_count = 0
         line_num = 1
         do
             call ctx%get_source_line(line_num, line_text, found)
             if (.not. found) exit
 
-            line_length = visual_columns(line_text)
+            line_length = visual_columns(line_text, tab_width)
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
                     call push_diagnostic(buffer, violation_count, &

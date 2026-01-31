@@ -84,10 +84,19 @@ fluff check --output-format json src/
   fix = .true.
   show_fixes = .true.
   line_length = 100
+  tab_width = 4
   target_version = "2018"
   output_format = "json"
 /
 ```
+
+Configuration options:
+- `fix`: Enable automatic fixing of violations (default: `.false.`)
+- `show_fixes`: Show suggested fixes without applying (default: `.false.`)
+- `line_length`: Maximum line length, 40-200 (default: `88`)
+- `tab_width`: Tab width for visual column calculation, 1-16 (default: `4`)
+- `target_version`: Target Fortran version: "2008", "2018", "2023" (default: `"2018"`)
+- `output_format`: Output format: "text", "json", "sarif" (default: `"text"`)
 
 ## 📋 Available Rules
 

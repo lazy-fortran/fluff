@@ -1,3 +1,12 @@
-# Configuration placeholder
-# TOML configuration is not yet implemented
-# Use command-line arguments instead
+# fluff configuration file
+# See README.md for documentation on available options
+
+# Using namelist format for configuration
+&fluff_config
+  fix = .false.
+  show_fixes = .false.
+  line_length = 88
+  tab_width = 4
+  target_version = "2018"
+  output_format = "text"
+/
