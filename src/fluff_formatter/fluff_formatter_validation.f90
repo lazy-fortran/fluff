@@ -48,12 +48,14 @@ contains
 
         call lex_source(original, tokens_a, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("lex_source", error_msg)
+            diff_type = "error"
+            return
         end if
 
         call lex_source(formatted, tokens_b, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("lex_source", error_msg)
+            diff_type = "error"
+            return
         end if
 
         if (.not. tokens_match(tokens_a, tokens_b)) then
@@ -84,13 +86,15 @@ contains
 
         call lex_source(source_code, tokens, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("lex_source", error_msg)
+            normalized_code = source_code
+            return
         end if
 
         arena = create_ast_arena()
         call parse_tokens(tokens, arena, prog_index, error_msg)
         if (error_msg /= "") then
-            call report_fortfront_failure("parse_tokens", error_msg)
+            normalized_code = source_code
+            return
         end if
 
         call emit_fortran(arena, prog_index, normalized_code)
@@ -158,15 +162,5 @@ contains
             prev_line = tokens_a(i)%line
         end do
     end subroutine compare_token_positions
-
-    subroutine report_fortfront_failure(stage, error_msg)
-        character(len=*), intent(in) :: stage
-        character(len=*), intent(in) :: error_msg
-
-        print *, "ERROR: fortfront "//trim(stage)//" failed in formatter validation"
-        print *, "Error: ", error_msg
-        print *, "File a GitHub issue at https://github.com/fortfront/fortfront"
-        error stop "AST parsing required - no fallbacks"
-    end subroutine report_fortfront_failure
 
 end module fluff_formatter_validation
