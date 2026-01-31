@@ -1,8 +1,9 @@
 module fluff_rule_symbol_collect
     use fluff_ast, only: fluff_ast_context_t
-    use fortfront, only: ast_arena_t, declaration_node, function_def_node, &
-                         identifier_node, parameter_declaration_node, &
-                         program_node, subroutine_def_node
+    use fortfront, only: ast_arena_t, declaration_node, do_loop_node, &
+                         function_def_node, get_children, identifier_node, &
+                         parameter_declaration_node, program_node, &
+                         subroutine_def_node
     implicit none
     private
 
@@ -231,7 +232,7 @@ contains
         character(len=256), allocatable :: tmp(:)
         character(len=256), allocatable :: grown(:)
         integer :: i, count, max_len
-        character(len=:), allocatable :: identifier_name
+        character(len=:), allocatable :: var_name
 
         allocate (tmp(64))
         tmp = ""
@@ -241,30 +242,18 @@ contains
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             if (.not. is_in_subtree(ctx%arena, root_index, i)) cycle
             if (.not. is_in_same_unit(ctx%arena, root_index, i)) cycle
-            if (ctx%arena%entries(i)%node_type /= "identifier") cycle
 
+            var_name = ""
             select type (node => ctx%arena%entries(i)%node)
             type is (identifier_node)
-                if (.not. allocated(node%name)) cycle
-                identifier_name = node%name
-            class default
-                cycle
+                if (allocated(node%name)) var_name = node%name
             end select
 
-            if (len_trim(identifier_name) == 0) cycle
-            if (count > 0) then
-                if (name_in_list(tmp(1:count), identifier_name)) cycle
-            end if
-
-            if (count >= size(tmp)) then
-                allocate (grown(size(tmp)*2))
-                grown = ""
-                grown(1:size(tmp)) = tmp
-                call move_alloc(grown, tmp)
-            end if
-            count = count + 1
-            tmp(count) = identifier_name
+            if (len_trim(var_name) == 0) cycle
+            call add_unique_name(tmp, count, var_name, grown)
         end do
+
+        call collect_loop_var_names_recursive(ctx%arena, root_index, tmp, count, grown)
 
         if (count == 0) then
             allocate (character(len=0) :: names(0))
@@ -275,5 +264,63 @@ contains
         allocate (character(len=max_len) :: names(count))
         names = tmp(1:count)
     end subroutine collect_used_names
+
+    subroutine add_unique_name(tmp, count, var_name, grown)
+        character(len=256), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: count
+        character(len=*), intent(in) :: var_name
+        character(len=256), allocatable, intent(inout) :: grown(:)
+
+        if (len_trim(var_name) == 0) return
+        if (count > 0) then
+            if (name_in_list(tmp(1:count), var_name)) return
+        end if
+
+        if (count >= size(tmp)) then
+            allocate (grown(size(tmp)*2))
+            grown = ""
+            grown(1:size(tmp)) = tmp
+            call move_alloc(grown, tmp)
+        end if
+        count = count + 1
+        tmp(count) = var_name
+    end subroutine add_unique_name
+
+    recursive subroutine collect_loop_var_names_recursive(arena, node_index, tmp, count, &
+                                                          grown)
+        type(ast_arena_t), intent(in) :: arena
+        integer, intent(in) :: node_index
+        character(len=256), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: count
+        character(len=256), allocatable, intent(inout) :: grown(:)
+
+        integer :: i
+        integer, allocatable :: children(:)
+
+        if (node_index <= 0) return
+        if (node_index > arena%size) return
+        if (.not. allocated(arena%entries(node_index)%node)) return
+
+        select type (node => arena%entries(node_index)%node)
+        type is (do_loop_node)
+            if (allocated(node%var_name)) then
+                call add_unique_name(tmp, count, node%var_name, grown)
+            end if
+            if (allocated(node%body_indices)) then
+                do i = 1, size(node%body_indices)
+                    call collect_loop_var_names_recursive(arena, node%body_indices(i), &
+                                                          tmp, count, grown)
+                end do
+            end if
+        class default
+            children = get_children(arena, node_index)
+            do i = 1, size(children)
+                if (children(i) > 0) then
+                    call collect_loop_var_names_recursive(arena, children(i), tmp, &
+                                                          count, grown)
+                end if
+            end do
+        end select
+    end subroutine collect_loop_var_names_recursive
 
 end module fluff_rule_symbol_collect
