@@ -48,6 +48,8 @@ module fluff_cli
 
     ! Public procedures
     public :: create_cli_app
+    public :: path_is_directory
+    public :: expand_file_arguments
 
 contains
 
@@ -170,6 +172,103 @@ contains
 
     end subroutine add_file_to_list
 
+    ! Check if a path is a directory by attempting to list its contents
+    function path_is_directory(path) result(is_dir)
+        character(len=*), intent(in) :: path
+        logical :: is_dir
+
+        character(len=4096) :: temp_file
+        integer :: exit_status
+
+        is_dir = .false.
+        temp_file = "/tmp/fluff_isdir_"//trim(int_to_str(getpid()))//".txt"
+
+        call execute_command_line("test -d "//trim(path)//" && echo y > "// &
+                                  trim(temp_file)//" 2>/dev/null", wait=.true., &
+                                  exitstat=exit_status)
+
+        is_dir = (exit_status == 0)
+        call execute_command_line("rm -f "//trim(temp_file), wait=.true.)
+
+    end function path_is_directory
+
+    ! Find Fortran files recursively in a directory
+    subroutine find_fortran_files_in_directory(dir_path, files, file_count)
+        character(len=*), intent(in) :: dir_path
+        character(len=:), allocatable, intent(inout) :: files(:)
+        integer, intent(out) :: file_count
+
+        character(len=4096) :: temp_file, line
+        character(len=:), allocatable :: find_cmd
+        integer :: unit, iostat_val
+
+        file_count = 0
+        temp_file = "/tmp/fluff_find_output_"//trim(int_to_str(getpid()))//".txt"
+
+        find_cmd = "find "//trim(dir_path)//" -type f \( "// &
+                   "-name '*.f90' -o -name '*.F90' -o "// &
+                   "-name '*.f95' -o -name '*.F95' -o "// &
+                   "-name '*.f03' -o -name '*.F03' -o "// &
+                   "-name '*.f08' -o -name '*.F08' -o "// &
+                   "-name '*.f' -o -name '*.F' -o "// &
+                   "-name '*.for' -o -name '*.FOR' "// &
+                   "\) 2>/dev/null > "//trim(temp_file)
+
+        call execute_command_line(find_cmd, wait=.true.)
+
+        open (newunit=unit, file=trim(temp_file), status="old", action="read", &
+              iostat=iostat_val)
+        if (iostat_val /= 0) then
+            call execute_command_line("rm -f "//trim(temp_file), wait=.true.)
+            return
+        end if
+
+        do
+            read (unit, '(A)', iostat=iostat_val) line
+            if (iostat_val /= 0) exit
+            if (len_trim(line) > 0) then
+                call add_file_to_list(files, trim(line))
+                file_count = file_count + 1
+            end if
+        end do
+
+        close (unit)
+        call execute_command_line("rm -f "//trim(temp_file), wait=.true.)
+
+    end subroutine find_fortran_files_in_directory
+
+    ! Get process ID for unique temp file names
+    function getpid() result(pid)
+        integer :: pid
+        call system_clock(count=pid)
+        pid = mod(pid, 100000)
+    end function getpid
+
+    ! Expand file arguments: replace directories with their Fortran files
+    subroutine expand_file_arguments(input_files, expanded_files)
+        character(len=:), allocatable, intent(in) :: input_files(:)
+        character(len=:), allocatable, intent(out) :: expanded_files(:)
+
+        character(len=:), allocatable :: temp_files(:)
+        integer :: i, dir_file_count
+
+        if (.not. allocated(input_files)) return
+
+        do i = 1, size(input_files)
+            if (path_is_directory(input_files(i))) then
+                call find_fortran_files_in_directory(input_files(i), temp_files, &
+                                                     dir_file_count)
+            else
+                call add_file_to_list(temp_files, trim(input_files(i)))
+            end if
+        end do
+
+        if (allocated(temp_files)) then
+            call move_alloc(temp_files, expanded_files)
+        end if
+
+    end subroutine expand_file_arguments
+
     ! Validate arguments
     function args_validate(this) result(valid)
         class(cli_args_t), intent(in) :: this
@@ -273,6 +372,7 @@ contains
         type(fluff_config_t) :: config
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: expanded_files(:)
         integer :: i, fixes_applied
 
         exit_code = 0
@@ -288,10 +388,15 @@ contains
         call app%linter%initialize()
         call app%linter%set_config(config)
 
-        ! Process files
+        ! Expand directories to their Fortran files
         if (allocated(app%args%files)) then
-            do i = 1, size(app%args%files)
-                call app%linter%lint_file(app%args%files(i), diagnostics, error_msg)
+            call expand_file_arguments(app%args%files, expanded_files)
+        end if
+
+        ! Process files
+        if (allocated(expanded_files)) then
+            do i = 1, size(expanded_files)
+                call app%linter%lint_file(expanded_files(i), diagnostics, error_msg)
 
                 if (error_msg /= "") then
                     print *, "Error linting file: ", error_msg
@@ -329,6 +434,7 @@ contains
         character(len=:), allocatable :: formatted_code
         character(len=:), allocatable :: original_code
         character(len=:), allocatable :: error_msg
+        character(len=:), allocatable :: expanded_files(:)
         integer :: i
 
         exit_code = 0
@@ -336,26 +442,31 @@ contains
         ! Initialize formatter
         call app%formatter%initialize()
 
-        ! Process files
+        ! Expand directories to their Fortran files
         if (allocated(app%args%files)) then
-            do i = 1, size(app%args%files)
-                call app%formatter%format_file(app%args%files(i), &
+            call expand_file_arguments(app%args%files, expanded_files)
+        end if
+
+        ! Process files
+        if (allocated(expanded_files)) then
+            do i = 1, size(expanded_files)
+                call app%formatter%format_file(expanded_files(i), &
                                                formatted_code, error_msg)
 
                 if (error_msg /= "") then
                     print *, "Error formatting file: ", error_msg
                     exit_code = 1
                 else if (app%args%diff) then
-                    call read_text_file(app%args%files(i), original_code, error_msg)
+                    call read_text_file(expanded_files(i), original_code, error_msg)
                     if (error_msg /= "") then
                         print *, "Error reading file: ", error_msg
                         exit_code = 1
                     else
-                        call print_unified_diff(app%args%files(i), original_code, &
+                        call print_unified_diff(expanded_files(i), original_code, &
                                                 formatted_code)
                     end if
                 else if (app%args%fix) then
-                    call write_text_file(app%args%files(i), formatted_code, error_msg)
+                    call write_text_file(expanded_files(i), formatted_code, error_msg)
                     if (error_msg /= "") then
                         print *, "Error writing file: ", error_msg
                         exit_code = 1
