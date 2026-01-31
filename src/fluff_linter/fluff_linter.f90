@@ -135,7 +135,8 @@ contains
         ! containing fortfront arena and semantic context with pointer components
         call ast_ctx%from_source(source_code, error_msg)
 
-        call set_current_file_context(filename, this%config%line_length)
+        call set_current_file_context(filename, this%config%line_length, &
+                                      this%config%tab_width)
 
         if (allocated(error_msg) .and. len(error_msg) > 0) then
             print *, "ERROR: fortfront AST parsing failed in linter!"
