@@ -94,27 +94,29 @@ contains
 
     end function load_config
 
-    ! Load configuration from TOML file
+    ! Load configuration from TOML file - uses efficient buffered reading
     subroutine config_from_file(this, filename)
         class(fluff_config_t), intent(inout) :: this
         character(len=*), intent(in) :: filename
 
-        ! Read file contents and parse as TOML string
-        integer :: unit, iostat
-        character(len=1000) :: line
+        integer :: unit, iostat, file_size
         character(len=:), allocatable :: toml_content, error_msg
 
-        toml_content = ""
+        open (newunit=unit, file=filename, status='old', action='read', &
+              access='stream', form='unformatted', iostat=iostat)
+        if (iostat /= 0) return
 
-        open (newunit=unit, file=filename, status='old', action='read', iostat=iostat)
-        if (iostat /= 0) return  ! File doesn't exist or can't be read
+        inquire (unit=unit, size=file_size)
+        if (file_size <= 0) then
+            close (unit)
+            return
+        end if
 
-        do
-            read (unit, '(A)', iostat=iostat) line
-            if (iostat /= 0) exit
-            toml_content = toml_content//trim(line)//new_line('a')
-        end do
+        allocate (character(len=file_size) :: toml_content)
+        read (unit, iostat=iostat) toml_content
         close (unit)
+
+        if (iostat /= 0) return
 
         call this%from_toml_string(toml_content, error_msg)
 
