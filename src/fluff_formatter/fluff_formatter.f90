@@ -224,9 +224,8 @@ contains
         integer, intent(in) :: start_line, end_line
         character(len=:), allocatable, intent(out) :: formatted_code
 
-        ! Implement range-specific formatting by filtering lines
         character(len=:), allocatable :: full_formatted
-        character(len=1000) :: lines(10000)
+        character(len=:), allocatable :: lines(:)
         integer :: num_lines, i, line_start, line_end
         integer :: saved_indent_size
         integer :: saved_line_length
@@ -234,7 +233,6 @@ contains
         logical :: saved_standardize_types
 
         if (ast_ctx%is_initialized) then
-            ! First format the entire file
             call get_indent_config(saved_indent_size, saved_indent_char)
             call get_line_length_config(saved_line_length)
             call get_type_standardization(saved_standardize_types)
@@ -249,16 +247,15 @@ contains
             call set_line_length_config(saved_line_length)
             call set_type_standardization(saved_standardize_types)
 
-            ! Split into lines and extract the range
-            call split_lines_simple(full_formatted, lines, num_lines)
+            call split_lines_dynamic(full_formatted, lines, num_lines)
 
             formatted_code = ""
             line_start = max(1, start_line)
             line_end = min(num_lines, end_line)
 
             do i = line_start, line_end
-                if (i > 1) formatted_code = formatted_code//new_line('a')
-                formatted_code = formatted_code//trim(lines(i))
+                if (i > line_start) formatted_code = formatted_code//new_line('a')
+                formatted_code = formatted_code//lines(i)
             end do
         else
             formatted_code = ""
@@ -455,37 +452,55 @@ contains
 
     end subroutine formatter_format_with_feedback
 
-    ! Helper subroutine to split text into lines
-    subroutine split_lines_simple(text, lines, num_lines)
+    ! Split text into lines using dynamic allocation (no fixed limits)
+    subroutine split_lines_dynamic(text, lines, num_lines)
         character(len=*), intent(in) :: text
-        character(len=1000), intent(out) :: lines(:)
+        character(len=:), allocatable, intent(out) :: lines(:)
         integer, intent(out) :: num_lines
 
-        integer :: i, start_pos, end_pos, newline_pos
+        integer :: i, start_pos, max_line_len
+        character(len=1) :: nl
 
-        num_lines = 0
-        start_pos = 1
+        nl = new_line('a')
 
-        do while (start_pos <= len(text) .and. num_lines < size(lines))
-            ! Find next newline
-            newline_pos = index(text(start_pos:), new_line('a'))
-            if (newline_pos == 0) then
-                ! No more newlines, take rest of string
-                end_pos = len(text)
-            else
-                end_pos = start_pos + newline_pos - 2
-            end if
+        if (len(text) == 0) then
+            allocate (character(len=0) :: lines(1))
+            lines(1) = ""
+            num_lines = 1
+            return
+        end if
 
-            if (end_pos >= start_pos) then
-                num_lines = num_lines + 1
-                lines(num_lines) = text(start_pos:end_pos)
-            end if
-
-            if (newline_pos == 0) exit
-            start_pos = start_pos + newline_pos
+        num_lines = 1
+        do i = 1, len(text)
+            if (text(i:i) == nl) num_lines = num_lines + 1
         end do
 
-    end subroutine split_lines_simple
+        max_line_len = 0
+        start_pos = 1
+        do i = 1, len(text)
+            if (text(i:i) == nl) then
+                max_line_len = max(max_line_len, i - start_pos)
+                start_pos = i + 1
+            end if
+        end do
+        max_line_len = max(max_line_len, len(text) - start_pos + 1)
+        max_line_len = max(1, max_line_len)
+
+        allocate (character(len=max_line_len) :: lines(num_lines))
+
+        start_pos = 1
+        num_lines = 0
+        do i = 1, len(text)
+            if (text(i:i) == nl) then
+                num_lines = num_lines + 1
+                lines(num_lines) = text(start_pos:i - 1)
+                start_pos = i + 1
+            end if
+        end do
+        num_lines = num_lines + 1
+        lines(num_lines) = text(start_pos:)
+
+    end subroutine split_lines_dynamic
 
     subroutine report_fortfront_failure(stage, error_msg)
         character(len=*), intent(in) :: stage
