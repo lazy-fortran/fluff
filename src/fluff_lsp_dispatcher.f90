@@ -4,7 +4,8 @@ module fluff_lsp_dispatcher
                           json_get_string_member, json_is_array, json_parse
     use fluff_json_rpc, only: create_json_error_response, create_json_response, &
                               parse_lsp_message
-    use fluff_lsp_server, only: fluff_lsp_server_t
+    use fluff_lsp_server, only: fluff_lsp_server_t, document_t
+    use fluff_lsp_hover, only: get_hover_info
     implicit none
     private
 
@@ -106,6 +107,14 @@ contains
             end if
             call handle_formatting_request(this, json_message, message_id, &
                                            response)
+
+        case ("textDocument/hover")
+            if (.not. this%server%is_initialized) then
+                response = create_json_error_response(message_id, &
+                             LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
+                return
+            end if
+            call handle_hover_request(this, json_message, message_id, response)
 
         case default
             response = create_json_error_response(message_id, &
@@ -269,5 +278,124 @@ contains
 
         response = create_json_response(message_id, "[]")
     end subroutine handle_formatting_request
+
+    subroutine handle_hover_request(this, json_message, message_id, response)
+        class(lsp_dispatcher_t), intent(inout) :: this
+        character(len=*), intent(in) :: json_message
+        integer, intent(in) :: message_id
+        character(len=:), allocatable, intent(out) :: response
+
+        character(len=:), allocatable :: params_json, text_doc_json
+        character(len=:), allocatable :: position_json, uri
+        character(len=:), allocatable :: hover_content, escaped_content
+        type(document_t) :: doc
+        integer :: line, character
+        logical :: found, ok, success
+
+        call json_get_member_json(json_message, "params", params_json, found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                         LSP_ERROR_INVALID_PARAMS, "Missing params")
+            return
+        end if
+
+        call json_get_member_json(params_json, "textDocument", text_doc_json, &
+                                  found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                   LSP_ERROR_INVALID_PARAMS, "Missing textDocument")
+            return
+        end if
+
+        call json_get_string_member(text_doc_json, "uri", uri, found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                            LSP_ERROR_INVALID_PARAMS, "Missing uri")
+            return
+        end if
+
+        call json_get_member_json(params_json, "position", position_json, found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                         LSP_ERROR_INVALID_PARAMS, "Missing position")
+            return
+        end if
+
+        call json_get_int_member(position_json, "line", line, found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                            LSP_ERROR_INVALID_PARAMS, "Missing line")
+            return
+        end if
+
+        call json_get_int_member(position_json, "character", character, found, ok)
+        if (.not. ok .or. .not. found) then
+            response = create_json_error_response(message_id, &
+                                       LSP_ERROR_INVALID_PARAMS, "Missing character")
+            return
+        end if
+
+        doc = this%server%workspace%get_document_by_uri(uri)
+        if (.not. doc%is_open) then
+            response = create_json_response(message_id, "null")
+            return
+        end if
+
+        call get_hover_info(doc%content, line + 1, character, hover_content, success)
+
+        if (.not. success .or. len_trim(hover_content) == 0) then
+            response = create_json_response(message_id, "null")
+            return
+        end if
+
+        escaped_content = escape_json_string(hover_content)
+        response = create_json_response(message_id, &
+                   '{"contents":{"kind":"markdown","value":"'//escaped_content//'"}}')
+
+    end subroutine handle_hover_request
+
+    function escape_json_string(str) result(escaped)
+        character(len=*), intent(in) :: str
+        character(len=:), allocatable :: escaped
+        integer :: i, j
+        character(len=1) :: ch
+
+        allocate (character(len=len(str)*2) :: escaped)
+        j = 0
+        do i = 1, len(str)
+            ch = str(i:i)
+            select case (ch)
+            case ('"')
+                j = j + 1
+                escaped(j:j) = '\'
+                j = j + 1
+                escaped(j:j) = '"'
+            case ('\')
+                j = j + 1
+                escaped(j:j) = '\'
+                j = j + 1
+                escaped(j:j) = '\'
+            case (achar(10))
+                j = j + 1
+                escaped(j:j) = '\'
+                j = j + 1
+                escaped(j:j) = 'n'
+            case (achar(13))
+                j = j + 1
+                escaped(j:j) = '\'
+                j = j + 1
+                escaped(j:j) = 'r'
+            case (achar(9))
+                j = j + 1
+                escaped(j:j) = '\'
+                j = j + 1
+                escaped(j:j) = 't'
+            case default
+                j = j + 1
+                escaped(j:j) = ch
+            end select
+        end do
+        escaped = escaped(1:j)
+    end function escape_json_string
 
 end module fluff_lsp_dispatcher
