@@ -2,6 +2,7 @@ module fluff_rule_p001
     use fluff_ast, only: fluff_ast_context_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, call_or_subscript_node, do_loop_node, &
                          identifier_node, binary_op_node, if_node, &
                          select_case_node, &
@@ -225,7 +226,7 @@ contains
                                          message= &
                                          "Leftmost array index varies in an outer " &
                                          //"loop; consider swapping loop order", &
-                                         file_path="", &
+                                         file_path=current_filename, &
                                          location=ctx%get_node_location(node_index), &
                                          severity=SEVERITY_WARNING))
                 end if

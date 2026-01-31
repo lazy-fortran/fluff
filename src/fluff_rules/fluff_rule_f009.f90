@@ -3,6 +3,7 @@ module fluff_rule_f009
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_core, only: source_range_t
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, call_or_subscript_node, declaration_node, &
                          identifier_node
     implicit none
@@ -152,7 +153,7 @@ contains
                                         code="F009", &
                                         message= &
                                         "Do not assign to intent(in) dummy argument", &
-                                        file_path="", &
+                                        file_path=current_filename, &
                                         location=location, &
                                         severity=SEVERITY_WARNING &
                                         ))
@@ -175,7 +176,7 @@ contains
                                     code="F009", &
                                     message= &
                                     "intent(out) dummy argument is never assigned", &
-                                    file_path="", &
+                                    file_path=current_filename, &
                                     location=intents(i)%decl_location, &
                                     severity=SEVERITY_WARNING &
                                     ))

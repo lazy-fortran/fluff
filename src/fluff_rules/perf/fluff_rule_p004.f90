@@ -2,6 +2,7 @@ module fluff_rule_p004
     use fluff_ast, only: fluff_ast_context_t, NODE_FUNCTION_DEF, NODE_SUBROUTINE_DEF
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
     use fortfront, only: allocate_statement_node, call_or_subscript_node, &
                          declaration_node, error_stop_node, function_def_node, &
                          identifier_node, print_statement_node, read_statement_node, &
@@ -34,7 +35,7 @@ contains
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
                                          code="P004", &
                             message="Consider adding pure attribute for optimization", &
-                                         file_path="", &
+                                         file_path=current_filename, &
                                          location=ctx%get_node_location(i), &
                                          severity=SEVERITY_INFO))
                 end if
