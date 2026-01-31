@@ -6,6 +6,7 @@ module fluff_rule_f008
     use fortfront, only: declaration_node, function_def_node, identifier_node, &
                          interface_block_node, parameter_declaration_node, &
                          subroutine_def_node
+    use ast_nodes_data, only: mixed_construct_container_node
     implicit none
     private
 
@@ -20,56 +21,167 @@ contains
 
         type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
-        logical, allocatable :: is_interface_proc(:)
-        integer :: i
+        integer, allocatable :: interface_procs(:)
+        integer :: n_interface_procs
+        integer, allocatable :: start_indices(:)
 
         allocate (tmp(0))
         violation_count = 0
 
-        call mark_interface_procedures(ctx, is_interface_proc)
-        do i = 1, ctx%arena%size
-            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
-            if (allocated(is_interface_proc)) then
-                if (i <= size(is_interface_proc)) then
-                    if (is_interface_proc(i)) cycle
-                end if
-            end if
-            select type (n => ctx%arena%entries(i)%node)
-            type is (subroutine_def_node)
-                call check_procedure(ctx, i, tmp, violation_count)
-            type is (function_def_node)
-                call check_procedure(ctx, i, tmp, violation_count)
-            end select
-        end do
+        allocate (interface_procs(0))
+        n_interface_procs = 0
+
+        call get_traversal_roots(ctx, ctx%root_index, start_indices)
+
+        call collect_interface_procedures_multi(ctx, start_indices, interface_procs, &
+                                                n_interface_procs)
+
+        call walk_procedures_multi(ctx, start_indices, interface_procs, &
+                                   n_interface_procs, tmp, violation_count)
 
         allocate (violations(violation_count))
         if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f008_missing_intent
 
-    subroutine mark_interface_procedures(ctx, is_interface_proc)
+    subroutine get_traversal_roots(ctx, root_index, start_indices)
         type(fluff_ast_context_t), intent(in) :: ctx
-        logical, allocatable, intent(out) :: is_interface_proc(:)
+        integer, intent(in) :: root_index
+        integer, allocatable, intent(out) :: start_indices(:)
 
-        integer :: i, j
-        integer :: proc_idx
+        if (root_index <= 0) then
+            allocate (start_indices(0))
+            return
+        end if
+        if (.not. allocated(ctx%arena%entries(root_index)%node)) then
+            allocate (start_indices(0))
+            return
+        end if
 
-        allocate (is_interface_proc(ctx%arena%size))
-        is_interface_proc = .false.
+        select type (n => ctx%arena%entries(root_index)%node)
+        type is (mixed_construct_container_node)
+            if (allocated(n%explicit_program_indices)) then
+                start_indices = n%explicit_program_indices
+            else
+                allocate (start_indices(0))
+            end if
+        class default
+            allocate (start_indices(1))
+            start_indices(1) = root_index
+        end select
+    end subroutine get_traversal_roots
 
-        do i = 1, ctx%arena%size
-            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
-            select type (n => ctx%arena%entries(i)%node)
-            type is (interface_block_node)
-                if (.not. allocated(n%procedure_indices)) cycle
+    subroutine collect_interface_procedures_multi(ctx, start_indices, interface_procs, &
+                                                  n_procs)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: start_indices(:)
+        integer, allocatable, intent(inout) :: interface_procs(:)
+        integer, intent(inout) :: n_procs
+
+        integer :: i
+
+        do i = 1, size(start_indices)
+            if (start_indices(i) <= 0) cycle
+            call collect_interface_procedures(ctx, start_indices(i), interface_procs, &
+                                              n_procs)
+        end do
+    end subroutine collect_interface_procedures_multi
+
+    subroutine walk_procedures_multi(ctx, start_indices, interface_procs, n_procs, &
+                                     tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: start_indices(:)
+        integer, intent(in) :: interface_procs(:)
+        integer, intent(in) :: n_procs
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        integer :: i
+
+        do i = 1, size(start_indices)
+            if (start_indices(i) <= 0) cycle
+            call walk_procedures(ctx, start_indices(i), interface_procs, n_procs, &
+                                 tmp, violation_count)
+        end do
+    end subroutine walk_procedures_multi
+
+    recursive subroutine collect_interface_procedures(ctx, node_index, &
+                                                      interface_procs, n_procs)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        integer, allocatable, intent(inout) :: interface_procs(:)
+        integer, intent(inout) :: n_procs
+
+        integer, allocatable :: children(:)
+        integer, allocatable :: new_procs(:)
+        integer :: i, j, proc_idx
+
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (interface_block_node)
+            if (allocated(n%procedure_indices)) then
                 do j = 1, size(n%procedure_indices)
                     proc_idx = n%procedure_indices(j)
                     if (proc_idx <= 0) cycle
-                    if (proc_idx > size(is_interface_proc)) cycle
-                    is_interface_proc(proc_idx) = .true.
+                    if (n_procs >= size(interface_procs)) then
+                        allocate (new_procs(max(16, 2*size(interface_procs))))
+                      if (n_procs > 0) new_procs(1:n_procs) = interface_procs(1:n_procs)
+                        call move_alloc(new_procs, interface_procs)
+                    end if
+                    n_procs = n_procs + 1
+                    interface_procs(n_procs) = proc_idx
                 end do
-            end select
+            end if
+        end select
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+           call collect_interface_procedures(ctx, children(i), interface_procs, n_procs)
         end do
-    end subroutine mark_interface_procedures
+    end subroutine collect_interface_procedures
+
+    recursive subroutine walk_procedures(ctx, node_index, interface_procs, n_procs, &
+                                         tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        integer, intent(in) :: interface_procs(:)
+        integer, intent(in) :: n_procs
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        integer, allocatable :: children(:)
+        integer :: i
+        logical :: is_interface
+
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        is_interface = .false.
+        do i = 1, n_procs
+            if (interface_procs(i) == node_index) then
+                is_interface = .true.
+                exit
+            end if
+        end do
+
+        if (.not. is_interface) then
+            select type (n => ctx%arena%entries(node_index)%node)
+            type is (subroutine_def_node)
+                call check_procedure(ctx, node_index, tmp, violation_count)
+            type is (function_def_node)
+                call check_procedure(ctx, node_index, tmp, violation_count)
+            end select
+        end if
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            call walk_procedures(ctx, children(i), interface_procs, n_procs, tmp, &
+                                 violation_count)
+        end do
+    end subroutine walk_procedures
 
     subroutine check_procedure(ctx, proc_index, tmp, violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx

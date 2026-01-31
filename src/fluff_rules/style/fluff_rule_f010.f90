@@ -5,6 +5,7 @@ module fluff_rule_f010
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
+    use ast_nodes_data, only: mixed_construct_container_node
     use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
                                  TK_WHITESPACE, TK_COMMENT
     implicit none
@@ -24,24 +25,17 @@ contains
         type(token_t), allocatable :: tokens(:)
         type(diagnostic_t), allocatable :: tmp(:)
         integer :: violation_count
+        integer, allocatable :: start_indices(:)
         integer :: i
 
         allocate (tmp(0))
         violation_count = 0
 
-        do i = 1, ctx%arena%size
-            if (.not. allocated(ctx%arena%entries(i)%node)) cycle
-            select type (n => ctx%arena%entries(i)%node)
-            type is (goto_node)
-                call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                     code="F010", &
-                                     message="Obsolete feature: GOTO", &
-                                     file_path=current_filename, &
-                                     location=ctx%get_node_location(i), &
-                                     severity=SEVERITY_WARNING))
-            type is (comment_node)
-                call check_legacy_comment(ctx, i, n%text, tmp, violation_count)
-            end select
+        call get_traversal_roots(ctx, ctx%root_index, start_indices)
+
+        do i = 1, size(start_indices)
+            if (start_indices(i) <= 0) cycle
+            call walk_obsolete_features(ctx, start_indices(i), tmp, violation_count)
         end do
 
         call ctx%get_source_text(source_text, found)
@@ -53,6 +47,64 @@ contains
         allocate (violations(violation_count))
         if (violation_count > 0) violations = tmp(1:violation_count)
     end subroutine check_f010_obsolete_features
+
+    subroutine get_traversal_roots(ctx, root_index, start_indices)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: root_index
+        integer, allocatable, intent(out) :: start_indices(:)
+
+        if (root_index <= 0) then
+            allocate (start_indices(0))
+            return
+        end if
+        if (.not. allocated(ctx%arena%entries(root_index)%node)) then
+            allocate (start_indices(0))
+            return
+        end if
+
+        select type (n => ctx%arena%entries(root_index)%node)
+        type is (mixed_construct_container_node)
+            if (allocated(n%explicit_program_indices)) then
+                start_indices = n%explicit_program_indices
+            else
+                allocate (start_indices(0))
+            end if
+        class default
+            allocate (start_indices(1))
+            start_indices(1) = root_index
+        end select
+    end subroutine get_traversal_roots
+
+    recursive subroutine walk_obsolete_features(ctx, node_index, tmp, violation_count)
+        type(fluff_ast_context_t), intent(in) :: ctx
+        integer, intent(in) :: node_index
+        type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
+        integer, intent(inout) :: violation_count
+
+        integer, allocatable :: children(:)
+        integer :: i
+
+        if (node_index <= 0) return
+        if (.not. allocated(ctx%arena%entries(node_index)%node)) return
+
+        select type (n => ctx%arena%entries(node_index)%node)
+        type is (goto_node)
+            call push_diagnostic(tmp, violation_count, create_diagnostic( &
+                                 code="F010", &
+                                 message="Obsolete feature: GOTO", &
+                                 file_path=current_filename, &
+                                 location=ctx%get_node_location(node_index), &
+                                 severity=SEVERITY_WARNING))
+        type is (comment_node)
+            call check_legacy_comment(ctx, node_index, n%text, tmp, violation_count)
+        end select
+
+        children = ctx%get_children(node_index)
+        do i = 1, size(children)
+            if (children(i) <= 0) cycle
+            call walk_obsolete_features(ctx, children(i), tmp, violation_count)
+        end do
+    end subroutine walk_obsolete_features
 
     subroutine check_legacy_comment(ctx, node_index, text, tmp, violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
