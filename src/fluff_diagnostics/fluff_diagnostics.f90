@@ -317,63 +317,112 @@ contains
         
     end subroutine collection_sort
     
-    ! Convert collection to JSON
+    ! Convert collection to JSON using efficient string building
     function collection_to_json(this) result(json)
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: json
-        
-        integer :: i
+
+        character(len=:), allocatable :: parts(:)
         character(len=:), allocatable :: diag_json
-        
-        json = "["
-        
+        integer :: i, total_len, pos
+
+        if (this%count == 0) then
+            json = "[]"
+            return
+        end if
+
+        allocate (character(len=4096) :: parts(this%count))
+        total_len = 2
+
         do i = 1, this%count
-            if (i > 1) json = json // ","
             diag_json = this%diagnostics(i)%to_json()
-            json = json // new_line('a') // "  " // diag_json
+            parts(i) = diag_json
+            total_len = total_len + len(diag_json) + 5
         end do
-        
-        json = json // new_line('a') // "]"
-        
+
+        allocate (character(len=total_len) :: json)
+        json(1:1) = "["
+        pos = 2
+
+        do i = 1, this%count
+            if (i > 1) then
+                json(pos:pos) = ","
+                pos = pos + 1
+            end if
+            json(pos:pos) = new_line('a')
+            pos = pos + 1
+            json(pos:pos + 1) = "  "
+            pos = pos + 2
+            json(pos:pos + len_trim(parts(i)) - 1) = trim(parts(i))
+            pos = pos + len_trim(parts(i))
+        end do
+
+        json(pos:pos) = new_line('a')
+        pos = pos + 1
+        json(pos:pos) = "]"
+        json = json(1:pos)
+
     end function collection_to_json
     
-    ! Convert collection to SARIF format
+    ! Convert collection to SARIF format using efficient string building
     function collection_to_sarif(this) result(sarif)
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: sarif
-        
-        ! Build SARIF 2.1.0 compliant JSON structure
+
+        character(len=:), allocatable :: parts(:)
+        character(len=:), allocatable :: diag_sarif
         character(len=:), allocatable :: results_array
-        integer :: i
-        
+        integer :: i, total_len, pos
+
         if (this%count == 0) then
-            sarif = '{"version": "2.1.0", "runs": [{"tool": {"driver": {"name": "fluff"}}, "results": []}]}'
+            sarif = '{"version": "2.1.0", "runs": [{"tool": {"driver": ' // &
+                    '{"name": "fluff"}}, "results": []}]}'
             return
         end if
-        
-        ! Build results array
-        results_array = ""
+
+        allocate (character(len=4096) :: parts(this%count))
+        total_len = 0
+
         do i = 1, this%count
-            if (i > 1) results_array = results_array // ","
-            results_array = results_array // new_line('a') // "    " // format_diagnostic_sarif(this%diagnostics(i))
+            diag_sarif = format_diagnostic_sarif(this%diagnostics(i))
+            parts(i) = diag_sarif
+            total_len = total_len + len(diag_sarif) + 7
         end do
-        
-        ! Build complete SARIF structure
+
+        allocate (character(len=total_len) :: results_array)
+        pos = 1
+
+        do i = 1, this%count
+            if (i > 1) then
+                results_array(pos:pos) = ","
+                pos = pos + 1
+            end if
+            results_array(pos:pos) = new_line('a')
+            pos = pos + 1
+            results_array(pos:pos + 3) = "    "
+            pos = pos + 4
+            results_array(pos:pos + len_trim(parts(i)) - 1) = trim(parts(i))
+            pos = pos + len_trim(parts(i))
+        end do
+
+        results_array = results_array(1:pos - 1)
+
         sarif = '{' // new_line('a') // &
-               '  "version": "2.1.0",' // new_line('a') // &
-               '  "runs": [{' // new_line('a') // &
-               '    "tool": {' // new_line('a') // &
-               '      "driver": {' // new_line('a') // &
-               '        "name": "fluff",' // new_line('a') // &
-               '        "version": "0.1.0",' // new_line('a') // &
-               '        "informationUri": "https://github.com/krystophny/fluff"' // new_line('a') // &
-               '      }' // new_line('a') // &
-               '    },' // new_line('a') // &
-               '    "results": [' // results_array // new_line('a') // &
-               '    ]' // new_line('a') // &
-               '  }]' // new_line('a') // &
-               '}'
-        
+                '  "version": "2.1.0",' // new_line('a') // &
+                '  "runs": [{' // new_line('a') // &
+                '    "tool": {' // new_line('a') // &
+                '      "driver": {' // new_line('a') // &
+                '        "name": "fluff",' // new_line('a') // &
+                '        "version": "0.1.0",' // new_line('a') // &
+                '        "informationUri": "https://github.com/krystophny/fluff"' // &
+                new_line('a') // &
+                '      }' // new_line('a') // &
+                '    },' // new_line('a') // &
+                '    "results": [' // results_array // new_line('a') // &
+                '    ]' // new_line('a') // &
+                '  }]' // new_line('a') // &
+                '}'
+
     end function collection_to_sarif
     
     ! Format diagnostic based on output format

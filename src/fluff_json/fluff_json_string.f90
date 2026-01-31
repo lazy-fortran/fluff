@@ -13,38 +13,54 @@ contains
         character(len=*), intent(in) :: raw
         character(len=:), allocatable, intent(out) :: escaped
 
-        integer :: i
+        character(len=:), allocatable :: buffer
+        integer :: i, pos, buffer_size
         character(len=2) :: hex
         character(len=1) :: c
 
-        escaped = '"'
+        buffer_size = len(raw) * 2 + 2
+        allocate (character(len=buffer_size) :: buffer)
+        buffer(1:1) = '"'
+        pos = 2
+
         do i = 1, len(raw)
             c = raw(i:i)
             select case (c)
             case ('"')
-                escaped = escaped//'\"'
+                buffer(pos:pos + 1) = '\"'
+                pos = pos + 2
             case ('\')
-                escaped = escaped//'\\'
+                buffer(pos:pos + 1) = '\\'
+                pos = pos + 2
             case (char(8))
-                escaped = escaped//'\b'
+                buffer(pos:pos + 1) = '\b'
+                pos = pos + 2
             case (char(9))
-                escaped = escaped//'\t'
+                buffer(pos:pos + 1) = '\t'
+                pos = pos + 2
             case (char(10))
-                escaped = escaped//'\n'
+                buffer(pos:pos + 1) = '\n'
+                pos = pos + 2
             case (char(12))
-                escaped = escaped//'\f'
+                buffer(pos:pos + 1) = '\f'
+                pos = pos + 2
             case (char(13))
-                escaped = escaped//'\r'
+                buffer(pos:pos + 1) = '\r'
+                pos = pos + 2
             case default
                 if (iachar(c) < 32) then
                     write (hex, '(Z2.2)') iachar(c)
-                    escaped = escaped//'\u00'//hex
+                    buffer(pos:pos + 5) = '\u00' // hex
+                    pos = pos + 6
                 else
-                    escaped = escaped//c
+                    buffer(pos:pos) = c
+                    pos = pos + 1
                 end if
             end select
         end do
-        escaped = escaped//'"'
+
+        buffer(pos:pos) = '"'
+        escaped = buffer(1:pos)
     end subroutine json_escape_string
 
     subroutine parse_string_value(text, pos, out, success, error_message)
@@ -54,11 +70,10 @@ contains
         logical, intent(out) :: success
         character(len=:), allocatable, intent(out) :: error_message
 
-        character(len=:), allocatable :: buf
+        character(len=:), allocatable :: buffer
         character(len=1) :: c
         character(len=4) :: hex4
-        integer :: codepoint
-        integer :: iostat_val
+        integer :: codepoint, iostat_val, buf_pos
 
         success = .false.
         error_message = ""
@@ -69,19 +84,21 @@ contains
         end if
 
         pos = pos + 1
-        buf = ""
+        allocate (character(len=len(text)) :: buffer)
+        buf_pos = 1
 
         do while (pos <= len(text))
             c = text(pos:pos)
             if (c == '"') then
                 pos = pos + 1
-                out = buf
+                out = buffer(1:buf_pos - 1)
                 success = .true.
                 return
             end if
 
             if (c /= '\') then
-                buf = buf//c
+                buffer(buf_pos:buf_pos) = c
+                buf_pos = buf_pos + 1
                 pos = pos + 1
                 cycle
             end if
@@ -95,22 +112,28 @@ contains
             c = text(pos:pos)
             select case (c)
             case ('"', '\', '/')
-                buf = buf//c
+                buffer(buf_pos:buf_pos) = c
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('b')
-                buf = buf//char(8)
+                buffer(buf_pos:buf_pos) = char(8)
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('f')
-                buf = buf//char(12)
+                buffer(buf_pos:buf_pos) = char(12)
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('n')
-                buf = buf//char(10)
+                buffer(buf_pos:buf_pos) = char(10)
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('r')
-                buf = buf//char(13)
+                buffer(buf_pos:buf_pos) = char(13)
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('t')
-                buf = buf//char(9)
+                buffer(buf_pos:buf_pos) = char(9)
+                buf_pos = buf_pos + 1
                 pos = pos + 1
             case ('u')
                 if (pos + 4 > len(text)) then
@@ -120,10 +143,11 @@ contains
                 hex4 = text(pos + 1:pos + 4)
                 read (hex4, '(Z4)', iostat=iostat_val) codepoint
                 if (iostat_val == 0 .and. codepoint >= 0 .and. codepoint <= 127) then
-                    buf = buf//achar(codepoint)
+                    buffer(buf_pos:buf_pos) = achar(codepoint)
                 else
-                    buf = buf//'?'
+                    buffer(buf_pos:buf_pos) = '?'
                 end if
+                buf_pos = buf_pos + 1
                 pos = pos + 5
             case default
                 error_message = "Invalid escape in string"

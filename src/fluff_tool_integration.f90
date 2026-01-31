@@ -182,38 +182,55 @@ contains
         this%override_code = EXIT_SUCCESS
     end subroutine exit_code_reset
     
-    ! Stdin/stdout methods
+    ! Stdin/stdout methods - uses efficient buffered reading
     function stdin_read_stdin(this) result(content)
         class(stdin_handler_t), intent(in) :: this
         character(len=:), allocatable :: content
-        
+
         character(len=1000) :: line_buffer
-        character(len=:), allocatable :: accumulated_content
-        integer :: io_status
-        
-        accumulated_content = ""
-        
-        ! Read from stdin line by line
+        character(len=:), allocatable :: buffer
+        integer :: io_status, pos, line_len, buffer_size
+
+        buffer_size = 65536
+        allocate (character(len=buffer_size) :: buffer)
+        pos = 1
+
         do
-            read(*, '(A)', iostat=io_status) line_buffer
-            if (io_status /= 0) exit  ! End of file or error
-            
-            ! Check size limits
-            if (len(accumulated_content) + len_trim(line_buffer) > this%max_input_size) then
-                ! Handle large input gracefully
-                exit
+            read (*, '(A)', iostat=io_status) line_buffer
+            if (io_status /= 0) exit
+
+            line_len = len_trim(line_buffer) + 1
+            if (pos + line_len > this%max_input_size) exit
+
+            if (pos + line_len > buffer_size) then
+                call grow_buffer(buffer, buffer_size, buffer_size * 2)
+                buffer_size = buffer_size * 2
             end if
-            
-            accumulated_content = accumulated_content // trim(line_buffer) // new_line('a')
+
+            buffer(pos:pos + len_trim(line_buffer) - 1) = trim(line_buffer)
+            pos = pos + len_trim(line_buffer)
+            buffer(pos:pos) = new_line('a')
+            pos = pos + 1
         end do
-        
-        ! Fallback content if nothing read or for testing
-        if (len(accumulated_content) == 0) then
+
+        if (pos <= 1) then
             content = "program test" // new_line('a') // "end program test"
         else
-            content = accumulated_content
+            content = buffer(1:pos - 1)
         end if
-        
+
+    contains
+
+        subroutine grow_buffer(buf, old_size, new_size)
+            character(len=:), allocatable, intent(inout) :: buf
+            integer, intent(in) :: old_size, new_size
+            character(len=:), allocatable :: temp
+
+            allocate (character(len=new_size) :: temp)
+            temp(1:old_size) = buf(1:old_size)
+            call move_alloc(temp, buf)
+        end subroutine grow_buffer
+
     end function stdin_read_stdin
     
     subroutine stdin_write_stdout(this, content)
@@ -558,21 +575,41 @@ contains
         class(github_integration_t), intent(in) :: this
         type(diagnostic_t), intent(in) :: diagnostics(:)
         character(len=:), allocatable :: annotations
-        
-        integer :: i
-        character(len=5000) :: temp_annotations
-        
-        temp_annotations = ""
+
+        character(len=:), allocatable :: parts(:)
+        character(len=:), allocatable :: line_str, col_str
+        integer :: i, total_len, pos, part_len
+
+        if (size(diagnostics) == 0) then
+            annotations = ""
+            return
+        end if
+
+        allocate (character(len=512) :: parts(size(diagnostics)))
+        total_len = 0
+
         do i = 1, size(diagnostics)
-            temp_annotations = trim(temp_annotations) // &
-                "::error file=" // diagnostics(i)%file_path // &
-                ",line=" // int_to_string(diagnostics(i)%location%start%line) // &
-                ",col=" // int_to_string(diagnostics(i)%location%start%column) // &
-                "::" // diagnostics(i)%message // new_line('a')
+            line_str = int_to_string(diagnostics(i)%location%start%line)
+            col_str = int_to_string(diagnostics(i)%location%start%column)
+            parts(i) = "::error file=" // diagnostics(i)%file_path // &
+                       ",line=" // line_str // ",col=" // col_str // &
+                       "::" // diagnostics(i)%message
+            total_len = total_len + len_trim(parts(i)) + 1
         end do
-        
-        annotations = trim(temp_annotations)
-        
+
+        allocate (character(len=total_len) :: annotations)
+        pos = 1
+
+        do i = 1, size(diagnostics)
+            part_len = len_trim(parts(i))
+            annotations(pos:pos + part_len - 1) = trim(parts(i))
+            pos = pos + part_len
+            annotations(pos:pos) = new_line('a')
+            pos = pos + 1
+        end do
+
+        annotations = annotations(1:pos - 1)
+
     end function github_format_annotations
     
     subroutine github_create_problem_matcher(this, path)
