@@ -33,8 +33,9 @@ contains
         integer :: node_index
         character(len=:), allocatable :: error_msg
 
-        ! Create test AST context
+        ! Create test AST context (with declaration to trigger F001)
         call ast_ctx%from_source("program test"//new_line('a')// &
+                                 "    integer :: x"//new_line('a')// &
                                  "end program test", error_msg)
 
         if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
