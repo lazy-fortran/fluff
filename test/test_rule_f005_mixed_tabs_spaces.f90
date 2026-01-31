@@ -49,7 +49,10 @@ contains
 
         call assert_error_empty(error_msg)
         call count_code(diagnostics, "F005", f005_count)
-        call assert_equal_int(f005_count, 1, "Expected 1 F005 violation")
+        ! Line 3: tab-only when file uses spaces -> 1 violation
+        ! Line 4: mixed tabs+spaces in same line -> 1 violation
+        call assert_equal_int(f005_count, 2, "Expected 2 F005 violations")
+        call assert_f005_location(diagnostics, 3, 1, 1)
         call assert_f005_location(diagnostics, 4, 1, 3)
 
         ! Clean up
@@ -171,7 +174,11 @@ contains
         open (unit=99, file=path, status="old")
         close (99, status="delete")
 
-        call assert_equal_int(f005_count, 2, "Expected 2 F005 violations")
+        ! Line 3: tab-only when file uses spaces -> 1 violation
+        ! Line 4: mixed tabs+spaces in same line -> 1 violation
+        ! Line 5: mixed tabs+spaces in same line -> 1 violation
+        call assert_equal_int(f005_count, 3, "Expected 3 F005 violations")
+        call assert_f005_location(diagnostics, 3, 1, 1)
         call assert_f005_location(diagnostics, 4, 1, 3)
         call assert_f005_location(diagnostics, 5, 1, 3)
 

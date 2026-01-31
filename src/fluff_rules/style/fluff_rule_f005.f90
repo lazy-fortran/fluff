@@ -13,6 +13,10 @@ module fluff_rule_f005
 
     public :: check_f005_mixed_tabs_spaces
 
+    integer, parameter :: INDENT_NONE = 0
+    integer, parameter :: INDENT_SPACES = 1
+    integer, parameter :: INDENT_TABS = 2
+
 contains
 
     subroutine check_f005_mixed_tabs_spaces(ctx, node_index, violations)
@@ -57,6 +61,7 @@ contains
 
         type(location_buffer_t) :: buffer
         integer :: i
+        integer :: file_indent_style
 
         call location_buffer_init(buffer)
         if (.not. allocated(tokens)) then
@@ -68,19 +73,24 @@ contains
             return
         end if
 
+        file_indent_style = INDENT_NONE
         do i = 1, size(tokens)
-            call collect_from_trivia(tokens(i)%leading_trivia, buffer)
+            call collect_from_trivia(tokens(i)%leading_trivia, buffer, &
+                                     file_indent_style)
         end do
         call location_buffer_finish(buffer, locations)
     end subroutine collect_mixed_indentation
 
-    subroutine collect_from_trivia(trivia, buffer)
+    subroutine collect_from_trivia(trivia, buffer, file_indent_style)
         type(trivia_token_t), allocatable, intent(in) :: trivia(:)
         type(location_buffer_t), intent(inout) :: buffer
+        integer, intent(inout) :: file_indent_style
 
         integer :: i
         integer :: end_col
+        integer :: this_style
         type(source_range_t) :: location
+        logical :: has_tab, has_space
 
         if (.not. allocated(trivia)) return
         if (size(trivia) <= 0) return
@@ -89,14 +99,39 @@ contains
             if (trivia(i)%kind /= TK_WHITESPACE) cycle
             if (trivia(i)%column /= 1) cycle
             if (.not. allocated(trivia(i)%text)) cycle
-            if (.not. text_has_space_and_tab(trivia(i)%text)) cycle
+            if (len(trivia(i)%text) == 0) cycle
 
-            end_col = trivia(i)%column + len(trivia(i)%text) - 1
-            location%start%line = trivia(i)%line
-            location%start%column = trivia(i)%column
-            location%end%line = trivia(i)%line
-            location%end%column = end_col
-            call location_buffer_push(buffer, location)
+            has_tab = index(trivia(i)%text, achar(9)) > 0
+            has_space = index(trivia(i)%text, " ") > 0
+
+            if (has_tab .and. has_space) then
+                end_col = trivia(i)%column + len(trivia(i)%text) - 1
+                location%start%line = trivia(i)%line
+                location%start%column = trivia(i)%column
+                location%end%line = trivia(i)%line
+                location%end%column = end_col
+                call location_buffer_push(buffer, location)
+                cycle
+            end if
+
+            if (has_tab) then
+                this_style = INDENT_TABS
+            else if (has_space) then
+                this_style = INDENT_SPACES
+            else
+                cycle
+            end if
+
+            if (file_indent_style == INDENT_NONE) then
+                file_indent_style = this_style
+            else if (file_indent_style /= this_style) then
+                end_col = trivia(i)%column + len(trivia(i)%text) - 1
+                location%start%line = trivia(i)%line
+                location%start%column = trivia(i)%column
+                location%end%line = trivia(i)%line
+                location%end%column = end_col
+                call location_buffer_push(buffer, location)
+            end if
         end do
     end subroutine collect_from_trivia
 
