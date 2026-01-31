@@ -2,6 +2,7 @@ module fluff_rule_p003
     use fluff_ast, only: fluff_ast_context_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, binary_op_node, declaration_node, &
                          identifier_node, literal_node
     implicit none
@@ -54,7 +55,7 @@ contains
                                         code="P003", &
                                         message="Whole-array expression may "// &
                                         "create temporaries", &
-                                        file_path="", &
+                                        file_path=current_filename, &
                                         location=ctx%get_node_location(i), &
                                         severity=SEVERITY_INFO &
                                         ))

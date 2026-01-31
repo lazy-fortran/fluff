@@ -2,6 +2,7 @@ module fluff_rule_p005
     use fluff_ast, only: fluff_ast_context_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_INFO
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
+    use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, binary_op_node, call_or_subscript_node, &
                          declaration_node, do_loop_node, identifier_node, &
                          symbol_info_t, TCHAR
@@ -48,7 +49,7 @@ contains
                         call push_diagnostic(tmp, violation_count, create_diagnostic( &
                                              code="P005", &
                              message="String concatenation in loops can be expensive", &
-                                             file_path="", &
+                                             file_path=current_filename, &
                                           location=ctx%get_node_location(concat_node), &
                                              severity=SEVERITY_INFO))
                         exit
