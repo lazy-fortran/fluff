@@ -1,230 +1,80 @@
-# fluff - A Modern Fortran Linter and Formatter
+# fluff
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Fortran](https://img.shields.io/badge/Fortran-2018-brightgreen.svg)](https://fortran-lang.org/)
+`fluff` is an experimental Fortran linter and formatter built on the
+FortFront AST and semantic APIs.
 
-> **Note**: This project will be retired in favor of [LFortran](https://lfortran.org/). LFortran's architecture (trivia-preserving AST, semantic analysis via ASR, existing `lfortran fmt` command) supports all fluff features and more. We recommend using `lfortran fmt` for formatting and `lfortran --style-suggestions` for linting. For formatting needs not yet covered by LFortran, use [fprettify](https://github.com/fortran-lang/fprettify).
+The project is useful as a FortFront-based tool prototype, but it is not yet a
+Ruff-equivalent production tool. Several CLI and formatter features are still
+tracked as open issues.
 
-**fluff** is a comprehensive linting and formatting tool for Fortran, inspired by Python's [ruff](https://github.com/astral-sh/ruff). It provides fast, reliable static analysis, automatic code formatting, and seamless integration with modern development workflows.
+## Current Scope
 
-## ✨ Features
+Implemented or partially implemented:
 
-### 🚀 Core Functionality
-- **15+ Style Rules (F001-F015)**: Enforce consistent Fortran style
-- **7+ Performance Rules (P001-P007)**: Optimize code for better performance
-- **Auto-fix Support**: Automatically fix many violations with `--fix`
-- **Multiple Output Formats**: JSON, SARIF, XML, GitHub Actions annotations
-- **Parallel Execution**: OpenMP-based parallel rule checking for speed
-- **Advanced Formatting**: Intelligent line breaking at 88 characters with magic comment overrides
+- style rules `F001` to `F015`
+- performance rules `P001` to `P007`
+- correctness rule `C001`
+- formatter built on FortFront `emit_fortran`
+- basic LSP components
+- JSON/SARIF/GitHub-style output code paths
 
-### 🛠️ Developer Experience
-- **Language Server Protocol (LSP)**: Full IDE integration with hover, diagnostics, and code actions
-- **Incremental Analysis**: Only re-analyze changed files
-- **Smart Caching**: Intelligent caching system for faster subsequent runs
-- **File Watching**: Automatic re-analysis on file changes
-- **Configuration Options**: Control behavior via command-line arguments
+Known limits:
 
-### 🔌 Integrations
-- **GitHub Actions**: Native support with annotations and problem matchers
-- **Pre-commit Hooks**: Automatic linting in your git workflow
-- **Editor Support**: VSCode, Vim, and Emacs plugins available
-- **CI/CD Ready**: Proper exit codes and machine-readable output
+- configuration support has open regressions
+- formatter can still move inline comments in unsafe ways
+- rule selection/ignore CLI parity with Ruff is incomplete
+- stdin, quiet mode, statistics, rule listing, and show-fixes UX are tracked as
+  open issues
+- AST caching is disabled in the linter path because FortFront arena/context
+  copies are not yet safe enough
 
-## 📦 Installation
+## Install
 
-### Using fpm (Fortran Package Manager)
 ```bash
-fpm install --profile release
-```
-
-### From Source
-```bash
-git clone https://github.com/yourusername/fluff.git
+git clone git@github.com:lazy-fortran/fluff.git
 cd fluff
 fpm build --profile release
 ```
 
-## 🚀 Quick Start
+## Basic Usage
 
-### Basic Usage
 ```bash
-# Check a single file
-fluff check myfile.f90
-
-# Check all Fortran files in a directory
 fluff check src/
-
-# Fix violations automatically
-fluff check --fix src/
-
-# Format code
 fluff format src/
-```
-
-### Configuration
-Configuration support is currently being developed. Command-line arguments can be used to control fluff behavior:
-
-```bash
-# Enable automatic fixing
-fluff check --fix src/
-
-# Show fix suggestions without applying
-fluff check --show-fixes src/
-
-# Set maximum line length
-fluff format --line-length 100 src/
-
-# Select output format
 fluff check --output-format json src/
 ```
 
-### Using Namelist Configuration (Alternative)
-```fortran
-&fluff_config
-  fix = .true.
-  show_fixes = .true.
-  line_length = 100
-  tab_width = 4
-  target_version = "2018"
-  output_format = "json"
-/
-```
+Use `fluff --help` for the options supported by the current build.
 
-Configuration options:
-- `fix`: Enable automatic fixing of violations (default: `.false.`)
-- `show_fixes`: Show suggested fixes without applying (default: `.false.`)
-- `line_length`: Maximum line length, 40-200 (default: `88`)
-- `tab_width`: Tab width for visual column calculation, 1-16 (default: `4`)
-- `target_version`: Target Fortran version: "2008", "2018", "2023" (default: `"2018"`)
-- `output_format`: Output format: "text", "json", "sarif" (default: `"text"`)
+## Architecture
 
-## 📋 Available Rules
+`fluff` should not parse Fortran text itself. The intended flow is:
 
-### Style Rules (F-prefix)
-- **F001**: Missing `implicit none` statement
-- **F002**: Inconsistent indentation
-- **F003**: Line too long
-- **F004**: Trailing whitespace
-- **F005**: Mixed tabs and spaces
-- **F006**: Unused variable
-- **F007**: Undefined variable
-- **F008**: Missing intent declaration
-- **F009**: Inconsistent intent usage
-- **F010**: Obsolete Fortran features
-- **F011**: Missing end block labels
-- **F012**: Naming convention violations
-- **F013**: Multiple statements per line
-- **F014**: Unnecessary parentheses
-- **F015**: Redundant continue statements
+1. read source
+2. parse with FortFront tooling APIs
+3. run FortFront semantic analysis
+4. execute AST-based lint rules
+5. format through FortFront code emission plus local cleanup passes
 
-### Performance Rules (P-prefix)
-- **P001**: Inefficient array operations
-- **P002**: Poor loop ordering for cache
-- **P003**: Array temporaries in expressions
-- **P004**: Missing pure/elemental attributes
-- **P005**: Inefficient string operations
-- **P006**: Allocations inside loops
-- **P007**: Mixed precision arithmetic
+This keeps parser and semantic behavior aligned with FortFront and avoids
+regex-based language analysis.
 
-## 🔧 Advanced Features
+## Roadmap
 
-### Formatting Magic Comments
-Control formatter behavior with special comments:
-```fortran
-! Disable line breaking for specific sections
-! fmt: skip
-real :: very_long_variable_name_1, very_long_variable_name_2, very_long_variable_name_3
-! fmt: on
+See [ROADMAP.md](ROADMAP.md) and the open issues. The short version:
 
-! Alternative syntax
-! fluff: noqa
-real :: another_long_line_that_wont_be_broken
-! fluff: qa
-```
+1. fix formatter safety first
+2. finish CLI parity needed for daily use
+3. repair configuration loading
+4. only then improve cache/LSP polish
 
-### Language Server Protocol (LSP)
-```bash
-# Start LSP server
-fluff lsp
+## Related Projects
 
-# Or configure your editor to start it automatically
-```
+- [fortfront](https://github.com/lazy-fortran/fortfront): parser, AST,
+  semantic analysis, formatter emission.
+- [standard](https://github.com/lazy-fortran/standard): target language-mode
+  behavior for LFortran Standard and Infer.
 
-### Output Formats
+## License
 
-#### JSON Output
-```bash
-fluff check --output-format json src/ > report.json
-```
-
-#### SARIF (Static Analysis Results Interchange Format)
-```bash
-fluff check --output-format sarif src/ > report.sarif
-```
-
-#### GitHub Actions Annotations
-```bash
-fluff check --output-format github src/
-```
-
-### Pre-commit Integration
-Add to `.pre-commit-config.yaml`:
-```yaml
-repos:
-  - repo: https://github.com/yourusername/fluff
-    rev: v0.1.0
-    hooks:
-      - id: fluff
-        args: [--fix]
-```
-
-## 🏗️ Architecture
-
-fluff is built on top of the [fortfront](https://github.com/lazy-fortran/fortfront) AST library, providing:
-
-- **AST-based Analysis**: Accurate semantic understanding of Fortran code
-- **Type-aware Checks**: Leverages Hindley-Milner type inference
-- **Control Flow Analysis**: Dead code and unreachable code detection
-- **Dependency Graphs**: Module and file dependency tracking
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Developer Guide](docs/DEVELOPER_GUIDE.md) for details on:
-
-- Setting up a development environment
-- Running tests
-- Adding new rules
-- Submitting pull requests
-
-## 📊 Performance
-
-fluff is designed for speed:
-- Parallel rule execution with OpenMP
-- Incremental analysis with smart caching
-- Minimal memory footprint
-- Processes large codebases in seconds
-
-## 🐛 Troubleshooting
-
-See our [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for common issues and solutions.
-
-## 📄 License
-
-fluff is released under the MIT License. See [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [ruff](https://github.com/astral-sh/ruff) for Python
-- Built on [fortfront](https://github.com/lazy-fortran/fortfront) for AST parsing
-- Uses [fpm](https://github.com/fortran-lang/fpm) for package management
-
-## 📚 Documentation
-
-- [API Reference](docs/API.md)
-- [Developer Guide](docs/DEVELOPER_GUIDE.md)
-- [Migration Guide](docs/MIGRATION.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-
----
-
-**Note**: fluff is under active development. Some features may be experimental. Please report issues on our [GitHub tracker](https://github.com/yourusername/fluff/issues).
+MIT. See `LICENSE`.

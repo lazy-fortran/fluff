@@ -1,74 +1,84 @@
-# fluff Development Roadmap
+# fluff Roadmap
 
-> **Note**: This project will be retired in favor of [LFortran](https://lfortran.org/).
-> See README.md for recommended alternatives.
+## Current Reality
 
-**Core Principles**
-- **fortfront FIRST**: Use fortfront public APIs for all analysis (no text parsing)
-- **AST-Based Analysis**: All rules must use fortfront AST API
-- **fpm Dependency Management**: fpm handles fortfront integration and linking
+`fluff` is an experimental FortFront-based linter/formatter. It has many rule
+modules and tests, but several user-facing workflows are incomplete or have
+known regressions.
 
-## Completed Work
+The project should not claim full Ruff parity until the open CLI/configuration
+issues are resolved.
 
-The following phases have been completed:
+## Principles
 
-### Phase 0: fortfront Integration Foundation
-- fortfront integration via fpm dependency
-- AST-based infrastructure
-- Text-based analysis removed
+- Use FortFront public APIs for parsing, AST traversal, semantics, and source
+  locations.
+- Do not add a separate Fortran parser.
+- Prefer AST/semantic rules over text scanning.
+- Treat formatter semantic preservation as higher priority than style polish.
+- Keep LSP and cache features behind correctness.
 
-### Phase 1: AST-Based Rules
-- F001-F015 style rules implemented
-- P001-P007 performance rules implemented
-- C001 correctness rule implemented
+## Priority 0: Formatter Safety
 
-### Phase 2: Formatter Core
-- AST-based formatter using fortfront emit_fortran
-- Basic formatting capabilities working
+Open issue:
 
-### Phase 3: LSP Server
-- Basic LSP server implementation
-- Hover, diagnostics, code actions
+- [#244](https://github.com/lazy-fortran/fluff/issues/244): inline comments can
+  be moved to separate lines.
 
-### Phase 4: Plugin Architecture
-- Plugin infrastructure for semantic analyzers
-- Call graph, control flow, and variable usage analyzers
+Required outcome:
 
-### Phase 5: Caching System
-- AST caching system implemented
+- formatting must preserve comment attachment and not change executable meaning
+- add regression tests for inline comments in declarations, assignments,
+  conditionals, continuations, and trailing comments after labels
 
-## Remaining Work
+## Priority 1: Daily CLI Usability
 
-Track progress via [GitHub Issues](https://github.com/lazy-fortran/fluff/issues).
+Open issues:
 
-### Priority 1: Documentation Cleanup
-- [#104](https://github.com/lazy-fortran/fluff/issues/104): Remove or rewrite obsolete status docs
+- [#243](https://github.com/lazy-fortran/fluff/issues/243): stdin support
+- [#242](https://github.com/lazy-fortran/fluff/issues/242): quiet mode
+- [#241](https://github.com/lazy-fortran/fluff/issues/241): statistics
+- [#240](https://github.com/lazy-fortran/fluff/issues/240): exclude flag
+- [#239](https://github.com/lazy-fortran/fluff/issues/239): select/ignore flags
+- [#238](https://github.com/lazy-fortran/fluff/issues/238): diagnostic filename
+  spacing
+- [#237](https://github.com/lazy-fortran/fluff/issues/237): show-fixes preview
+- [#236](https://github.com/lazy-fortran/fluff/issues/236): rule listing
+- [#235](https://github.com/lazy-fortran/fluff/issues/235): configuration
+  loading regression
 
-### Priority 2: Feature Completion
-- [#85](https://github.com/lazy-fortran/fluff/issues/85): Complete LSP server implementation
-- [#86](https://github.com/lazy-fortran/fluff/issues/86): Complete F009-F015 style rules with AST-based analysis
-- [#101](https://github.com/lazy-fortran/fluff/issues/101): Improve P004-P007 accuracy using semantic info
-- [#106](https://github.com/lazy-fortran/fluff/issues/106): Implement C001 correctness rule
-- [#28](https://github.com/lazy-fortran/fluff/issues/28): Implement magic leading & for format preservation
-- [#108](https://github.com/lazy-fortran/fluff/issues/108): Release workflow and artifacts
+Required outcome:
 
-### Polish Items
-See issues with the `polish` label for non-blocking improvements.
+- `fluff check` works predictably in CI
+- rule selection and config loading are dependable
+- output is scriptable and stable
 
-## EPIC Tracking
+## Priority 2: Rule Accuracy
 
-- [#77](https://github.com/lazy-fortran/fluff/issues/77): Full MVP Implementation Path
+Open issue:
 
-## Critical Constraints
+- [#77](https://github.com/lazy-fortran/fluff/issues/77): MVP tracking epic
 
-### What fluff Uses from fortfront
-- `ast_arena_t` for AST node storage and traversal
-- `semantic_context_t` for type information
-- `ast_visitor_t` pattern for AST analysis
-- `emit_fortran` for code generation
+Required outcome:
 
-### What fluff Does NOT Do
-- Parse Fortran text directly
-- Use regex for code analysis
-- Implement its own parser
-- Access fortfront internals not in public API
+- each rule documents whether it is text, AST, or semantic based
+- false-positive prone performance rules use semantic context where available
+- fix suggestions are only offered when the replacement is mechanically safe
+
+## Priority 3: Cache and LSP Polish
+
+Current linter code reparses files because caching AST contexts risks shallow
+copying FortFront arena/semantic-context state. Restore caching only after
+FortFront exposes safe ownership/reuse semantics for AST contexts.
+
+LSP features should remain thin wrappers around the same check/format engine
+used by the CLI.
+
+## Deferred
+
+- plugin ecosystem
+- editor packages
+- file watching
+- broad migration tooling from other linters
+
+These should wait until formatter safety, config, and CLI basics are stable.
