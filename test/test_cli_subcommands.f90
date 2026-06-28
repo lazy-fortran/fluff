@@ -22,6 +22,12 @@ program test_cli_subcommands
     ! Test 5: Version flag handling
     call test_version_flag()
 
+    ! Test 6: Exclude pattern parsing
+    call test_exclude_pattern_parsing()
+
+    ! Test 7: Glob pattern matching
+    call test_glob_pattern_matching()
+
     print *, "[OK] All CLI subcommand tests passed!"
 
 contains
@@ -124,5 +130,80 @@ contains
         print *, "[OK] Version flag handling"
 
     end subroutine test_version_flag
+
+    subroutine test_exclude_pattern_parsing()
+        type(cli_app_t) :: app
+        character(len=20) :: argv(6)
+
+        app = create_cli_app()
+
+        argv(1) = "check"
+        argv(2) = "--exclude"
+        argv(3) = "*.tmp"
+        argv(4) = "--exclude"
+        argv(5) = "build/*"
+        argv(6) = "test.f90"
+
+        call app%args%parse(6, argv)
+
+        if (.not. allocated(app%args%exclude_patterns)) then
+            error stop "Failed: exclude_patterns should be allocated"
+        end if
+
+        if (size(app%args%exclude_patterns) /= 2) then
+            error stop "Failed: should have 2 exclude patterns"
+        end if
+
+        if (app%args%exclude_patterns(1) /= "*.tmp") then
+            error stop "Failed: first exclude pattern should be *.tmp"
+        end if
+
+        if (app%args%exclude_patterns(2) /= "build/*") then
+            error stop "Failed: second exclude pattern should be build/*"
+        end if
+
+        print *, "[OK] Exclude pattern parsing"
+
+    end subroutine test_exclude_pattern_parsing
+
+    subroutine test_glob_pattern_matching()
+        logical :: match
+
+        ! Test wildcard matching on basename
+        match = path_matches_pattern("foo.tmp", "*.tmp")
+        if (.not. match) then
+            error stop "Failed: foo.tmp should match *.tmp"
+        end if
+
+        match = path_matches_pattern("foo.f90", "*.tmp")
+        if (match) then
+            error stop "Failed: foo.f90 should not match *.tmp"
+        end if
+
+        ! Test wildcard matching on full path
+        match = path_matches_pattern("build/x.o", "build/*")
+        if (.not. match) then
+            error stop "Failed: build/x.o should match build/*"
+        end if
+
+        match = path_matches_pattern("src/test.f90", "build/*")
+        if (match) then
+            error stop "Failed: src/test.f90 should not match build/*"
+        end if
+
+        ! Test literal substring match
+        match = path_matches_pattern("vendor/lib.a", "vendor/")
+        if (.not. match) then
+            error stop "Failed: vendor/lib.a should match vendor/"
+        end if
+
+        match = path_matches_pattern("src/vendor.f90", "vendor/")
+        if (match) then
+            error stop "Failed: src/vendor.f90 should not match vendor/"
+        end if
+
+        print *, "[OK] Glob pattern matching"
+
+    end subroutine test_glob_pattern_matching
 
 end program test_cli_subcommands
