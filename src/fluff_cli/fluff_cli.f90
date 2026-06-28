@@ -27,6 +27,7 @@ module fluff_cli
         logical :: show_fixes = .false.
         logical :: quiet = .false.
         logical :: verbose = .false.
+        logical :: statistics = .false.
         character(len=:), allocatable :: config_file
         character(len=:), allocatable :: output_format ! text, json, sarif
         character(len=:), allocatable :: error_msg ! Parse error message
@@ -110,6 +111,8 @@ contains
                     this%quiet = .true.
                 case ("--verbose")
                     this%verbose = .true.
+                case ("--statistics")
+                    this%statistics = .true.
                 case ("--config")
                     current_flag = "--config"
                     expecting_value = .true.
@@ -427,10 +430,14 @@ contains
             end do
 
             if (.not. app%args%quiet) then
-                if (allocated(all_diagnostics)) then
-                    call print_diagnostics(all_diagnostics, app%args%output_format)
+                if (app%args%statistics) then
+                    call print_statistics(all_diagnostics, i)
                 else
-                    call print_diagnostics([diagnostic_t::], app%args%output_format)
+                    if (allocated(all_diagnostics)) then
+                        call print_diagnostics(all_diagnostics, app%args%output_format)
+                    else
+                        call print_diagnostics([diagnostic_t::], app%args%output_format)
+                    end if
                 end if
             end if
         else
@@ -1228,5 +1235,87 @@ contains
             write(*,'(A)') sarif_output
         end select
     end subroutine print_diagnostics
+
+    ! Print statistics summary grouped by rule code
+    subroutine print_statistics(diagnostics, file_count)
+        use fluff_diagnostics, only: diagnostic_collection_t
+        type(diagnostic_t), intent(in) :: diagnostics(:)
+        integer, intent(in) :: file_count
+
+        integer :: i, j, n_diags
+        character(len=32), allocatable :: code_list(:)
+        character(len=1024), allocatable :: message_list(:)
+        integer, allocatable :: code_counts(:)
+        integer :: unique_count
+        logical :: found
+        character(len=32) :: count_str
+
+        n_diags = size(diagnostics)
+
+        ! Handle case with no diagnostics
+        if (n_diags == 0) then
+            print '(A)', "0 violations found"
+            print '(A)', ""
+            if (file_count == 1) then
+                print '(A)', "1 file checked"
+            else
+                write (count_str, '(I0)') file_count
+                print '(A,A,A)', trim(count_str), " files checked"
+            end if
+            return
+        end if
+
+        ! Build unique code list and count occurrences
+        allocate (code_list(n_diags))
+        allocate (message_list(n_diags))
+        allocate (code_counts(n_diags))
+        unique_count = 0
+
+        do i = 1, n_diags
+            found = .false.
+            do j = 1, unique_count
+                if (diagnostics(i)%code == code_list(j)) then
+                    code_counts(j) = code_counts(j) + 1
+                    found = .true.
+                    exit
+                end if
+            end do
+
+            if (.not. found) then
+                unique_count = unique_count + 1
+                code_list(unique_count) = diagnostics(i)%code
+                message_list(unique_count) = diagnostics(i)%message
+                code_counts(unique_count) = 1
+            end if
+        end do
+
+        ! Print summary
+        if (n_diags == 1) then
+            print '(A)', "1 violation found:"
+        else
+            write (count_str, '(I0)') n_diags
+            print '(A,A,A)', trim(count_str), " violations found:"
+        end if
+
+        do i = 1, unique_count
+            if (code_counts(i) == 1) then
+                print '(A,A,A,A,A)', "  ", trim(code_list(i)), ": 1 occurrence (", &
+                    trim(message_list(i)), ")"
+            else
+                write (count_str, '(I0)') code_counts(i)
+                print '(A,A,A,A,A,A,A)', "  ", trim(code_list(i)), ": ", &
+                    trim(count_str), " occurrences (", trim(message_list(i)), ")"
+            end if
+        end do
+
+        print '(A)', ""
+        if (file_count == 1) then
+            print '(A)', "1 file checked"
+        else
+            write (count_str, '(I0)') file_count
+            print '(A,A,A)', trim(count_str), " files checked"
+        end if
+
+    end subroutine print_statistics
 
 end module fluff_cli
