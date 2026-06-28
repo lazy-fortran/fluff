@@ -17,6 +17,7 @@ module fluff_cli
     type, public :: cli_args_t
         character(len=:), allocatable :: command ! check, format, server
         character(len=:), allocatable :: files(:) ! Files to process
+        character(len=:), allocatable :: exclude_patterns(:) ! Exclude patterns
         logical :: fix = .false.
         logical :: diff = .false.
         logical :: check = .false.
@@ -52,6 +53,8 @@ module fluff_cli
     public :: create_cli_app
     public :: path_is_directory
     public :: expand_file_arguments
+    public :: path_matches_pattern
+    public :: glob_match
 
 contains
 
@@ -91,6 +94,8 @@ contains
                     this%output_format = trim(argv(i))
                 case ("--stdin-filename")
                     this%stdin_filename = trim(argv(i))
+                case ("--exclude")
+                    call add_file_to_list(this%exclude_patterns, trim(argv(i)))
                 end select
                 expecting_value = .false.
 
@@ -125,6 +130,9 @@ contains
                     expecting_value = .true.
                 case ("--stdin-filename")
                     current_flag = "--stdin-filename"
+                    expecting_value = .true.
+                case ("--exclude")
+                    current_flag = "--exclude"
                     expecting_value = .true.
                 end select
 
@@ -415,6 +423,106 @@ contains
 
     end subroutine app_print_version
 
+    ! Check if a file should be excluded
+    function should_exclude_file(path, patterns) result(excluded)
+        character(len=*), intent(in) :: path
+        character(len=:), allocatable, intent(in) :: patterns(:)
+        logical :: excluded
+        integer :: j
+
+        excluded = .false.
+        if (.not. allocated(patterns)) return
+
+        do j = 1, size(patterns)
+            if (path_matches_pattern(path, patterns(j))) then
+                excluded = .true.
+                return
+            end if
+        end do
+
+    end function should_exclude_file
+
+    ! Check if a file path matches any glob pattern
+    function path_matches_pattern(path, pattern) result(matches)
+        character(len=*), intent(in) :: path
+        character(len=*), intent(in) :: pattern
+        logical :: matches
+
+        character(len=:), allocatable :: basename
+        integer :: last_slash, path_len, i
+
+        matches = .false.
+
+        ! Get basename
+        path_len = len_trim(path)
+        last_slash = 0
+        do i = 1, path_len
+            if (path(i:i) == '/') last_slash = i
+        end do
+
+        if (last_slash > 0) then
+            basename = path(last_slash + 1:path_len)
+        else
+            basename = path(1:path_len)
+        end if
+
+        ! Match pattern against basename and full path
+        matches = glob_match(basename, pattern) .or. glob_match(path, pattern)
+
+    end function path_matches_pattern
+
+    ! Simple glob pattern matcher
+    recursive function glob_match(text, pattern) result(matches)
+        character(len=*), intent(in) :: text
+        character(len=*), intent(in) :: pattern
+        logical :: matches
+
+        integer :: ti, pi, text_len, pattern_len, star_pos
+        logical :: has_star
+
+        matches = .false.
+        ti = 1
+        pi = 1
+        text_len = len_trim(text)
+        pattern_len = len_trim(pattern)
+
+        if (pattern_len == 0) then
+            matches = (text_len == 0)
+            return
+        end if
+
+        star_pos = index(pattern(1:pattern_len), '*')
+        has_star = (star_pos > 0)
+
+        if (.not. has_star) then
+            if (pattern_len > text_len) return
+            if (pattern(1:pattern_len) == text(1:pattern_len)) then
+                matches = .true.
+            end if
+            return
+        end if
+
+        if (star_pos > 1) then
+            if (text_len < star_pos - 1) return
+            if (text(1:star_pos - 1) /= pattern(1:star_pos - 1)) return
+            ti = star_pos
+        end if
+
+        if (star_pos == pattern_len) then
+            matches = .true.
+            return
+        end if
+
+        do while (ti <= text_len)
+            if (glob_match(text(ti:text_len), pattern(star_pos + 1:pattern_len))) then
+                matches = .true.
+                return
+            end if
+            ti = ti + 1
+        end do
+
+    end function glob_match
+
     ! Run check command
     subroutine run_check_command(app, exit_code)
         use fluff_fix_applicator, only: apply_fixes_to_file
@@ -473,6 +581,8 @@ contains
         ! Process files
         if (allocated(expanded_files)) then
             do i = 1, size(expanded_files)
+                if (should_exclude_file(expanded_files(i), app%args%exclude_patterns)) cycle
+
                 call app%linter%lint_file(expanded_files(i), diagnostics, error_msg)
 
                 if (error_msg /= "") then
