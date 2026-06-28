@@ -18,9 +18,9 @@ module test_support
     integer(int64), save :: temp_path_last_clock = -1_int64
     integer(int64), save :: temp_path_seq = 0_int64
     character(len=*), parameter :: temp_path_name_fmt = &
-                                   '(A,"_",I4.4,I2.2,I2.2,"_",I2.2,I2.2,I2.2'// &
-                                   ',"_",I3.3,"_",I9.9'// &
-                                   ',"_",I0)'
+        '(A,"_",I4.4,I2.2,I2.2,"_",I2.2,I2.2,I2.2'// &
+        ',"_",I3.3,"_",I9.9'// &
+        ',"_",I0)'
 
 contains
 
@@ -71,7 +71,7 @@ contains
 
         error_msg = ""
         open (newunit=unit, file=path, status="old", action="read", &
-              access="stream", form="unformatted", iostat=ios)
+            access="stream", form="unformatted", iostat=ios)
         if (ios /= 0) then
             error_msg = "Could not open file"
             return

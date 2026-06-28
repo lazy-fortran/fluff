@@ -4,10 +4,10 @@ module fluff_rule_p004
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: allocate_statement_node, call_or_subscript_node, &
-                         declaration_node, error_stop_node, function_def_node, &
-                         identifier_node, print_statement_node, read_statement_node, &
-                         stop_node, subroutine_call_node, subroutine_def_node, &
-                         symbol_info_t, write_statement_node
+        declaration_node, error_stop_node, function_def_node, &
+        identifier_node, print_statement_node, read_statement_node, &
+        stop_node, subroutine_call_node, subroutine_def_node, &
+        symbol_info_t, write_statement_node
     implicit none
     private
 
@@ -33,11 +33,11 @@ contains
                 ctx%get_node_type(i) == NODE_SUBROUTINE_DEF) then
                 if (procedure_is_pure_candidate(ctx, i)) then
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                         code="P004", &
-                            message="Consider adding pure attribute for optimization", &
-                                         file_path=current_filename, &
-                                         location=ctx%get_node_location(i), &
-                                         severity=SEVERITY_INFO))
+                        code="P004", &
+                        message="Consider adding pure attribute for optimization", &
+                        file_path=current_filename, &
+                        location=ctx%get_node_location(i), &
+                        severity=SEVERITY_INFO))
                 end if
             end if
         end do
@@ -54,14 +54,14 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (p => ctx%arena%entries(node_index)%node)
-        type is (function_def_node)
+            type is (function_def_node)
             if (has_prefix(p%prefix_keywords, "pure")) return
             if (has_prefix(p%prefix_keywords, "elemental")) return
             if (procedure_has_side_effects(ctx, node_index)) return
             if (procedure_accesses_global_state(ctx, node_index)) return
             if (procedure_has_intent_out_args(ctx, node_index)) return
             ok = .true.
-        type is (subroutine_def_node)
+            type is (subroutine_def_node)
             if (has_prefix(p%prefix_keywords, "pure")) return
             if (has_prefix(p%prefix_keywords, "elemental")) return
             if (procedure_has_side_effects(ctx, node_index)) return
@@ -82,32 +82,32 @@ contains
 
         if (allocated(ctx%arena%entries(node_index)%node)) then
             select type (n => ctx%arena%entries(node_index)%node)
-            type is (print_statement_node)
+                type is (print_statement_node)
                 has = .true.
                 return
-            type is (write_statement_node)
+                type is (write_statement_node)
                 has = .true.
                 return
-            type is (read_statement_node)
+                type is (read_statement_node)
                 has = .true.
                 return
-            type is (allocate_statement_node)
+                type is (allocate_statement_node)
                 has = .true.
                 return
-            type is (subroutine_call_node)
+                type is (subroutine_call_node)
                 if (.not. is_pure_intrinsic_call(ctx, n%name)) then
                     has = .true.
                     return
                 end if
-            type is (call_or_subscript_node)
+                type is (call_or_subscript_node)
                 if (is_impure_procedure_call(ctx, n)) then
                     has = .true.
                     return
                 end if
-            type is (stop_node)
+                type is (stop_node)
                 has = .true.
                 return
-            type is (error_stop_node)
+                type is (error_stop_node)
                 has = .true.
                 return
             end select
@@ -146,7 +146,7 @@ contains
             if (ctx%arena%entries(i)%parent_index /= proc_index) cycle
 
             select type (n => ctx%arena%entries(i)%node)
-            type is (declaration_node)
+                type is (declaration_node)
                 if (n%has_intent .and. allocated(n%intent)) then
                     intent_str = to_lower_ascii(trim(n%intent))
                     if (intent_str == "out" .or. intent_str == "inout") then
@@ -171,18 +171,18 @@ contains
 
         select case (lname)
         case ("sin", "cos", "tan", "asin", "acos", "atan", "atan2", &
-              "sinh", "cosh", "tanh", "sqrt", "exp", "log", "log10", &
-              "abs", "mod", "modulo", "min", "max", "floor", "ceiling", &
-              "nint", "sign", "real", "int", "dble", "cmplx", "char", &
-              "ichar", "len", "len_trim", "trim", "adjustl", "adjustr", &
-              "index", "scan", "verify", "repeat", "size", "shape", &
-              "lbound", "ubound", "sum", "product", "maxval", "minval", &
-              "count", "any", "all", "merge", "pack", "unpack", "reshape", &
-              "transpose", "matmul", "dot_product", "spread", &
-              "kind", "huge", "tiny", "epsilon", "precision", "range", &
-              "digits", "bit_size", "iand", "ior", "ieor", "not", "btest", &
-              "ibset", "ibclr", "ishft", "transfer", "logical", &
-              "allocated", "present", "associated")
+                "sinh", "cosh", "tanh", "sqrt", "exp", "log", "log10", &
+                "abs", "mod", "modulo", "min", "max", "floor", "ceiling", &
+                "nint", "sign", "real", "int", "dble", "cmplx", "char", &
+                "ichar", "len", "len_trim", "trim", "adjustl", "adjustr", &
+                "index", "scan", "verify", "repeat", "size", "shape", &
+                "lbound", "ubound", "sum", "product", "maxval", "minval", &
+                "count", "any", "all", "merge", "pack", "unpack", "reshape", &
+                "transpose", "matmul", "dot_product", "spread", &
+                "kind", "huge", "tiny", "epsilon", "precision", "range", &
+                "digits", "bit_size", "iand", "ior", "ieor", "not", "btest", &
+                "ibset", "ibclr", "ishft", "transfer", "logical", &
+                "allocated", "present", "associated")
             is_pure = .true.
         end select
     end function is_pure_intrinsic_call

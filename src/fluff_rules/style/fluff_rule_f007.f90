@@ -15,7 +15,7 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
         call check_undefined_variable_usage(ctx, node_index, "F007", SEVERITY_ERROR, &
-                                            "Undefined variable: ", violations)
+            "Undefined variable: ", violations)
     end subroutine check_f007_undefined_variable
 
 end module fluff_rule_f007

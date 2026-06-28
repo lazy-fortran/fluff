@@ -1,12 +1,12 @@
 ! Comprehensive integration test for all fluff rules
 program comprehensive_integration_test
     ! F001: Missing implicit none (intentionally missing)
-integer :: global_var  ! No implicit none
-  real :: poorly_indented_var  ! F002: bad indentation
-    character(len=200) :: long_line_var = 'test'  ! F003 - line too long
-    integer :: trailing_spaces_var     
-	    integer :: mixed_tabs_var
-    integer :: unused_variable  ! F006: unused
+    integer :: global_var ! No implicit none
+    real :: poorly_indented_var ! F002: bad indentation
+    character(len=200) :: long_line_var = 'test' ! F003 - line too long
+    integer :: trailing_spaces_var
+    	    integer :: mixed_tabs_var
+    integer :: unused_variable ! F006: unused
     real :: matrix(1000, 1000)
     real, allocatable :: temp_array(:)
     real :: single_precision
@@ -20,13 +20,13 @@ integer :: global_var  ! No implicit none
     ! P001: Non-contiguous array access
     do i = 1, 1000
         do j = 1, 1000
-            matrix(j, i) = real(i * j)  ! Column-major (bad)
+            matrix(j, i) = real(i * j) ! Column-major (bad)
         end do
     end do
     !
     ! P006: Allocations in loops
     do k = 1, 100
-        allocate(temp_array(100))  ! Bad: in loop
+        allocate(temp_array(100)) ! Bad: in loop
         temp_array = real(k)
         ! P007: Mixed precision arithmetic
         single_precision = single_precision + double_precision_val
@@ -42,13 +42,13 @@ contains
     !
     ! F008: Missing intent declarations
     subroutine test_subroutine(param)
-        integer :: param  ! Missing intent
+        integer :: param ! Missing intent
         param = param * 2
     end subroutine test_subroutine
     !
     ! P004: Missing pure/elemental
     function square(x) result(y)
-        real :: x, y  ! Could be pure elemental
+        real :: x, y ! Could be pure elemental
         y = x * x
     end function square
     !

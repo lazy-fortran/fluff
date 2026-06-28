@@ -15,8 +15,8 @@ program test_fortfront_trivia_smoke
     logical :: found
 
     source = "program test"//new_line('a')// &
-             "    implicit none   "//new_line('a')// &
-             "end program test"//new_line('a')
+        "    implicit none   "//new_line('a')// &
+        "end program test"//new_line('a')
 
     ctx = create_ast_context()
     call ctx%from_source(source, error_msg)

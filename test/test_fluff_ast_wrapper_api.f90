@@ -1,6 +1,6 @@
 program test_fluff_ast_wrapper_api
     use fluff_ast, only: create_ast_context, fluff_ast_context_t, fluff_trivia_t, &
-                         NODE_ASSIGNMENT
+        NODE_ASSIGNMENT
     use fortfront, only: CST_COMMENT, CST_NEWLINE, CST_WHITESPACE, symbol_info_t
     implicit none
 
@@ -30,10 +30,10 @@ contains
         test_source_text_api = .true.
 
         source = "program p"//crlf// &
-                 "implicit none   "//crlf// &
-                 "integer :: x"//crlf// &
-                 "x = 1"//crlf// &
-                 "end program p"//crlf
+            "implicit none   "//crlf// &
+            "integer :: x"//crlf// &
+            "x = 1"//crlf// &
+            "end program p"//crlf
 
         ctx = create_ast_context()
         call ctx%from_source(source, error_msg)
@@ -136,10 +136,10 @@ contains
         test_children_and_trivia_api = .true.
 
         source_children = "program p"//new_line('A')// &
-                          "implicit none"//new_line('A')// &
-                          "integer :: x"//new_line('A')// &
-                          "x = 1"//new_line('A')// &
-                          "end program p"//new_line('A')
+            "implicit none"//new_line('A')// &
+            "integer :: x"//new_line('A')// &
+            "x = 1"//new_line('A')// &
+            "end program p"//new_line('A')
 
         ctx_children = create_ast_context()
         call ctx_children%from_source(source_children, error_msg)
@@ -157,7 +157,7 @@ contains
         end if
 
         source_trivia = "! header"//new_line('A')// &
-                        "   x = 1"//new_line('A')
+            "   x = 1"//new_line('A')
 
         ctx_trivia = create_ast_context()
         call ctx_trivia%from_source(source_trivia, error_msg)
@@ -251,10 +251,10 @@ contains
         test_symbol_query_api = .true.
 
         source = "program p"//new_line('A')// &
-                 "implicit none"//new_line('A')// &
-                 "integer :: x"//new_line('A')// &
-                 "x = 1"//new_line('A')// &
-                 "end program p"//new_line('A')
+            "implicit none"//new_line('A')// &
+            "integer :: x"//new_line('A')// &
+            "x = 1"//new_line('A')// &
+            "end program p"//new_line('A')
 
         ctx = create_ast_context()
         call ctx%from_source(source, error_msg)

@@ -71,54 +71,54 @@ contains
         allocate (rules(7))
 
         rules(1) = rule_info_t(code="P001", name="column-major-array-access", &
-                               description="Array subscript varies outer loop first", &
-                               category=CATEGORY_PERFORMANCE, subcategory="memory", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_p001_array_access)
+            description="Array subscript varies outer loop first", &
+            category=CATEGORY_PERFORMANCE, subcategory="memory", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_p001_array_access)
 
         rules(2) = rule_info_t(code="P002", name="inefficient-loop-ordering", &
-                               description="Inefficient loop ordering", &
-                               category=CATEGORY_PERFORMANCE, subcategory="memory", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_p002_loop_ordering)
+            description="Inefficient loop ordering", &
+            category=CATEGORY_PERFORMANCE, subcategory="memory", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_p002_loop_ordering)
 
         rules(3) = rule_info_t(code="P003", name="unnecessary-array-temporaries", &
-                               description="Unnecessary array temporaries", &
-                               category=CATEGORY_PERFORMANCE, subcategory="memory", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_p003_array_temporaries)
+            description="Unnecessary array temporaries", &
+            category=CATEGORY_PERFORMANCE, subcategory="memory", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_p003_array_temporaries)
 
         rules(4) = rule_info_t(code="P004", name="missing-pure-elemental", &
-                               description="Missing pure and elemental declarations", &
-                               category=CATEGORY_PERFORMANCE, &
-                               subcategory="optimization", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_INFO, &
-                               check=check_p004_pure_elemental)
+            description="Missing pure and elemental declarations", &
+            category=CATEGORY_PERFORMANCE, &
+            subcategory="optimization", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_INFO, &
+            check=check_p004_pure_elemental)
 
         rules(5) = rule_info_t(code="P005", name="inefficient-string-operations", &
-                               description="Inefficient string operations", &
-                               category=CATEGORY_PERFORMANCE, subcategory="memory", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_p005_string_operations)
+            description="Inefficient string operations", &
+            category=CATEGORY_PERFORMANCE, subcategory="memory", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_p005_string_operations)
 
         rules(6) = rule_info_t(code="P006", name="unnecessary-allocations-in-loops", &
-                               description="Unnecessary allocations in loops", &
-                               category=CATEGORY_PERFORMANCE, subcategory="memory", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_p006_loop_allocations)
+            description="Unnecessary allocations in loops", &
+            category=CATEGORY_PERFORMANCE, subcategory="memory", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_p006_loop_allocations)
 
         rules(7) = rule_info_t(code="P007", name="mixed-precision-arithmetic", &
-                               description="Mixed precision arithmetic", &
-                               category=CATEGORY_PERFORMANCE, subcategory="precision", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_INFO, &
-                               check=check_p007_mixed_precision)
+            description="Mixed precision arithmetic", &
+            category=CATEGORY_PERFORMANCE, subcategory="precision", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_INFO, &
+            check=check_p007_mixed_precision)
     end function get_performance_rules
 
     function get_correctness_rules() result(rules)
@@ -127,11 +127,11 @@ contains
         allocate (rules(1))
 
         rules(1) = rule_info_t(code="C001", name="undefined-variable", &
-                               description="Use of undefined variable", &
-                               category=CATEGORY_CORRECTNESS, subcategory="semantic", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_ERROR, &
-                               check=check_c001_undefined_var)
+            description="Use of undefined variable", &
+            category=CATEGORY_CORRECTNESS, subcategory="semantic", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_ERROR, &
+            check=check_c001_undefined_var)
     end function get_correctness_rules
 
     subroutine populate_style_rules(rules)
@@ -146,117 +146,117 @@ contains
         type(rule_info_t), intent(inout) :: rules(:)
 
         rules(1) = rule_info_t(code="F001", name="missing-implicit-none", &
-                               description="Missing implicit none statement", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f001_implicit_none)
+            description="Missing implicit none statement", &
+            category=CATEGORY_STYLE, subcategory="best-practices", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f001_implicit_none)
 
         rules(2) = rule_info_t(code="F002", name="inconsistent-indentation", &
-                               description="Inconsistent indentation detected", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f002_indentation)
+            description="Inconsistent indentation detected", &
+            category=CATEGORY_STYLE, subcategory="formatting", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f002_indentation)
 
         rules(3) = rule_info_t(code="F003", name="line-too-long", &
-                               description="Line exceeds maximum length", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f003_line_length)
+            description="Line exceeds maximum length", &
+            category=CATEGORY_STYLE, subcategory="formatting", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f003_line_length)
 
         rules(4) = rule_info_t(code="F004", name="trailing-whitespace", &
-                               description="Trailing whitespace detected", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f004_trailing_whitespace)
+            description="Trailing whitespace detected", &
+            category=CATEGORY_STYLE, subcategory="formatting", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f004_trailing_whitespace)
 
         rules(5) = rule_info_t(code="F005", name="mixed-tabs-spaces", &
-                               description="Mixed tabs and spaces in indentation", &
-                               category=CATEGORY_STYLE, subcategory="formatting", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f005_mixed_tabs_spaces)
+            description="Mixed tabs and spaces in indentation", &
+            category=CATEGORY_STYLE, subcategory="formatting", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f005_mixed_tabs_spaces)
     end subroutine populate_style_rules_1_5
 
     subroutine populate_style_rules_6_10(rules)
         type(rule_info_t), intent(inout) :: rules(:)
 
         rules(6) = rule_info_t(code="F006", name="unused-variable", &
-                               description="Unused variable declaration", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f006_unused_variable)
+            description="Unused variable declaration", &
+            category=CATEGORY_STYLE, subcategory="best-practices", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_f006_unused_variable)
 
         rules(7) = rule_info_t(code="F007", name="undefined-variable", &
-                               description="Undefined variable usage", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_ERROR, &
-                               check=check_f007_undefined_variable)
+            description="Undefined variable usage", &
+            category=CATEGORY_STYLE, subcategory="best-practices", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_ERROR, &
+            check=check_f007_undefined_variable)
 
         rules(8) = rule_info_t(code="F008", name="missing-intent", &
-                               description="Missing intent declarations", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.true., &
-                               severity=SEVERITY_WARNING, &
-                               check=check_f008_missing_intent)
+            description="Missing intent declarations", &
+            category=CATEGORY_STYLE, subcategory="best-practices", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f008_missing_intent)
 
         rules(9) = rule_info_t(code="F009", name="inconsistent-intent", &
-                               description="Inconsistent intent usage", &
-                               category=CATEGORY_STYLE, subcategory="best-practices", &
-                               default_enabled=.true., fixable=.false., &
-                               severity=SEVERITY_ERROR, &
-                               check=check_f009_inconsistent_intent_impl)
+            description="Inconsistent intent usage", &
+            category=CATEGORY_STYLE, subcategory="best-practices", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_ERROR, &
+            check=check_f009_inconsistent_intent_impl)
 
         rules(10) = rule_info_t(code="F010", name="obsolete-features", &
-                                description="Obsolete language features", &
-                                category=CATEGORY_STYLE, subcategory="modernization", &
-                                default_enabled=.true., fixable=.false., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f010_obsolete_features)
+            description="Obsolete language features", &
+            category=CATEGORY_STYLE, subcategory="modernization", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_f010_obsolete_features)
     end subroutine populate_style_rules_6_10
 
     subroutine populate_style_rules_11_15(rules)
         type(rule_info_t), intent(inout) :: rules(:)
 
         rules(11) = rule_info_t(code="F011", name="missing-end-labels", &
-                                description="Missing end statement labels", &
-                                category=CATEGORY_STYLE, subcategory="clarity", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f011_missing_end_labels)
+            description="Missing end statement labels", &
+            category=CATEGORY_STYLE, subcategory="clarity", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_INFO, &
+            check=check_f011_missing_end_labels)
 
         rules(12) = rule_info_t(code="F012", name="inconsistent-naming", &
-                                description="Inconsistent naming conventions", &
-                                category=CATEGORY_STYLE, subcategory="consistency", &
-                                default_enabled=.true., fixable=.false., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f012_naming_conventions)
+            description="Inconsistent naming conventions", &
+            category=CATEGORY_STYLE, subcategory="consistency", &
+            default_enabled=.true., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_f012_naming_conventions)
 
         rules(13) = rule_info_t(code="F013", name="multiple-statements", &
-                                description="Multiple statements per line", &
-                                category=CATEGORY_STYLE, subcategory="formatting", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_WARNING, &
-                                check=check_f013_multiple_statements)
+            description="Multiple statements per line", &
+            category=CATEGORY_STYLE, subcategory="formatting", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_WARNING, &
+            check=check_f013_multiple_statements)
 
         rules(14) = rule_info_t(code="F014", name="unnecessary-parentheses", &
-                                description="Unnecessary parentheses", &
-                                category=CATEGORY_STYLE, subcategory="simplification", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f014_unnecessary_parentheses)
+            description="Unnecessary parentheses", &
+            category=CATEGORY_STYLE, subcategory="simplification", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_INFO, &
+            check=check_f014_unnecessary_parentheses)
 
         rules(15) = rule_info_t(code="F015", name="redundant-continue", &
-                                description="Redundant continue statements", &
-                                category=CATEGORY_STYLE, subcategory="simplification", &
-                                default_enabled=.true., fixable=.true., &
-                                severity=SEVERITY_INFO, &
-                                check=check_f015_redundant_continue)
+            description="Redundant continue statements", &
+            category=CATEGORY_STYLE, subcategory="simplification", &
+            default_enabled=.true., fixable=.true., &
+            severity=SEVERITY_INFO, &
+            check=check_f015_redundant_continue)
     end subroutine populate_style_rules_11_15
 
 end module fluff_rules

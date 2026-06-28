@@ -3,10 +3,10 @@ module fluff_json
     use fluff_json_string, only: json_escape_string, json_get_string_value
     use fluff_json_value, only: skip_value
     use fluff_json_object, only: json_has_member, json_get_member_json, &
-                                 json_get_string_member, json_get_int_member, &
-                                 json_is_object, json_is_null
+        json_get_string_member, json_get_int_member, &
+        json_is_object, json_is_null
     use fluff_json_array, only: json_array_get_element_json, json_array_length, &
-                                json_is_array
+        json_is_array
     implicit none
     private
 

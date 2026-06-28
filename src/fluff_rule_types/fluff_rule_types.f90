@@ -5,13 +5,13 @@ module fluff_rule_types
     use fluff_diagnostics
     implicit none
     private
-    
+
     ! Rule information
     type, public :: rule_info_t
-        character(len=:), allocatable :: code        ! e.g., "F001"
-        character(len=:), allocatable :: name        ! e.g., "missing-implicit-none"
+        character(len=:), allocatable :: code ! e.g., "F001"
+        character(len=:), allocatable :: name ! e.g., "missing-implicit-none"
         character(len=:), allocatable :: description
-        character(len=:), allocatable :: category    ! style, performance, correctness
+        character(len=:), allocatable :: category ! style, performance, correctness
         character(len=:), allocatable :: subcategory
         logical :: default_enabled = .true.
         logical :: fixable = .false.
@@ -20,7 +20,7 @@ module fluff_rule_types
     contains
         procedure :: to_json => rule_to_json
     end type rule_info_t
-    
+
     ! Abstract rule interface
     abstract interface
         subroutine rule_check_interface(ctx, node_index, violations)
@@ -30,34 +30,34 @@ module fluff_rule_types
             type(diagnostic_t), allocatable, intent(out) :: violations(:)
         end subroutine rule_check_interface
     end interface
-    
+
 contains
-    
+
     ! Convert rule info to JSON
     function rule_to_json(this) result(json)
         class(rule_info_t), intent(in) :: this
         character(len=:), allocatable :: json
-        
+
         character(len=1000) :: buffer
         character(len=10) :: severity_str
         character(len=5) :: fixable_str
-        
+
         write(severity_str, '(I0)') this%severity
         if (this%fixable) then
             fixable_str = "true"
         else
             fixable_str = "false"
         end if
-        
+
         buffer = '{"code": "' // trim(this%code) // '", ' // &
-                 '"name": "' // trim(this%name) // '", ' // &
-                 '"description": "' // trim(this%description) // '", ' // &
-                 '"category": "' // trim(this%category) // '", ' // &
-                 '"severity": ' // trim(severity_str) // ', ' // &
-                 '"fixable": ' // trim(fixable_str) // '}'
-            
+            '"name": "' // trim(this%name) // '", ' // &
+            '"description": "' // trim(this%description) // '", ' // &
+            '"category": "' // trim(this%category) // '", ' // &
+            '"severity": ' // trim(severity_str) // ', ' // &
+            '"fixable": ' // trim(fixable_str) // '}'
+
         json = trim(buffer)
-        
+
     end function rule_to_json
-    
+
 end module fluff_rule_types

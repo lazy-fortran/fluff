@@ -6,11 +6,11 @@ module fluff_rule_f010
     use fluff_rule_file_context, only: current_filename
     use fluff_text_helpers, only: starts_with
     use fluff_token_helpers, only: token_location, first_nontrivia_in_line, &
-                                   next_nontrivia_same_line
+        next_nontrivia_same_line
     use fortfront, only: comment_node, goto_node, token_t, tokenize_core_with_trivia
     use ast_nodes_data, only: mixed_construct_container_node
     use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
-                                 TK_WHITESPACE, TK_COMMENT
+        TK_WHITESPACE, TK_COMMENT
     implicit none
     private
 
@@ -66,7 +66,7 @@ contains
         end if
 
         select type (n => ctx%arena%entries(root_index)%node)
-        type is (mixed_construct_container_node)
+            type is (mixed_construct_container_node)
             if (allocated(n%explicit_program_indices)) then
                 start_indices = n%explicit_program_indices
             else
@@ -91,14 +91,14 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (goto_node)
+            type is (goto_node)
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F010", &
-                                 message="Obsolete feature: GOTO", &
-                                 file_path=current_filename, &
-                                 location=ctx%get_node_location(node_index), &
-                                 severity=SEVERITY_WARNING))
-        type is (comment_node)
+                code="F010", &
+                message="Obsolete feature: GOTO", &
+                file_path=current_filename, &
+                location=ctx%get_node_location(node_index), &
+                severity=SEVERITY_WARNING))
+            type is (comment_node)
             call check_legacy_comment(ctx, node_index, n%text, tmp, violation_count)
         end select
 
@@ -127,18 +127,18 @@ contains
         lowered = to_lower_ascii(trimmed)
         if (starts_with(lowered, "common")) then
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F010", &
-                                 message="Obsolete feature: COMMON", &
-                                 file_path=current_filename, &
-                                 location=ctx%get_node_location(node_index), &
-                                 severity=SEVERITY_WARNING))
+                code="F010", &
+                message="Obsolete feature: COMMON", &
+                file_path=current_filename, &
+                location=ctx%get_node_location(node_index), &
+                severity=SEVERITY_WARNING))
         else if (starts_with(lowered, "equivalence")) then
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F010", &
-                                 message="Obsolete feature: EQUIVALENCE", &
-                                 file_path=current_filename, &
-                                 location=ctx%get_node_location(node_index), &
-                                 severity=SEVERITY_WARNING))
+                code="F010", &
+                message="Obsolete feature: EQUIVALENCE", &
+                file_path=current_filename, &
+                location=ctx%get_node_location(node_index), &
+                severity=SEVERITY_WARNING))
         end if
     end subroutine check_legacy_comment
 
@@ -180,11 +180,11 @@ contains
             if (.not. is_arithmetic_if_tail(tokens, stmt_idx)) cycle
 
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F010", &
-                                 message="Obsolete feature: arithmetic IF", &
-                                 file_path=current_filename, &
-                                 location=token_location(tokens(stmt_idx)), &
-                                 severity=SEVERITY_WARNING))
+                code="F010", &
+                message="Obsolete feature: arithmetic IF", &
+                file_path=current_filename, &
+                location=token_location(tokens(stmt_idx)), &
+                severity=SEVERITY_WARNING))
         end do
     end subroutine scan_arithmetic_if
 

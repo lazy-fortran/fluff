@@ -3,7 +3,7 @@ program test_rule_f001_implicit_none
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F001: Missing implicit none rule..."
@@ -38,9 +38,9 @@ contains
         ! Enable test - fortfront is available
 
         test_code = "program test"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"
+            "    integer :: x"//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -83,10 +83,10 @@ contains
         ! Enable test - fortfront is available
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -128,12 +128,12 @@ contains
         logical :: found_f001
 
         test_code = "module test_mod"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    contains"//new_line('a')// &
-                    "    subroutine test_sub()"//new_line('a')// &
-                    "        x = 42"//new_line('a')// &
-                    "    end subroutine test_sub"//new_line('a')// &
-                    "end module test_mod"
+            "    integer :: x"//new_line('a')// &
+            "    contains"//new_line('a')// &
+            "    subroutine test_sub()"//new_line('a')// &
+            "        x = 42"//new_line('a')// &
+            "    end subroutine test_sub"//new_line('a')// &
+            "end module test_mod"
 
         linter = create_linter_engine()
 
@@ -175,9 +175,9 @@ contains
         logical :: found_f001
 
         test_code = "subroutine test_sub(x)"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = x + 1"//new_line('a')// &
-                    "end subroutine test_sub"
+            "    integer :: x"//new_line('a')// &
+            "    x = x + 1"//new_line('a')// &
+            "end subroutine test_sub"
 
         linter = create_linter_engine()
 
@@ -220,13 +220,13 @@ contains
 
         ! Interface blocks should NOT trigger F001
         test_code = "module test_mod"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    interface"//new_line('a')// &
-                    "        subroutine external_sub(x)"//new_line('a')// &
-                    "            integer :: x"//new_line('a')// &
-                    "        end subroutine external_sub"//new_line('a')// &
-                    "    end interface"//new_line('a')// &
-                    "end module test_mod"
+            "    implicit none"//new_line('a')// &
+            "    interface"//new_line('a')// &
+            "        subroutine external_sub(x)"//new_line('a')// &
+            "            integer :: x"//new_line('a')// &
+            "        end subroutine external_sub"//new_line('a')// &
+            "    end interface"//new_line('a')// &
+            "end module test_mod"
 
         linter = create_linter_engine()
 

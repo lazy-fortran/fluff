@@ -3,7 +3,7 @@ program test_rule_f013_multiple_statements
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F013: Multiple statements per line rule..."
@@ -38,13 +38,13 @@ contains
         ! - assignment chain with semicolons
         ! - single-line IF with semicolons
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y, z"//new_line('a')// &
-                    "    x = 10; y = 20; z = 30"//new_line('a')// &
-                    "    if (x > 5) print *, x; "// &
-                    "print *, y"//new_line('a')// &
-                    "    print *, z"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y, z"//new_line('a')// &
+            "    x = 10; y = 20; z = 30"//new_line('a')// &
+            "    if (x > 5) print *, x; "// &
+            "print *, y"//new_line('a')// &
+            "    print *, z"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -88,17 +88,17 @@ contains
         ! Test single statements per line
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y, z"//new_line('a')// &
-                    "    x = 10"//new_line('a')// &
-                    "    y = 20"//new_line('a')// &
-                    "    z = 30"//new_line('a')// &
-                    "    if (x > 5) then"//new_line('a')// &
-                    "        print *, x"//new_line('a')// &
-                    "    end if"//new_line('a')// &
-                    "    print *, y"//new_line('a')// &
-                    "    print *, z"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y, z"//new_line('a')// &
+            "    x = 10"//new_line('a')// &
+            "    y = 20"//new_line('a')// &
+            "    z = 30"//new_line('a')// &
+            "    if (x > 5) then"//new_line('a')// &
+            "        print *, x"//new_line('a')// &
+            "    end if"//new_line('a')// &
+            "    print *, y"//new_line('a')// &
+            "    print *, z"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -144,13 +144,13 @@ contains
         ! - assignment chain with semicolons
         ! - repeated print with semicolons
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: a, b, c"//new_line('a')// &
-                    "    a = 1; b = 2; c = 3"//new_line('a')// &
-                    "    print *, a; "// &
-                    "print *, b"//new_line('a')// &
-                    "    print *, c"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: a, b, c"//new_line('a')// &
+            "    a = 1; b = 2; c = 3"//new_line('a')// &
+            "    print *, a; "// &
+            "print *, b"//new_line('a')// &
+            "    print *, c"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -193,14 +193,14 @@ contains
 
         ! Test complex multi-statement lines
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: i, j, sum"//new_line('a')// &
-                    "    i = 0; j = 0; sum = 0"//new_line('a')// &
-                    "    do i = 1, 10"//new_line('a')// &
-                    "        j = i * 2; sum = sum + j"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "    print *, sum"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: i, j, sum"//new_line('a')// &
+            "    i = 0; j = 0; sum = 0"//new_line('a')// &
+            "    do i = 1, 10"//new_line('a')// &
+            "        j = i * 2; sum = sum + j"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "    print *, sum"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

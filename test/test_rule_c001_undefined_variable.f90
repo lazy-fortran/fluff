@@ -2,8 +2,8 @@ program test_rule_c001_undefined_variable
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked, &
-                            assert_has_diagnostic_code, assert_diagnostic_location
+        delete_file_if_exists, lint_file_checked, &
+        assert_has_diagnostic_code, assert_diagnostic_location
     implicit none
 
     print *, "Testing C001: Undefined variable detection (correctness rule)..."
@@ -30,18 +30,18 @@ contains
         call make_temp_fortran_path("fluff_test_c001_basic", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = y + 10"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = y + 10"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .true., &
-                                        "C001 should trigger for undefined variable y")
+            "C001 should trigger for undefined variable y")
 
         call delete_file_if_exists(tmpfile)
 
@@ -57,19 +57,19 @@ contains
         call make_temp_fortran_path("fluff_test_c001_ok", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y"//new_line('a')// &
-                    "    y = 20"//new_line('a')// &
-                    "    x = y + 10"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y"//new_line('a')// &
+            "    y = 20"//new_line('a')// &
+            "    x = y + 10"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .false., &
-                                        "C001: no violation when all vars defined")
+            "C001: no violation when all vars defined")
 
         call delete_file_if_exists(tmpfile)
 
@@ -86,11 +86,11 @@ contains
         call make_temp_fortran_path("fluff_test_c001_multi", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = y + z"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = y + z"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
@@ -121,17 +121,17 @@ contains
         call make_temp_fortran_path("fluff_test_c001_loc", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = undefined_var"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = undefined_var"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_diagnostic_location(diagnostics, "C001", 4, 9, &
-                                        "C001 should point to line 4, column 9")
+            "C001 should point to line 4, column 9")
 
         call delete_file_if_exists(tmpfile)
 
@@ -147,24 +147,24 @@ contains
         call make_temp_fortran_path("fluff_test_c001_scope", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    call sub()"//new_line('a')// &
-                    "    x = y"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    "    subroutine sub()"//new_line('a')// &
-                    "        integer :: y"//new_line('a')// &
-                    "        y = 1"//new_line('a')// &
-                    "    end subroutine sub"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    call sub()"//new_line('a')// &
+            "    x = y"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "contains"//new_line('a')// &
+            "    subroutine sub()"//new_line('a')// &
+            "        integer :: y"//new_line('a')// &
+            "        y = 1"//new_line('a')// &
+            "    end subroutine sub"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .true., &
-                                        "C001: trigger for y outside its scope")
+            "C001: trigger for y outside its scope")
 
         call delete_file_if_exists(tmpfile)
 
@@ -180,19 +180,19 @@ contains
         call make_temp_fortran_path("fluff_test_c001_intrinsic", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    real :: x, y"//new_line('a')// &
-                    "    x = 2.0"//new_line('a')// &
-                    "    y = sin(x) + cos(x) + sqrt(abs(x))"//new_line('a')// &
-                    "    print *, y"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    real :: x, y"//new_line('a')// &
+            "    x = 2.0"//new_line('a')// &
+            "    y = sin(x) + cos(x) + sqrt(abs(x))"//new_line('a')// &
+            "    print *, y"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .false., &
-                                        "C001: no violation for intrinsic functions")
+            "C001: no violation for intrinsic functions")
 
         call delete_file_if_exists(tmpfile)
 
@@ -208,19 +208,19 @@ contains
         call make_temp_fortran_path("fluff_test_c001_param", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer, parameter :: n = 10"//new_line('a')// &
-                    "    integer :: arr(n)"//new_line('a')// &
-                    "    arr(1) = n"//new_line('a')// &
-                    "    print *, arr(1)"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer, parameter :: n = 10"//new_line('a')// &
+            "    integer :: arr(n)"//new_line('a')// &
+            "    arr(1) = n"//new_line('a')// &
+            "    print *, arr(1)"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .false., &
-                                        "C001: no violation for parameter constants")
+            "C001: no violation for parameter constants")
 
         call delete_file_if_exists(tmpfile)
 
@@ -236,20 +236,20 @@ contains
         call make_temp_fortran_path("fluff_test_c001_multi_decl", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: a, b, c"//new_line('a')// &
-                    "    a = 1"//new_line('a')// &
-                    "    b = 2"//new_line('a')// &
-                    "    c = a + b"//new_line('a')// &
-                    "    print *, c"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: a, b, c"//new_line('a')// &
+            "    a = 1"//new_line('a')// &
+            "    b = 2"//new_line('a')// &
+            "    c = a + b"//new_line('a')// &
+            "    print *, c"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call write_text_file(tmpfile, test_code)
         call lint_file_checked(linter, tmpfile, diagnostics)
 
         call assert_has_diagnostic_code(diagnostics, "C001", .false., &
-                                        "C001: recognize multi-declaration vars")
+            "C001: recognize multi-declaration vars")
 
         call delete_file_if_exists(tmpfile)
 

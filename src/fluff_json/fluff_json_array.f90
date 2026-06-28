@@ -11,7 +11,7 @@ module fluff_json_array
 contains
 
     subroutine json_array_get_element_json(array_json, idx, element_json, &
-                                           found, success)
+            found, success)
         character(len=*), intent(in) :: array_json
         integer, intent(in) :: idx
         character(len=:), allocatable, intent(out) :: element_json

@@ -33,8 +33,8 @@ contains
 
         if (len(decoded) >= 2) then
             if (decoded(1:2) == "/." .and. (len(decoded) == 2 .or. &
-                                            decoded(3:3) == "/" .or. &
-                                            decoded(3:3) == ".")) then
+                decoded(3:3) == "/" .or. &
+                decoded(3:3) == ".")) then
                 decoded = decoded(2:)
             end if
         end if

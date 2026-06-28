@@ -53,8 +53,8 @@ contains
                 if (code_index == len(code)) line_end = code_index
 
                 call analyze_line_indentation(code(line_start:line_end), &
-                                              expected_indent, actual_indent, &
-                                              in_procedure, in_if, in_do)
+                    expected_indent, actual_indent, &
+                    in_procedure, in_if, in_do)
 
                 if (abs(actual_indent - expected_indent) <= 1) then
                     consistent_lines = consistent_lines + 1
@@ -132,7 +132,7 @@ contains
 
             if (blank_line_ratio >= ideal_ratio) then
                 score = 10.0_dp - min(5.0_dp, &
-                                      (blank_line_ratio - ideal_ratio) * 20.0_dp)
+                    (blank_line_ratio - ideal_ratio) * 20.0_dp)
             else
                 score = 5.0_dp + (blank_line_ratio / ideal_ratio) * 5.0_dp
             end if
@@ -150,9 +150,9 @@ contains
 
         has_implicit_none = index(code, "implicit none") > 0
         has_proper_end = index(code, "end program") > 0 .or. &
-                         index(code, "end module") > 0 .or. &
-                         index(code, "end subroutine") > 0 .or. &
-                         index(code, "end function") > 0
+            index(code, "end module") > 0 .or. &
+            index(code, "end subroutine") > 0 .or. &
+            index(code, "end function") > 0
         has_contains = index(code, "contains") > 0
 
         score = 6.0_dp
@@ -199,7 +199,7 @@ contains
         logical :: consistent
 
         consistent = index(code, "program") > 0 .or. index(code, "module") > 0 .or. &
-                     index(code, "subroutine") > 0 .or. index(code, "function") > 0
+            index(code, "subroutine") > 0 .or. index(code, "function") > 0
 
     end function check_case_consistency
 
@@ -212,7 +212,7 @@ contains
     end function check_spacing_consistency
 
     subroutine analyze_line_indentation(line, expected_indent, actual_indent, &
-                                        in_procedure, in_if, in_do)
+            in_procedure, in_if, in_do)
         character(len=*), intent(in) :: line
         integer, intent(inout) :: expected_indent
         integer, intent(out) :: actual_indent
@@ -239,7 +239,7 @@ contains
             in_procedure = .true.
             expected_indent = 0
         else if (index(trimmed_line, "end subroutine") == 1 .or. &
-                 index(trimmed_line, "end function") == 1) then
+                index(trimmed_line, "end function") == 1) then
             in_procedure = .false.
             expected_indent = 0
         else if (in_procedure) then
@@ -290,7 +290,7 @@ contains
                 line_is_blank = .true.
                 prev_was_newline = .true.
             else if (code(code_index:code_index) /= " " .and. &
-                     code(code_index:code_index) /= char(9)) then
+                    code(code_index:code_index) /= char(9)) then
                 line_is_blank = .false.
                 prev_was_newline = .false.
             else

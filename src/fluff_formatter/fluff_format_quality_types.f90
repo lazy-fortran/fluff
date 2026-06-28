@@ -65,11 +65,11 @@ contains
         class(format_quality_t), intent(inout) :: this
 
         this%overall_score = (this%indentation_score*0.25_dp + &
-                              this%spacing_score*0.20_dp + &
-                              this%readability_score*0.25_dp + &
-                              this%structure_score*0.15_dp + &
-                              this%consistency_score*0.10_dp + &
-                              this%line_length_score*0.05_dp)
+            this%spacing_score*0.20_dp + &
+            this%readability_score*0.25_dp + &
+            this%structure_score*0.15_dp + &
+            this%consistency_score*0.10_dp + &
+            this%line_length_score*0.05_dp)
 
     end subroutine calculate_overall_score
 

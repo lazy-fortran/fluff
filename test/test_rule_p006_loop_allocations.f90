@@ -3,8 +3,8 @@ program test_rule_p006_loop_allocations
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code, &
-                            lint_file_checked
+        delete_file_if_exists, assert_has_diagnostic_code, &
+        lint_file_checked
     implicit none
 
     print *, "Testing P006: Unnecessary allocations in loops rule..."
@@ -26,15 +26,15 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "integer :: i"//new_line('a')// &
-                    "real, allocatable :: a(:)"//new_line('a')// &
-                    "do i = 1, 10"//new_line('a')// &
-                    "    allocate(a(10))"//new_line('a')// &
-                    "    a = real(i)"//new_line('a')// &
-                    "    deallocate(a)"//new_line('a')// &
-                    "end do"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "integer :: i"//new_line('a')// &
+            "real, allocatable :: a(:)"//new_line('a')// &
+            "do i = 1, 10"//new_line('a')// &
+            "    allocate(a(10))"//new_line('a')// &
+            "    a = real(i)"//new_line('a')// &
+            "    deallocate(a)"//new_line('a')// &
+            "end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p006_bad", path)
@@ -43,7 +43,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P006", .true., &
-                                        "allocate inside loop should be flagged")
+            "allocate inside loop should be flagged")
         print *, "[OK] Allocate inside loop"
     end subroutine test_allocate_inside_loop_triggers
 
@@ -54,15 +54,15 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "integer :: i"//new_line('a')// &
-                    "real, allocatable :: a(:)"//new_line('a')// &
-                    "allocate(a(10))"//new_line('a')// &
-                    "do i = 1, 10"//new_line('a')// &
-                    "    a = real(i)"//new_line('a')// &
-                    "end do"//new_line('a')// &
-                    "deallocate(a)"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "integer :: i"//new_line('a')// &
+            "real, allocatable :: a(:)"//new_line('a')// &
+            "allocate(a(10))"//new_line('a')// &
+            "do i = 1, 10"//new_line('a')// &
+            "    a = real(i)"//new_line('a')// &
+            "end do"//new_line('a')// &
+            "deallocate(a)"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p006_ok", path)
@@ -71,7 +71,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P006", .false., &
-                                        "allocate outside loop should not be flagged")
+            "allocate outside loop should not be flagged")
         print *, "[OK] Allocate outside loop"
     end subroutine test_allocate_outside_loop_is_ok
 
@@ -83,16 +83,16 @@ contains
         integer :: count, j
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "integer :: i"//new_line('a')// &
-                    "real, allocatable :: a(:)"//new_line('a')// &
-                    "allocate(a(10))"//new_line('a')// &
-                    "do i = 1, 10"//new_line('a')// &
-                    "    a = real(i)"//new_line('a')// &
-                    "    deallocate(a)"//new_line('a')// &
-                    "    allocate(a(10))"//new_line('a')// &
-                    "end do"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "integer :: i"//new_line('a')// &
+            "real, allocatable :: a(:)"//new_line('a')// &
+            "allocate(a(10))"//new_line('a')// &
+            "do i = 1, 10"//new_line('a')// &
+            "    a = real(i)"//new_line('a')// &
+            "    deallocate(a)"//new_line('a')// &
+            "    allocate(a(10))"//new_line('a')// &
+            "end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p006_dealloc", path)
@@ -121,16 +121,16 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "integer :: i, j"//new_line('a')// &
-                    "real, allocatable :: a(:)"//new_line('a')// &
-                    "do i = 1, 10"//new_line('a')// &
-                    "    do j = 1, 10"//new_line('a')// &
-                    "        allocate(a(j))"//new_line('a')// &
-                    "        deallocate(a)"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "end do"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "integer :: i, j"//new_line('a')// &
+            "real, allocatable :: a(:)"//new_line('a')// &
+            "do i = 1, 10"//new_line('a')// &
+            "    do j = 1, 10"//new_line('a')// &
+            "        allocate(a(j))"//new_line('a')// &
+            "        deallocate(a)"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p006_nested", path)
@@ -139,7 +139,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P006", .true., &
-                                        "nested loop allocate should be flagged")
+            "nested loop allocate should be flagged")
         print *, "[OK] Nested loop allocate"
     end subroutine test_nested_loop_allocate
 
@@ -152,15 +152,15 @@ contains
         logical :: found_other
 
         test_code = "program alloc_test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "real, allocatable :: temp(:)"//new_line('a')// &
-                    "integer :: i"//new_line('a')// &
-                    "do i = 1, 100"//new_line('a')// &
-                    "    allocate(temp(50))"//new_line('a')// &
-                    "    temp = real(i)"//new_line('a')// &
-                    "    deallocate(temp)"//new_line('a')// &
-                    "end do"//new_line('a')// &
-                    "end program alloc_test"
+            "implicit none"//new_line('a')// &
+            "real, allocatable :: temp(:)"//new_line('a')// &
+            "integer :: i"//new_line('a')// &
+            "do i = 1, 100"//new_line('a')// &
+            "    allocate(temp(50))"//new_line('a')// &
+            "    temp = real(i)"//new_line('a')// &
+            "    deallocate(temp)"//new_line('a')// &
+            "end do"//new_line('a')// &
+            "end program alloc_test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p006_issue209", path)

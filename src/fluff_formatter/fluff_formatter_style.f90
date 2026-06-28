@@ -1,9 +1,9 @@
 module fluff_formatter_style
     use fluff_ast, only: NODE_MODULE, NODE_DERIVED_TYPE, NODE_INTERFACE_BLOCK, &
-                         NODE_USE_STATEMENT, get_use_module_name
+        NODE_USE_STATEMENT, get_use_module_name
     use fortfront, only: lex_source, parse_tokens, create_ast_arena, token_t, &
-                         ast_arena_t, get_node_type_id_from_arena, get_children, &
-                         format_options_t
+        ast_arena_t, get_node_type_id_from_arena, get_children, &
+        format_options_t
     implicit none
     private
 
@@ -51,10 +51,10 @@ contains
         has_iso_env = .false.
 
         call scan_style_indicators_recursive(arena, prog_index, 0, has_class_types, &
-                                             has_modules, has_interfaces, has_mpi, &
-                                             has_openmp, has_iso_env)
+            has_modules, has_interfaces, has_mpi, &
+            has_openmp, has_iso_env)
         call select_style_guide(has_class_types, has_modules, has_interfaces, &
-                                has_mpi, has_openmp, has_iso_env, detected_style)
+            has_mpi, has_openmp, has_iso_env, detected_style)
     end subroutine detect_style_guide_from_source
 
     subroutine configure_clean_style(options)
@@ -108,11 +108,11 @@ contains
     end subroutine configure_custom_style
 
     recursive subroutine scan_style_indicators_recursive(arena, node_index, depth, &
-                                                         has_class_types, &
-                                                         has_modules, &
-                                                         has_interfaces, &
-                                                         has_mpi, has_openmp, &
-                                                         has_iso_env)
+            has_class_types, &
+            has_modules, &
+            has_interfaces, &
+            has_mpi, has_openmp, &
+            has_iso_env)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: node_index
         integer, intent(in) :: depth
@@ -152,9 +152,9 @@ contains
         do i = 1, size(children)
             if (children(i) > 0) then
                 call scan_style_indicators_recursive(arena, children(i), depth + 1, &
-                                                     has_class_types, has_modules, &
-                                                     has_interfaces, has_mpi, &
-                                                     has_openmp, has_iso_env)
+                    has_class_types, has_modules, &
+                    has_interfaces, has_mpi, &
+                    has_openmp, has_iso_env)
             end if
         end do
     end subroutine scan_style_indicators_recursive
@@ -176,7 +176,7 @@ contains
     end subroutine check_use_module
 
     subroutine select_style_guide(has_class_types, has_modules, has_interfaces, &
-                                  has_mpi, has_openmp, has_iso_env, detected_style)
+            has_mpi, has_openmp, has_iso_env, detected_style)
         logical, intent(in) :: has_class_types
         logical, intent(in) :: has_modules
         logical, intent(in) :: has_interfaces

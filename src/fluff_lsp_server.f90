@@ -229,12 +229,12 @@ contains
 
         capabilities = this%get_server_capabilities()
         result_json = '{"capabilities":'//capabilities// &
-                      ',"serverInfo":{"name":"fluff","version":"0.1.0"}}'
+            ',"serverInfo":{"name":"fluff","version":"0.1.0"}}'
 
     end function get_initialize_result
 
     subroutine handle_text_document_did_open(this, uri, language_id, version, &
-                                             content, success)
+            content, success)
         class(fluff_lsp_server_t), intent(inout) :: this
         character(len=*), intent(in) :: uri, language_id, content
         integer, intent(in) :: version
@@ -252,7 +252,7 @@ contains
     end subroutine handle_text_document_did_open
 
     subroutine handle_text_document_did_change(this, uri, new_version, &
-                                               new_content, success)
+            new_content, success)
         class(fluff_lsp_server_t), intent(inout) :: this
         character(len=*), intent(in) :: uri, new_content
         integer, intent(in) :: new_version
@@ -265,7 +265,7 @@ contains
 
         if (doc_index > 0) then
             call this%workspace%documents(doc_index)%update_content(new_content, &
-                                                                    new_version)
+                new_version)
             success = .true.
 
             ! Trigger diagnostics
@@ -345,7 +345,7 @@ contains
         character(len=:), allocatable :: notification
 
         call lsp_publish_diagnostics_notification(uri, diagnostics, &
-                                                  notification, success)
+            notification, success)
         if (.not. success) return
 
         this%pending_notification = notification
@@ -385,7 +385,7 @@ contains
         if (document%is_open) then
             call formatter%initialize()
             call formatter%format_source(document%content, formatted_content, &
-                                         error_msg)
+                error_msg)
             success = (error_msg == "")
         end if
 
@@ -402,12 +402,12 @@ contains
         formatting_cap = merge('true ', 'false', this%supports_formatting)
 
         capabilities = '{"textDocumentSync":2,'// &
-                       '"hoverProvider":'//hover_cap//','// &
-                       '"definitionProvider":false,'// &
-                       '"documentFormattingProvider":'//formatting_cap//','// &
-                       '"diagnosticProvider":{'// &
-                       '"interFileDependencies":true}'// &
-                       '}'
+            '"hoverProvider":'//hover_cap//','// &
+            '"definitionProvider":false,'// &
+            '"documentFormattingProvider":'//formatting_cap//','// &
+            '"diagnosticProvider":{'// &
+            '"interFileDependencies":true}'// &
+            '}'
 
     end function get_server_capabilities
 

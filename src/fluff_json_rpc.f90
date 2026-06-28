@@ -1,8 +1,8 @@
 module fluff_json_rpc
     use fluff_json, only: json_escape_string, json_get_int_member, &
-                          json_get_member_json, &
-                          json_get_string_member, json_has_member, json_is_object, &
-                          json_parse
+        json_get_member_json, &
+        json_get_string_member, json_has_member, json_is_object, &
+        json_parse
     implicit none
     private
 
@@ -18,7 +18,7 @@ module fluff_json_rpc
 contains
 
     subroutine parse_lsp_message(json_message, message_type, message_id, &
-                                 method, success)
+            method, success)
         character(len=*), intent(in) :: json_message
         character(len=:), allocatable, intent(out) :: message_type, method
         integer, intent(out) :: message_id
@@ -83,7 +83,7 @@ contains
 
         write (id_str, '(I0)') id
         json_response = '{"jsonrpc":"2.0","id":'//trim(id_str)//',"result":'// &
-                        result//'}'
+            result//'}'
     end function create_json_response
 
     function create_json_error_response(id, error_code, message) result(json_response)
@@ -100,8 +100,8 @@ contains
         call json_escape_string(message, message_json)
 
         json_response = '{"jsonrpc":"2.0","id":'//trim(id_str)// &
-                        ',"error":{"code":'//trim(code_str)// &
-                        ',"message":'//message_json//'}}'
+            ',"error":{"code":'//trim(code_str)// &
+            ',"message":'//message_json//'}}'
     end function create_json_error_response
 
     subroutine process_initialize_request(json_message, success)

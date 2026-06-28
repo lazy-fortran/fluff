@@ -4,7 +4,7 @@ module fluff_rule_identifier_checks
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_symbol_collect, only: collect_declared_names, is_in_same_unit, &
-                                         is_in_subtree, name_in_list
+        is_in_subtree, name_in_list
     use fortfront, only: identifier_node
     implicit none
     private
@@ -14,7 +14,7 @@ module fluff_rule_identifier_checks
 contains
 
     subroutine check_undefined_variable_usage(ctx, node_index, code, severity, &
-                                              message_prefix, violations)
+            message_prefix, violations)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         character(len=*), intent(in) :: code
@@ -37,7 +37,7 @@ contains
         allocate (all_violations(100))
 
         call collect_declared_names(ctx, node_index, declared, decl_lines, &
-                                    decl_columns, decl_is_parameter)
+            decl_columns, decl_is_parameter)
 
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
@@ -46,7 +46,7 @@ contains
             if (ctx%arena%entries(i)%node_type /= "identifier") cycle
 
             select type (node => ctx%arena%entries(i)%node)
-            type is (identifier_node)
+                type is (identifier_node)
                 if (.not. allocated(node%name)) cycle
                 identifier_name = node%name
                 identifier_line = node%line
@@ -60,13 +60,13 @@ contains
 
             select case (trim(identifier_name))
             case ("sin", "cos", "tan", "sqrt", "exp", "log", "abs", &
-                  "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
-                  "int", "real", "nint", "floor", "ceiling", &
-                  "min", "max", "mod", "modulo", "sign", &
-                  "len", "len_trim", "trim", "adjustl", "adjustr", &
-                  "size", "shape", "sum", "product", "maxval", "minval", &
-                  "allocated", "present", "associated", &
-                  "print", "write", "read", "open", "close")
+                    "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
+                    "int", "real", "nint", "floor", "ceiling", &
+                    "min", "max", "mod", "modulo", "sign", &
+                    "len", "len_trim", "trim", "adjustl", "adjustr", &
+                    "size", "shape", "sum", "product", "maxval", "minval", &
+                    "allocated", "present", "associated", &
+                    "print", "write", "read", "open", "close")
                 cycle
             end select
 
@@ -81,15 +81,15 @@ contains
             location%start%column = identifier_column
             location%end%line = identifier_line
             location%end%column = identifier_column + max(0, &
-                                                          len_trim(identifier_name) - 1)
+                len_trim(identifier_name) - 1)
 
             all_violations(violation_count) = create_diagnostic( &
-                                              code=code, &
-                                              message=trim(message_prefix)// &
-                                              trim(identifier_name), &
-                                              file_path=current_filename, &
-                                              location=location, &
-                                              severity=severity)
+                code=code, &
+                message=trim(message_prefix)// &
+                trim(identifier_name), &
+                file_path=current_filename, &
+                location=location, &
+                severity=severity)
         end do
 
         if (violation_count == 0) then

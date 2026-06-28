@@ -1,6 +1,6 @@
 module fluff_format_quality_improve
     use fluff_format_quality_types, only: aesthetic_settings_t, &
-                                          create_aesthetic_settings
+        create_aesthetic_settings
     implicit none
     private
 
@@ -133,9 +133,9 @@ contains
             eq_pos = eq_pos + search_pos - 1
 
             if (eq_pos > 1 .and. (result(eq_pos-1:eq_pos-1) == "=" .or. &
-                                  result(eq_pos-1:eq_pos-1) == "/" .or. &
-                                  result(eq_pos-1:eq_pos-1) == "<" .or. &
-                                  result(eq_pos-1:eq_pos-1) == ">")) then
+                result(eq_pos-1:eq_pos-1) == "/" .or. &
+                result(eq_pos-1:eq_pos-1) == "<" .or. &
+                result(eq_pos-1:eq_pos-1) == ">")) then
                 search_pos = eq_pos + 1
                 cycle
             end if
@@ -254,7 +254,7 @@ contains
                 index(adjustl(line), "! fluff: noqa") > 0) then
                 skip_line_breaking = .true.
             else if (index(adjustl(line), "! fmt: on") > 0 .or. &
-                     index(adjustl(line), "! fluff: qa") > 0) then
+                    index(adjustl(line), "! fluff: qa") > 0) then
                 skip_line_breaking = .false.
             end if
 
@@ -313,7 +313,7 @@ contains
                 index(adjustl(current_line), "! fluff: noqa") > 0) then
                 skip_combining = .true.
             else if (index(adjustl(current_line), "! fmt: on") > 0 .or. &
-                     index(adjustl(current_line), "! fluff: qa") > 0) then
+                    index(adjustl(current_line), "! fluff: qa") > 0) then
                 skip_combining = .false.
             end if
 
@@ -335,9 +335,9 @@ contains
                     end if
 
                     if (can_combine_lines(trim(current_line), adjustl(next_line), &
-                                          max_length)) then
+                        max_length)) then
                         call combine_two_lines(trim(current_line), adjustl(next_line), &
-                                               combined_line)
+                            combined_line)
                         if (len_trim(combined_line) <= max_length) then
                             if (.not. first_line) result = result // new_line("a")
                             result = result // combined_line
@@ -425,12 +425,12 @@ contains
         logical :: is_start
 
         is_start = index(line, "program ") == 1 .or. &
-                   index(line, "module ") == 1 .or. &
-                   index(line, "subroutine ") == 1 .or. &
-                   index(line, "function ") == 1 .or. &
-                   index(line, "type ") == 1 .or. &
-                   index(line, "interface") == 1 .or. &
-                   index(line, "contains") == 1
+            index(line, "module ") == 1 .or. &
+            index(line, "subroutine ") == 1 .or. &
+            index(line, "function ") == 1 .or. &
+            index(line, "type ") == 1 .or. &
+            index(line, "interface") == 1 .or. &
+            index(line, "contains") == 1
 
     end function is_block_start
 
@@ -439,7 +439,7 @@ contains
         logical :: is_end
 
         is_end = index(line, "end ") == 1 .or. &
-                 index(line, "contains") == 1
+            index(line, "contains") == 1
 
     end function is_block_end
 
@@ -448,11 +448,11 @@ contains
         logical :: is_decl
 
         is_decl = index(line, "integer") == 1 .or. &
-                  index(line, "real") == 1 .or. &
-                  index(line, "character") == 1 .or. &
-                  index(line, "logical") == 1 .or. &
-                  index(line, "complex") == 1 .or. &
-                  index(line, "type") == 1
+            index(line, "real") == 1 .or. &
+            index(line, "character") == 1 .or. &
+            index(line, "logical") == 1 .or. &
+            index(line, "complex") == 1 .or. &
+            index(line, "type") == 1
 
     end function is_declaration
 
@@ -463,7 +463,7 @@ contains
 
         eq_pos = index(line, "=")
         is_simple = eq_pos > 0 .and. index(line, "==") == 0 .and. &
-                    index(line, ">=") == 0 .and. index(line, "<=") == 0
+            index(line, ">=") == 0 .and. index(line, "<=") == 0
 
     end function is_simple_statement
 
@@ -487,7 +487,7 @@ contains
             end if
 
             call find_break_location(remaining, max_length, break_pos, &
-                                     break_next_start, found_break)
+                break_next_start, found_break)
 
             if (.not. found_break .or. break_pos <= 0) then
                 result = result // remaining(1:trimmed_len)
@@ -521,7 +521,7 @@ contains
     end function count_leading_spaces
 
     subroutine find_break_location(remaining, max_length, break_pos, break_next_start, &
-                                   found_break)
+            found_break)
         character(len=*), intent(in) :: remaining
         integer, intent(in) :: max_length
         integer, intent(out) :: break_pos, break_next_start
@@ -618,7 +618,7 @@ contains
     end subroutine prepare_continuation_line
 
     function should_add_blank_line_before(current_line, previous_line) &
-        result(needs_blank)
+            result(needs_blank)
         character(len=*), intent(in) :: current_line, previous_line
         logical :: needs_blank
 

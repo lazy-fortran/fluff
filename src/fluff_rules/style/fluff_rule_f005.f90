@@ -4,8 +4,8 @@ module fluff_rule_f005
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_trivia_utils, only: location_buffer_t, location_buffer_init, &
-                                       location_buffer_push, location_buffer_finish, &
-                                       text_has_space_and_tab
+        location_buffer_push, location_buffer_finish, &
+        text_has_space_and_tab
     use fortfront, only: token_t, tokenize_core_with_trivia, trivia_token_t
     use lexer_token_types, only: TK_WHITESPACE
     implicit none
@@ -47,11 +47,11 @@ contains
         allocate (violations(size(locations)))
         do i = 1, size(locations)
             violations(i) = create_diagnostic( &
-                            code="F005", &
-                            message="Mixed tabs and spaces", &
-                            file_path=current_filename, &
-                            location=locations(i), &
-                            severity=SEVERITY_WARNING)
+                code="F005", &
+                message="Mixed tabs and spaces", &
+                file_path=current_filename, &
+                location=locations(i), &
+                severity=SEVERITY_WARNING)
         end do
     end subroutine check_f005_mixed_tabs_spaces
 
@@ -76,7 +76,7 @@ contains
         file_indent_style = INDENT_NONE
         do i = 1, size(tokens)
             call collect_from_trivia(tokens(i)%leading_trivia, buffer, &
-                                     file_indent_style)
+                file_indent_style)
         end do
         call location_buffer_finish(buffer, locations)
     end subroutine collect_mixed_indentation

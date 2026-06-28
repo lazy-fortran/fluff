@@ -6,7 +6,7 @@ module fluff_rule_f014
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: token_t, tokenize_core_with_trivia
     use lexer_token_types, only: TK_IDENTIFIER, TK_KEYWORD, TK_NUMBER, TK_OPERATOR, &
-                                 TK_STRING
+        TK_STRING
     implicit none
     private
 
@@ -110,25 +110,25 @@ contains
 
             if (is_double_parens(tokens, close_for_open, open_idx, close_idx)) then
                 call report_unnecessary_parens(tmp, violation_count, &
-                                               "Unnecessary parentheses", &
-                                               tokens(open_idx), tokens(close_idx))
+                    "Unnecessary parentheses", &
+                    tokens(open_idx), tokens(close_idx))
             else if (is_single_line) then
                 if (is_simple_parens(tokens, open_idx, close_idx)) then
                     call report_unnecessary_parens(tmp, violation_count, &
-                                                   "Unnecessary simple parentheses", &
-                                                   tokens(open_idx), tokens(close_idx))
+                        "Unnecessary simple parentheses", &
+                        tokens(open_idx), tokens(close_idx))
                 else if (is_redundant_relational_parens(tokens, close_for_open, &
-                                                        open_idx, close_idx)) then
+                        open_idx, close_idx)) then
                     call report_unnecessary_parens(tmp, violation_count, &
-                                                   "Unnecessary relational parens", &
-                                                   tokens(open_idx), tokens(close_idx))
+                        "Unnecessary relational parens", &
+                        tokens(open_idx), tokens(close_idx))
                 end if
             end if
         end do
     end subroutine find_unnecessary_parens
 
     subroutine report_unnecessary_parens(tmp, violation_count, msg, open_tok, &
-                                         close_tok)
+            close_tok)
         type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
         integer, intent(inout) :: violation_count
         character(len=*), intent(in) :: msg
@@ -136,11 +136,11 @@ contains
         type(token_t), intent(in) :: close_tok
 
         call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                             code="F014", &
-                             message=msg, &
-                             file_path=current_filename, &
-                             location=paren_location(open_tok, close_tok), &
-                             severity=SEVERITY_INFO))
+            code="F014", &
+            message=msg, &
+            file_path=current_filename, &
+            location=paren_location(open_tok, close_tok), &
+            severity=SEVERITY_INFO))
     end subroutine report_unnecessary_parens
 
     pure logical function is_simple_parens(tokens, open_idx, close_idx) result(ok)
@@ -154,12 +154,12 @@ contains
         if (close_idx /= open_idx + 2) return
         inner_idx = open_idx + 1
         ok = (tokens(inner_idx)%kind == TK_IDENTIFIER .or. &
-              tokens(inner_idx)%kind == TK_NUMBER .or. &
-              tokens(inner_idx)%kind == TK_STRING)
+            tokens(inner_idx)%kind == TK_NUMBER .or. &
+            tokens(inner_idx)%kind == TK_STRING)
     end function is_simple_parens
 
     pure logical function is_double_parens(tokens, close_for_open, open_idx, &
-                                           close_idx) result(ok)
+            close_idx) result(ok)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: close_for_open(:)
         integer, intent(in) :: open_idx
@@ -187,8 +187,8 @@ contains
     end function is_double_parens
 
     pure logical function is_redundant_relational_parens(tokens, close_for_open, &
-                                                         open_idx, &
-                                                         close_idx) result(ok)
+            open_idx, &
+            close_idx) result(ok)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: close_for_open(:)
         integer, intent(in) :: open_idx
@@ -211,16 +211,16 @@ contains
         if (inner_close /= close_idx - 1) return
 
         has_relational = contains_only_relational_logical(tokens, inner_open, &
-                                                          inner_close, &
-                                                          close_for_open)
+            inner_close, &
+            close_for_open)
         if (.not. has_relational) return
 
         ok = .true.
     end function is_redundant_relational_parens
 
     pure logical function contains_only_relational_logical(tokens, open_idx, &
-                                                           close_idx, &
-                                                           close_for_open) result(ok)
+            close_idx, &
+            close_for_open) result(ok)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: open_idx
         integer, intent(in) :: close_idx
@@ -243,7 +243,7 @@ contains
                             i = nested_close
                         end if
                     else if (is_relational_op(tokens(i)%text) .or. &
-                             is_logical_op(tokens(i)%text)) then
+                            is_logical_op(tokens(i)%text)) then
                         found_relational_or_logical = .true.
                     else if (is_arithmetic_op(tokens(i)%text)) then
                         return
@@ -277,7 +277,7 @@ contains
 
         select case (trim(lower_text))
         case (".eq.", ".ne.", ".lt.", ".le.", ".gt.", ".ge.", &
-              "==", "/=", "<", ">", "<=", ">=")
+                "==", "/=", "<", ">", "<=", ">=")
             ok = .true.
         end select
     end function is_relational_op

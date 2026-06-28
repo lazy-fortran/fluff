@@ -3,7 +3,7 @@ module fluff_tool_integration
     use fluff_diagnostics
     implicit none
     private
-    
+
     public :: exit_code_t
     public :: stdin_handler_t
     public :: config_discovery_t
@@ -11,22 +11,22 @@ module fluff_tool_integration
     public :: github_integration_t
     public :: precommit_handler_t
     public :: tool_integration_manager_t
-    
+
     ! Exit code constants following ruff/flake8 conventions
     enum, bind(c)
-        enumerator :: EXIT_SUCCESS = 0      ! No issues found
-        enumerator :: EXIT_WARNINGS = 1     ! Warnings found
-        enumerator :: EXIT_ERRORS = 2       ! Errors found
-        enumerator :: EXIT_CONFIG_ERROR = 3 ! Configuration error
-        enumerator :: EXIT_INTERNAL_ERROR = 4 ! Internal error
+    enumerator :: EXIT_SUCCESS = 0 ! No issues found
+    enumerator :: EXIT_WARNINGS = 1 ! Warnings found
+    enumerator :: EXIT_ERRORS = 2 ! Errors found
+    enumerator :: EXIT_CONFIG_ERROR = 3 ! Configuration error
+    enumerator :: EXIT_INTERNAL_ERROR = 4 ! Internal error
     end enum
-    
+
     ! Exit code handler
     type, public :: exit_code_t
         integer :: current_code = EXIT_SUCCESS
         logical :: override_enabled = .false.
         integer :: override_code = EXIT_SUCCESS
-        
+
     contains
         procedure :: set_success => exit_code_set_success
         procedure :: set_warnings => exit_code_set_warnings
@@ -37,13 +37,13 @@ module fluff_tool_integration
         procedure :: get_code => exit_code_get_code
         procedure :: reset => exit_code_reset
     end type exit_code_t
-    
+
     ! Stdin/stdout handler
     type, public :: stdin_handler_t
         logical :: binary_detection = .true.
         logical :: utf8_support = .true.
-        integer :: max_input_size = 1048576  ! 1MB default limit
-        
+        integer :: max_input_size = 1048576 ! 1MB default limit
+
     contains
         procedure :: read_stdin => stdin_read_stdin
         procedure :: write_stdout => stdin_write_stdout
@@ -51,13 +51,13 @@ module fluff_tool_integration
         procedure :: validate_utf8 => stdin_validate_utf8
         procedure :: handle_large_input => stdin_handle_large_input
     end type stdin_handler_t
-    
+
     ! Configuration discovery
     type, public :: config_discovery_t
         character(len=:), allocatable :: found_config_path
         character(len=:), allocatable :: search_paths(:)
         logical :: use_pyproject_toml = .true.
-        
+
     contains
         procedure :: discover_config => config_discover_config
         procedure :: find_in_current_dir => config_find_in_current_dir
@@ -67,7 +67,7 @@ module fluff_tool_integration
         procedure :: find_home_config => config_find_home_config
         procedure :: find_global_config => config_find_global_config
     end type config_discovery_t
-    
+
     ! Environment variable handler
     type, public :: environment_handler_t
         character(len=:), allocatable :: config_path
@@ -75,7 +75,7 @@ module fluff_tool_integration
         character(len=:), allocatable :: log_level
         logical :: no_color = .false.
         logical :: ci_detected = .false.
-        
+
     contains
         procedure :: load_environment => env_load_environment
         procedure :: get_fluff_config => env_get_fluff_config
@@ -85,12 +85,12 @@ module fluff_tool_integration
         procedure :: detect_ci_environment => env_detect_ci_environment
         procedure :: apply_custom_overrides => env_apply_custom_overrides
     end type environment_handler_t
-    
+
     ! GitHub Actions integration
     type, public :: github_integration_t
         logical :: is_github_actions = .false.
         character(len=:), allocatable :: problem_matcher_path
-        
+
     contains
         procedure :: setup_github_actions => github_setup_github_actions
         procedure :: format_annotations => github_format_annotations
@@ -100,13 +100,13 @@ module fluff_tool_integration
         procedure :: create_pr_comment => github_create_pr_comment
         procedure :: update_check_run => github_update_check_run
     end type github_integration_t
-    
+
     ! Pre-commit hook handler
     type, public :: precommit_handler_t
         logical :: installed = .false.
         character(len=:), allocatable :: hook_path
         logical :: auto_fix_enabled = .false.
-        
+
     contains
         procedure :: install_hook => precommit_install_hook
         procedure :: configure_hook => precommit_configure_hook
@@ -115,7 +115,7 @@ module fluff_tool_integration
         procedure :: set_bypass_options => precommit_set_bypass_options
         procedure :: optimize_performance => precommit_optimize_performance
     end type precommit_handler_t
-    
+
     ! Main tool integration manager
     type, public :: tool_integration_manager_t
         type(exit_code_t) :: exit_codes
@@ -124,43 +124,43 @@ module fluff_tool_integration
         type(environment_handler_t) :: env_handler
         type(github_integration_t) :: github_integration
         type(precommit_handler_t) :: precommit_handler
-        
+
     contains
         procedure :: initialize => manager_initialize
         procedure :: finalize => manager_finalize
         procedure :: process_integration => manager_process_integration
     end type tool_integration_manager_t
-    
+
 contains
-    
+
     ! Exit code methods
     subroutine exit_code_set_success(this)
         class(exit_code_t), intent(inout) :: this
         if (.not. this%override_enabled) this%current_code = EXIT_SUCCESS
     end subroutine exit_code_set_success
-    
+
     subroutine exit_code_set_warnings(this)
         class(exit_code_t), intent(inout) :: this
         if (.not. this%override_enabled .and. this%current_code == EXIT_SUCCESS) then
             this%current_code = EXIT_WARNINGS
         end if
     end subroutine exit_code_set_warnings
-    
+
     subroutine exit_code_set_errors(this)
         class(exit_code_t), intent(inout) :: this
         if (.not. this%override_enabled) this%current_code = EXIT_ERRORS
     end subroutine exit_code_set_errors
-    
+
     subroutine exit_code_set_config_error(this)
         class(exit_code_t), intent(inout) :: this
         if (.not. this%override_enabled) this%current_code = EXIT_CONFIG_ERROR
     end subroutine exit_code_set_config_error
-    
+
     subroutine exit_code_set_internal_error(this)
         class(exit_code_t), intent(inout) :: this
         if (.not. this%override_enabled) this%current_code = EXIT_INTERNAL_ERROR
     end subroutine exit_code_set_internal_error
-    
+
     subroutine exit_code_set_override(this, code)
         class(exit_code_t), intent(inout) :: this
         integer, intent(in) :: code
@@ -168,20 +168,20 @@ contains
         this%override_code = code
         this%current_code = code
     end subroutine exit_code_set_override
-    
+
     function exit_code_get_code(this) result(code)
         class(exit_code_t), intent(in) :: this
         integer :: code
         code = this%current_code
     end function exit_code_get_code
-    
+
     subroutine exit_code_reset(this)
         class(exit_code_t), intent(inout) :: this
         this%current_code = EXIT_SUCCESS
         this%override_enabled = .false.
         this%override_code = EXIT_SUCCESS
     end subroutine exit_code_reset
-    
+
     ! Stdin/stdout methods - uses efficient buffered reading
     function stdin_read_stdin(this) result(content)
         class(stdin_handler_t), intent(in) :: this
@@ -232,25 +232,25 @@ contains
         end subroutine grow_buffer
 
     end function stdin_read_stdin
-    
+
     subroutine stdin_write_stdout(this, content)
         class(stdin_handler_t), intent(in) :: this
         character(len=*), intent(in) :: content
-        
+
         write(*, '(A)') content
-        
+
     end subroutine stdin_write_stdout
-    
+
     function stdin_is_binary(this, content) result(is_binary)
         class(stdin_handler_t), intent(in) :: this
         character(len=*), intent(in) :: content
         logical :: is_binary
-        
+
         integer :: i
-        
+
         is_binary = .false.
         if (.not. this%binary_detection) return
-        
+
         ! Simple binary detection - check for null bytes
         do i = 1, len(content)
             if (iachar(content(i:i)) == 0) then
@@ -258,38 +258,38 @@ contains
                 return
             end if
         end do
-        
+
     end function stdin_is_binary
-    
+
     function stdin_validate_utf8(this, content) result(is_valid)
         class(stdin_handler_t), intent(in) :: this
         character(len=*), intent(in) :: content
         logical :: is_valid
-        
+
         integer :: i, byte_val
-        
+
         is_valid = .true.
-        
+
         if (.not. this%utf8_support) then
             is_valid = .false.
             return
         end if
-        
+
         if (len(content) == 0) then
             is_valid = .false.
             return
         end if
-        
+
         ! Basic UTF-8 validation - check for invalid byte sequences
         do i = 1, len(content)
             byte_val = iachar(content(i:i))
-            
+
             ! Check for invalid UTF-8 sequences (simplified)
             if (byte_val == 255 .or. byte_val == 254) then
                 is_valid = .false.
                 return
             end if
-            
+
             ! Additional invalid patterns for malformed UTF-8
             if (byte_val >= 240 .and. byte_val <= 244) then
                 ! 4-byte UTF-8 sequence - check if we have enough bytes
@@ -299,65 +299,65 @@ contains
                 end if
             end if
         end do
-        
+
     end function stdin_validate_utf8
-    
+
     function stdin_handle_large_input(this, content) result(handled)
         class(stdin_handler_t), intent(in) :: this
         character(len=*), intent(in) :: content
         logical :: handled
-        
+
         handled = len(content) <= this%max_input_size
-        
+
     end function stdin_handle_large_input
-    
+
     ! Configuration discovery methods
     function config_discover_config(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
-        
+
         found = .false.
-        
+
         ! Try current directory first
         if (this%find_in_current_dir()) then
             found = .true.
             return
         end if
-        
+
         ! Try parent directories
         if (this%find_in_parent_dirs()) then
             found = .true.
             return
         end if
-        
+
         ! Try pyproject.toml
         if (this%find_pyproject_toml()) then
             found = .true.
             return
         end if
-        
+
         ! Try home directory
         if (this%find_home_config()) then
             found = .true.
             return
         end if
-        
+
         ! Try global config
         if (this%find_global_config()) then
             found = .true.
             return
         end if
-        
+
     end function config_discover_config
-    
+
     function config_find_in_current_dir(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
         logical :: file_exists
-        
+
         ! Check if fluff.toml exists in current directory
         inquire(file="fluff.toml", exist=file_exists)
-        
+
         if (file_exists) then
             found = .true.
             this%found_config_path = "./fluff.toml"
@@ -371,20 +371,20 @@ contains
                 found = .false.
             end if
         end if
-        
+
     end function config_find_in_current_dir
-    
+
     function config_find_in_parent_dirs(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
-        
+
         logical :: file_exists
         character(len=512) :: test_path
         integer :: levels, i
-        
+
         found = .false.
-        levels = 5  ! Check up to 5 parent directories
-        
+        levels = 5 ! Check up to 5 parent directories
+
         do i = 1, levels
             select case (i)
             case (1)
@@ -396,7 +396,7 @@ contains
             case default
                 test_path = "../../../../fluff.toml"
             end select
-            
+
             inquire(file=trim(test_path), exist=file_exists)
             if (file_exists) then
                 found = .true.
@@ -404,173 +404,173 @@ contains
                 return
             end if
         end do
-        
+
     end function config_find_in_parent_dirs
-    
+
     function config_find_pyproject_toml(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
-        
+
         found = this%use_pyproject_toml
         if (found) this%found_config_path = "./pyproject.toml"
-        
+
     end function config_find_pyproject_toml
-    
+
     function config_get_precedence_order(this) result(order)
         class(config_discovery_t), intent(in) :: this
         character(len=50) :: order(5)
-        
+
         order(1) = "fluff.toml (current)"
         order(2) = "fluff.toml (parent)"
         order(3) = "pyproject.toml"
         order(4) = "~/.config/fluff.toml"
         order(5) = "/etc/fluff.toml"
-        
+
     end function config_get_precedence_order
-    
+
     function config_find_home_config(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
-        
-        found = .true.  ! Placeholder
+
+        found = .true. ! Placeholder
         if (found) this%found_config_path = "~/.config/fluff.toml"
-        
+
     end function config_find_home_config
-    
+
     function config_find_global_config(this) result(found)
         class(config_discovery_t), intent(inout) :: this
         logical :: found
-        
-        found = .true.  ! Placeholder
+
+        found = .true. ! Placeholder
         if (found) this%found_config_path = "/etc/fluff.toml"
-        
+
     end function config_find_global_config
-    
+
     ! Environment handler methods
     subroutine env_load_environment(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         call this%get_fluff_config()
         call this%get_cache_dir()
         call this%get_log_level()
         call this%check_no_color()
         call this%detect_ci_environment()
         call this%apply_custom_overrides()
-        
+
     end subroutine env_load_environment
-    
+
     subroutine env_get_fluff_config(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         character(len=256) :: env_value
         integer :: status
-        
+
         ! Get FLUFF_CONFIG environment variable
         call get_environment_variable("FLUFF_CONFIG", env_value, status=status)
-        
+
         if (status == 0 .and. len_trim(env_value) > 0) then
             this%config_path = trim(env_value)
         else
             ! Default fallback
             this%config_path = "fluff.toml"
         end if
-        
+
     end subroutine env_get_fluff_config
-    
+
     subroutine env_get_cache_dir(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         character(len=256) :: env_value
         integer :: status
-        
+
         ! Get FLUFF_CACHE_DIR environment variable
         call get_environment_variable("FLUFF_CACHE_DIR", env_value, status=status)
-        
+
         if (status == 0 .and. len_trim(env_value) > 0) then
             this%cache_dir = trim(env_value)
         else
             ! Default fallback
             this%cache_dir = ".fluff_cache"
         end if
-        
+
     end subroutine env_get_cache_dir
-    
+
     subroutine env_get_log_level(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         character(len=256) :: env_value
         integer :: status
-        
+
         ! Get FLUFF_LOG_LEVEL environment variable
         call get_environment_variable("FLUFF_LOG_LEVEL", env_value, status=status)
-        
+
         if (status == 0 .and. len_trim(env_value) > 0) then
             ! Validate log level
             select case (trim(env_value))
             case ("DEBUG", "INFO", "WARNING", "ERROR")
                 this%log_level = trim(env_value)
             case default
-                this%log_level = "INFO"  ! Invalid level, use default
+                this%log_level = "INFO" ! Invalid level, use default
             end select
         else
             this%log_level = "INFO"
         end if
-        
+
     end subroutine env_get_log_level
-    
+
     subroutine env_check_no_color(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         character(len=256) :: env_value
         integer :: status
-        
+
         call get_environment_variable("NO_COLOR", env_value, status=status)
-        
+
         ! NO_COLOR is set to any value (even empty) to disable colors
         this%no_color = (status == 0)
-        
+
     end subroutine env_check_no_color
-    
+
     subroutine env_detect_ci_environment(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         character(len=256) :: env_value
         integer :: status
-        
+
         this%ci_detected = .false.
-        
+
         ! Check for common CI environment variables
         call get_environment_variable("CI", env_value, status=status)
         if (status == 0) this%ci_detected = .true.
-        
+
         call get_environment_variable("GITHUB_ACTIONS", env_value, status=status)
         if (status == 0) this%ci_detected = .true.
-        
+
         call get_environment_variable("GITLAB_CI", env_value, status=status)
         if (status == 0) this%ci_detected = .true.
-        
+
         call get_environment_variable("JENKINS_URL", env_value, status=status)
         if (status == 0) this%ci_detected = .true.
-        
+
     end subroutine env_detect_ci_environment
-    
+
     subroutine env_apply_custom_overrides(this)
         class(environment_handler_t), intent(inout) :: this
-        
+
         ! Simplified - would apply custom environment overrides
         ! Implementation would handle custom FLUFF_* variables
-        
+
     end subroutine env_apply_custom_overrides
-    
+
     ! GitHub integration methods
     subroutine github_setup_github_actions(this)
         class(github_integration_t), intent(inout) :: this
-        
+
         ! Simplified - would detect GitHub Actions environment
         this%is_github_actions = .false.
-        
+
     end subroutine github_setup_github_actions
-    
+
     function github_format_annotations(this, diagnostics) result(annotations)
         class(github_integration_t), intent(in) :: this
         type(diagnostic_t), intent(in) :: diagnostics(:)
@@ -592,8 +592,8 @@ contains
             line_str = int_to_string(diagnostics(i)%location%start%line)
             col_str = int_to_string(diagnostics(i)%location%start%column)
             parts(i) = "::error file=" // diagnostics(i)%file_path // &
-                       ",line=" // line_str // ",col=" // col_str // &
-                       "::" // diagnostics(i)%message
+                ",line=" // line_str // ",col=" // col_str // &
+                "::" // diagnostics(i)%message
             total_len = total_len + len_trim(parts(i)) + 1
         end do
 
@@ -611,20 +611,20 @@ contains
         annotations = annotations(1:pos - 1)
 
     end function github_format_annotations
-    
+
     subroutine github_create_problem_matcher(this, path)
         class(github_integration_t), intent(inout) :: this
         character(len=*), intent(in) :: path
-        
+
         this%problem_matcher_path = path
         ! Would create problem matcher JSON file
-        
+
     end subroutine github_create_problem_matcher
-    
+
     function github_generate_workflow(this) result(workflow_content)
         class(github_integration_t), intent(in) :: this
         character(len=:), allocatable :: workflow_content
-        
+
         workflow_content = &
             "name: Fluff Linting" // new_line('a') // &
             "" // new_line('a') // &
@@ -656,133 +656,133 @@ contains
             "" // new_line('a') // &
             "    - name: Run fluff" // new_line('a') // &
             "      run: fluff check . --format=github"
-        
+
     end function github_generate_workflow
-    
+
     subroutine github_setup_marketplace_action(this)
         class(github_integration_t), intent(inout) :: this
-        
+
         ! Simplified - would setup marketplace action
-        
+
     end subroutine github_setup_marketplace_action
-    
+
     function github_create_pr_comment(this, diagnostics) result(comment)
         class(github_integration_t), intent(in) :: this
         type(diagnostic_t), intent(in) :: diagnostics(:)
         character(len=:), allocatable :: comment
-        
+
         character(len=2000) :: temp_comment
-        
+
         write(temp_comment, '(A,I0,A)') &
             "## Fluff Results" // new_line('a') // &
             "Found ", size(diagnostics), " issues:" // new_line('a') // &
             "- Run `fluff check` to see details"
-        
+
         comment = trim(temp_comment)
-        
+
     end function github_create_pr_comment
-    
+
     subroutine github_update_check_run(this, status)
         class(github_integration_t), intent(inout) :: this
         character(len=*), intent(in) :: status
-        
+
         ! Simplified - would update GitHub check run status
-        
+
     end subroutine github_update_check_run
-    
+
     ! Pre-commit hook methods
     function precommit_install_hook(this, hook_path) result(success)
         class(precommit_handler_t), intent(inout) :: this
         character(len=*), intent(in) :: hook_path
         logical :: success
-        
+
         this%hook_path = hook_path
         this%installed = .true.
         success = .true.
-        
+
     end function precommit_install_hook
-    
+
     subroutine precommit_configure_hook(this, options)
         class(precommit_handler_t), intent(inout) :: this
         character(len=*), intent(in) :: options
-        
+
         ! Parse and apply hook configuration options
         if (index(options, "autofix") > 0) this%auto_fix_enabled = .true.
-        
+
     end subroutine precommit_configure_hook
-    
+
     function precommit_get_staged_files(this) result(files)
         class(precommit_handler_t), intent(in) :: this
         character(len=:), allocatable :: files(:)
-        
+
         ! Simplified - would get staged files from git
         allocate(character(len=20) :: files(2))
         files(1) = "src/main.f90"
         files(2) = "src/module.f90"
-        
+
     end function precommit_get_staged_files
-    
+
     subroutine precommit_enable_autofix(this, enabled)
         class(precommit_handler_t), intent(inout) :: this
         logical, intent(in) :: enabled
-        
+
         this%auto_fix_enabled = enabled
-        
+
     end subroutine precommit_enable_autofix
-    
+
     subroutine precommit_set_bypass_options(this, options)
         class(precommit_handler_t), intent(inout) :: this
         character(len=*), intent(in) :: options
-        
+
         ! Set bypass options for pre-commit hook
-        
+
     end subroutine precommit_set_bypass_options
-    
+
     subroutine precommit_optimize_performance(this)
         class(precommit_handler_t), intent(inout) :: this
-        
+
         ! Optimize performance for pre-commit hooks
-        
+
     end subroutine precommit_optimize_performance
-    
+
     ! Tool integration manager methods
     subroutine manager_initialize(this)
         class(tool_integration_manager_t), intent(inout) :: this
-        
+
         call this%env_handler%load_environment()
         call this%github_integration%setup_github_actions()
-        
+
     end subroutine manager_initialize
-    
+
     subroutine manager_finalize(this)
         class(tool_integration_manager_t), intent(inout) :: this
-        
+
         ! Cleanup resources
-        
+
     end subroutine manager_finalize
-    
+
     subroutine manager_process_integration(this, diagnostics)
         class(tool_integration_manager_t), intent(inout) :: this
         type(diagnostic_t), intent(in) :: diagnostics(:)
-        
+
         ! Process diagnostics and set appropriate exit code
         if (size(diagnostics) == 0) then
             call this%exit_codes%set_success()
         else
             call this%exit_codes%set_warnings()
         end if
-        
+
     end subroutine manager_process_integration
-    
+
     ! Helper function
     function int_to_string(value) result(str)
         integer, intent(in) :: value
         character(len=:), allocatable :: str
-        
+
         character(len=20) :: temp_str
         write(temp_str, '(I0)') value
         str = trim(temp_str)
-        
+
     end function int_to_string
-    
+
 end module fluff_tool_integration

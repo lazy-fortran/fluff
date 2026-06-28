@@ -36,15 +36,15 @@ contains
         linter = create_linter_engine()
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none   "//new_line('a')// &
-                    "    integer :: x  "//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"//new_line('a')
+            "    implicit none   "//new_line('a')// &
+            "    integer :: x  "//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"//new_line('a')
 
         call write_temp_file(path, test_code)
         call read_temp_file(path, file_content)
         call assert_equal_int(count_trailing_whitespace(file_content), 2, &
-                              "Unexpected trivia trailing whitespace count")
+            "Unexpected trivia trailing whitespace count")
 
         ! Lint the file
         call linter%lint_file(path, diagnostics, error_msg)
@@ -77,10 +77,10 @@ contains
 
         ! Create temporary file
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"
 
         call write_temp_file(path, test_code//new_line('a'))
 
@@ -110,12 +110,12 @@ contains
 
         ! Multiple lines with trailing spaces of different lengths
         test_code = "program test"//new_line('a')// &
-                    "    implicit none     "//new_line('a')// &  ! 5 trailing spaces
-                    "    integer :: x  "//new_line('a')// &      ! 2 trailing spaces
-                    "    real :: y   "//new_line('a')// &        ! 3 trailing spaces
-                    "    x = 42"//new_line('a')// &              ! No trailing space
-                    "    y = 3.14"//new_line('a')// &            ! No trailing space
-                    "end program test"
+            "    implicit none     "//new_line('a')// & ! 5 trailing spaces
+            "    integer :: x  "//new_line('a')// & ! 2 trailing spaces
+            "    real :: y   "//new_line('a')// & ! 3 trailing spaces
+            "    x = 42"//new_line('a')// & ! No trailing space
+            "    y = 3.14"//new_line('a')// & ! No trailing space
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -152,10 +152,10 @@ contains
         linter = create_linter_engine()
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//achar(9)//new_line('a')// &
-                    "    integer :: x"//achar(9)//achar(9)//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"//new_line('a')
+            "    implicit none"//achar(9)//new_line('a')// &
+            "    integer :: x"//achar(9)//achar(9)//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"//new_line('a')
 
         call write_temp_file(path, test_code)
 
@@ -191,7 +191,7 @@ contains
         integer :: unit, iostat
 
         open (newunit=unit, file=path, status="replace", action="write", &
-              access="stream", form="unformatted", iostat=iostat)
+            access="stream", form="unformatted", iostat=iostat)
         if (iostat /= 0) error stop "Failed to create temporary file"
 
         write (unit, iostat=iostat) content
@@ -205,7 +205,7 @@ contains
         integer :: unit, iostat, size_bytes
 
         open (newunit=unit, file=path, status="old", action="read", &
-              access="stream", form="unformatted", iostat=iostat)
+            access="stream", form="unformatted", iostat=iostat)
         if (iostat /= 0) error stop "Failed to open temporary file for readback"
 
         inquire (unit=unit, size=size_bytes)
@@ -281,9 +281,9 @@ contains
             if (diagnostics(i)%code /= "F004") cycle
             if (diagnostics(i)%location%start%line /= line) cycle
             call assert_equal_int(diagnostics(i)%location%start%column, start_col, &
-                                  "Bad F004 start column")
+                "Bad F004 start column")
             call assert_equal_int(diagnostics(i)%location%end%column, end_col, &
-                                  "Bad F004 end column")
+                "Bad F004 end column")
             found = .true.
             exit
         end do
@@ -312,7 +312,7 @@ contains
                 error stop "F004 fix missing edits"
             end if
             call assert_equal_int(size(diagnostics(i)%fixes(1)%edits), 1, &
-                                  "F004 edits count")
+                "F004 edits count")
             if (allocated(diagnostics(i)%fixes(1)%edits(1)%new_text)) then
                 if (len(diagnostics(i)%fixes(1)%edits(1)%new_text) /= 0) then
                     error stop "F004 edit new_text not empty"

@@ -3,7 +3,7 @@ program test_rule_f015_redundant_continue
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F015: Redundant continue statements rule..."
@@ -67,21 +67,21 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: i"//new_line('a')// &
-                    "    do i = 1, 10"//new_line('a')// &
-                    "        if (i == 5) then"//new_line('a')// &
-                    "            continue"//new_line('a')// &  ! Redundant continue
-                    "        end if"//new_line('a')// &
-                    "        print *, i"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "10  continue"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: i"//new_line('a')// &
+            "    do i = 1, 10"//new_line('a')// &
+            "        if (i == 5) then"//new_line('a')// &
+            "            continue"//new_line('a')// & ! Redundant continue
+            "        end if"//new_line('a')// &
+            "        print *, i"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "    "//new_line('a')// &
+            "10  continue"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015", test_code, "F015", &
-                                  found_f015)
+            found_f015)
 
         if (.not. found_f015) then
             error stop "Failed: F015 should be triggered for redundant continue"
@@ -97,19 +97,19 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: i"//new_line('a')// &
-                    "    do i = 1, 10"//new_line('a')// &
-                    "        if (i == 5) then"//new_line('a')// &
-                    "            exit"//new_line('a')// &
-                    "        end if"//new_line('a')// &
-                    "        print *, i"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: i"//new_line('a')// &
+            "    do i = 1, 10"//new_line('a')// &
+            "        if (i == 5) then"//new_line('a')// &
+            "            exit"//new_line('a')// &
+            "        end if"//new_line('a')// &
+            "        print *, i"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_ok", test_code, "F015", &
-                                  found_f015)
+            found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered when no continue "// &
@@ -126,18 +126,18 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    if (x == 1) goto 20"//new_line('a')// &
-                    "    x = 2"//new_line('a')// &
-                    "20  continue"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    if (x == 1) goto 20"//new_line('a')// &
+            "    x = 2"//new_line('a')// &
+            "20  continue"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_needed", test_code, &
-                                  "F015", found_f015)
+            "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered for labeled branch target"
@@ -152,18 +152,18 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: i, s"//new_line('a')// &
-                    "    s = 0"//new_line('a')// &
-                    "    do 30 i = 1, 3"//new_line('a')// &
-                    "        s = s + i"//new_line('a')// &
-                    "30  continue"//new_line('a')// &
-                    "    print *, s"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: i, s"//new_line('a')// &
+            "    s = 0"//new_line('a')// &
+            "    do 30 i = 1, 3"//new_line('a')// &
+            "        s = s + i"//new_line('a')// &
+            "30  continue"//new_line('a')// &
+            "    print *, s"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_do_label", test_code, &
-                                  "F015", found_f015)
+            "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not be triggered for DO end label"
@@ -178,17 +178,17 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    read(10, *, end=20) x"//new_line('a')// &
-                    "    x = x + 1"//new_line('a')// &
-                    "20  continue"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    read(10, *, end=20) x"//new_line('a')// &
+            "    x = x + 1"//new_line('a')// &
+            "20  continue"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_io_end", test_code, &
-                                  "F015", found_f015)
+            "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag I/O label target CONTINUE"
@@ -203,16 +203,16 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    write(6, 20) x"//new_line('a')// &
-                    "20  continue"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    write(6, 20) x"//new_line('a')// &
+            "20  continue"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_positional_fmt", &
-                                  test_code, "F015", found_f015)
+            test_code, "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag positional FORMAT label CONTINUE"
@@ -227,18 +227,18 @@ contains
         logical :: found_f015
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    read(10, fmt=20) x"//new_line('a')// &
-                    "    write(6, fmt=20) x"//new_line('a')// &
-                    "    write(6, format=20) x"//new_line('a')// &
-                    "20  continue"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    read(10, fmt=20) x"//new_line('a')// &
+            "    write(6, fmt=20) x"//new_line('a')// &
+            "    write(6, format=20) x"//new_line('a')// &
+            "20  continue"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call lint_source_has_code(linter, "fluff_test_f015_named_fmt", test_code, &
-                                  "F015", found_f015)
+            "F015", found_f015)
 
         if (found_f015) then
             error stop "Failed: F015 should not flag fmt=/format= label CONTINUE"

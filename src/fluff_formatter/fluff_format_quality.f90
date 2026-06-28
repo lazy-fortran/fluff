@@ -1,12 +1,12 @@
 module fluff_format_quality
     use fluff_format_quality_assess, only: assess_format_quality
     use fluff_format_quality_improve, only: apply_aesthetic_improvements, &
-                                            combine_short_lines, &
-                                            optimize_line_breaks
+        combine_short_lines, &
+        optimize_line_breaks
     use fluff_format_quality_types, only: aesthetic_settings_t, &
-                                          create_aesthetic_settings, &
-                                          create_quality_metrics, &
-                                          format_quality_t
+        create_aesthetic_settings, &
+        create_quality_metrics, &
+        format_quality_t
     implicit none
     private
 

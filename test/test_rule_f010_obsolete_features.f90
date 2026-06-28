@@ -3,7 +3,7 @@ program test_rule_f010_obsolete_features
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F010: Obsolete language features rule..."
@@ -33,13 +33,13 @@ contains
         logical :: found_f010
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 10"//new_line('a')// &
-                    "    if (x > 5) goto 100"//new_line('a')// &
-                    "    print *, 'x <= 5'"//new_line('a')// &
-                    "100 print *, 'x > 5'"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 10"//new_line('a')// &
+            "    if (x > 5) goto 100"//new_line('a')// &
+            "    print *, 'x <= 5'"//new_line('a')// &
+            "100 print *, 'x > 5'"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -80,18 +80,18 @@ contains
         logical :: found_f010
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: choice"//new_line('a')// &
-                    "    choice = 2"//new_line('a')// &
-                    "    goto (10, 20, 30), choice"//new_line('a')// &
-                    "    print *, 'default'"//new_line('a')// &
-                    "10  print *, 'choice 1'"//new_line('a')// &
-                    "    goto 40"//new_line('a')// &
-                    "20  print *, 'choice 2'"//new_line('a')// &
-                    "    goto 40"//new_line('a')// &
-                    "30  print *, 'choice 3'"//new_line('a')// &
-                    "40  continue"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: choice"//new_line('a')// &
+            "    choice = 2"//new_line('a')// &
+            "    goto (10, 20, 30), choice"//new_line('a')// &
+            "    print *, 'default'"//new_line('a')// &
+            "10  print *, 'choice 1'"//new_line('a')// &
+            "    goto 40"//new_line('a')// &
+            "20  print *, 'choice 2'"//new_line('a')// &
+            "    goto 40"//new_line('a')// &
+            "30  print *, 'choice 3'"//new_line('a')// &
+            "40  continue"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -132,24 +132,24 @@ contains
         logical :: found_f010
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, choice"//new_line('a')// &
-                    "    x = 10"//new_line('a')// &
-                    "    choice = 2"//new_line('a')// &
-                    "    if (x > 5) then"//new_line('a')// &
-                    "        print *, 'x > 5'"//new_line('a')// &
-                    "    else"//new_line('a')// &
-                    "        print *, 'x <= 5'"//new_line('a')// &
-                    "    end if"//new_line('a')// &
-                    "    select case (choice)"//new_line('a')// &
-                    "    case (1)"//new_line('a')// &
-                    "        print *, 'choice 1'"//new_line('a')// &
-                    "    case (2)"//new_line('a')// &
-                    "        print *, 'choice 2'"//new_line('a')// &
-                    "    case default"//new_line('a')// &
-                    "        print *, 'other choice'"//new_line('a')// &
-                    "    end select"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, choice"//new_line('a')// &
+            "    x = 10"//new_line('a')// &
+            "    choice = 2"//new_line('a')// &
+            "    if (x > 5) then"//new_line('a')// &
+            "        print *, 'x > 5'"//new_line('a')// &
+            "    else"//new_line('a')// &
+            "        print *, 'x <= 5'"//new_line('a')// &
+            "    end if"//new_line('a')// &
+            "    select case (choice)"//new_line('a')// &
+            "    case (1)"//new_line('a')// &
+            "        print *, 'choice 1'"//new_line('a')// &
+            "    case (2)"//new_line('a')// &
+            "        print *, 'choice 2'"//new_line('a')// &
+            "    case default"//new_line('a')// &
+            "        print *, 'other choice'"//new_line('a')// &
+            "    end select"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -190,14 +190,14 @@ contains
         logical :: found_f010
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = -1"//new_line('a')// &
-                    "    if (x) 10, 20, 30"//new_line('a')// &
-                    "10  print *, x"//new_line('a')// &
-                    "20  print *, x"//new_line('a')// &
-                    "30  print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = -1"//new_line('a')// &
+            "    if (x) 10, 20, 30"//new_line('a')// &
+            "10  print *, x"//new_line('a')// &
+            "20  print *, x"//new_line('a')// &
+            "30  print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

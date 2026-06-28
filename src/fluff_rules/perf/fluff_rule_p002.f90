@@ -4,7 +4,7 @@ module fluff_rule_p002
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, binary_op_node, call_or_subscript_node, &
-                         do_loop_node, identifier_node
+        do_loop_node, identifier_node
     implicit none
     private
 
@@ -42,7 +42,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (outer_loop => ctx%arena%entries(i)%node)
-            type is (do_loop_node)
+                type is (do_loop_node)
                 if (.not. allocated(outer_loop%var_name)) cycle
                 if (.not. allocated(outer_loop%body_indices)) cycle
                 v_outer = to_lower_ascii(trim(outer_loop%var_name))
@@ -53,22 +53,22 @@ contains
                         cycle
                     end if
                     select type (inner_loop => &
-                                 ctx%arena%entries(inner_index)%node)
-                    type is (do_loop_node)
+                            ctx%arena%entries(inner_index)%node)
+                        type is (do_loop_node)
                         if (.not. allocated(inner_loop%var_name)) cycle
                         v_inner = to_lower_ascii(trim(inner_loop%var_name))
                         if (loop_has_inefficient_access(ctx, &
-                                                        inner_index, &
-                                                        v_outer, v_inner)) then
+                            inner_index, &
+                            v_outer, v_inner)) then
                             call push_diagnostic(tmp, violation_count, &
-                                                create_diagnostic( &
-                                                code="P002", &
-                                             message="Consider swapping nested loops", &
-                                                file_path=current_filename, &
-                                                location=ctx%get_node_location( &
-                                                inner_index), &
-                                                severity=SEVERITY_INFO &
-                                                ))
+                                create_diagnostic( &
+                                code="P002", &
+                                message="Consider swapping nested loops", &
+                                file_path=current_filename, &
+                                location=ctx%get_node_location( &
+                                inner_index), &
+                                severity=SEVERITY_INFO &
+                                ))
                             exit
                         end if
                     end select
@@ -78,7 +78,7 @@ contains
     end subroutine analyze_p002
 
     function loop_has_inefficient_access(ctx, loop_index, outer_var, inner_var) &
-        result(found)
+            result(found)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: loop_index
         character(len=*), intent(in) :: outer_var
@@ -92,11 +92,11 @@ contains
         if (.not. allocated(ctx%arena%entries(loop_index)%node)) return
 
         select type (loop => ctx%arena%entries(loop_index)%node)
-        type is (do_loop_node)
+            type is (do_loop_node)
             if (.not. allocated(loop%body_indices)) return
             do i = 1, size(loop%body_indices)
                 if (node_has_inefficient_access(ctx, loop%body_indices(i), &
-                                                outer_var, inner_var)) then
+                    outer_var, inner_var)) then
                     found = .true.
                     exit
                 end if
@@ -105,7 +105,7 @@ contains
     end function loop_has_inefficient_access
 
     recursive function node_has_inefficient_access(ctx, node_index, outer_var, &
-                                                   inner_var) result(found)
+            inner_var) result(found)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         character(len=*), intent(in) :: outer_var
@@ -119,7 +119,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (is_inefficient_2d_access(ctx, node_index, outer_var, inner_var)) then
                 found = .true.
                 return
@@ -127,39 +127,39 @@ contains
             if (allocated(n%arg_indices)) then
                 do i = 1, size(n%arg_indices)
                     if (node_has_inefficient_access(ctx, n%arg_indices(i), &
-                                                    outer_var, inner_var)) then
+                        outer_var, inner_var)) then
                         found = .true.
                         return
                     end if
                 end do
             end if
-        type is (assignment_node)
+            type is (assignment_node)
             if (node_has_inefficient_access(ctx, n%target_index, outer_var, &
-                                            inner_var)) then
+                inner_var)) then
                 found = .true.
                 return
             end if
             if (node_has_inefficient_access(ctx, n%value_index, outer_var, &
-                                            inner_var)) then
+                inner_var)) then
                 found = .true.
                 return
             end if
-        type is (binary_op_node)
+            type is (binary_op_node)
             if (node_has_inefficient_access(ctx, n%left_index, outer_var, &
-                                            inner_var)) then
+                inner_var)) then
                 found = .true.
                 return
             end if
             if (node_has_inefficient_access(ctx, n%right_index, outer_var, &
-                                            inner_var)) then
+                inner_var)) then
                 found = .true.
                 return
             end if
-        type is (do_loop_node)
+            type is (do_loop_node)
             if (allocated(n%body_indices)) then
                 do i = 1, size(n%body_indices)
                     if (node_has_inefficient_access(ctx, n%body_indices(i), &
-                                                    outer_var, inner_var)) then
+                        outer_var, inner_var)) then
                         found = .true.
                         return
                     end if
@@ -182,7 +182,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (c => ctx%arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (.not. allocated(c%arg_indices)) return
             if (size(c%arg_indices) < 2) return
             a1 = c%arg_indices(1)
@@ -210,7 +210,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
         end select
     end subroutine get_identifier_arg_name

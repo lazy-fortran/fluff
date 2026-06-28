@@ -140,7 +140,7 @@ contains
     end subroutine extract_continuation_regions
 
     subroutine preserve_leading_ampersand_lines(original_code, formatted_code, &
-                                                result_code)
+            result_code)
         character(len=*), intent(in) :: original_code
         character(len=*), intent(in) :: formatted_code
         character(len=:), allocatable, intent(out) :: result_code
@@ -313,7 +313,7 @@ contains
             num_lines = num_lines + 1
             if (line_end > line_start) then
                 temp_lines(num_lines) = text(line_start:min(line_end - 1, &
-                                                            line_start + 1999))
+                    line_start + 1999))
                 max_line_len = max(max_line_len, line_end - line_start)
             else
                 temp_lines(num_lines) = ""

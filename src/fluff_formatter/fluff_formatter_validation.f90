@@ -1,6 +1,6 @@
 module fluff_formatter_validation
     use fortfront, only: lex_source, parse_tokens, create_ast_arena, emit_fortran, &
-                         token_t, ast_arena_t
+        token_t, ast_arena_t
     use lexer_token_types, only: TK_NEWLINE, TK_COMMENT
     implicit none
     private
@@ -64,7 +64,7 @@ contains
         end if
 
         call compare_token_positions(tokens_a, tokens_b, indentation_diff, &
-                                     spacing_diff, structure_diff)
+            spacing_diff, structure_diff)
         if (structure_diff) then
             diff_type = "structure"
         else if (spacing_diff) then
@@ -118,7 +118,7 @@ contains
     end function tokens_match
 
     subroutine compare_token_positions(tokens_a, tokens_b, indentation_diff, &
-                                       spacing_diff, structure_diff)
+            spacing_diff, structure_diff)
         type(token_t), intent(in) :: tokens_a(:)
         type(token_t), intent(in) :: tokens_b(:)
         logical, intent(out) :: indentation_diff

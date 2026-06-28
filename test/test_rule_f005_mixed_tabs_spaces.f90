@@ -32,10 +32,10 @@ contains
 
         ! Note: Using char(9) for tab character
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &        ! 4 spaces
-                    char(9)//"integer :: x"//new_line('a')// &  ! Tab + text
-                    "  "//char(9)//"x = 42"//new_line('a')// & ! 2 spaces + tab
-                    "end program test"
+            "    implicit none"//new_line('a')// & ! 4 spaces
+            char(9)//"integer :: x"//new_line('a')// & ! Tab + text
+            "  "//char(9)//"x = 42"//new_line('a')// & ! 2 spaces + tab
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -72,10 +72,10 @@ contains
         character(len=*), parameter :: path = "/tmp/fluff_test_f005_spaces.f90"
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -110,10 +110,10 @@ contains
 
         ! Use only tabs for indentation
         test_code = "program test"//new_line('a')// &
-                    char(9)//"implicit none"//new_line('a')// &
-                    char(9)//"integer :: x"//new_line('a')// &
-                    char(9)//"x = 42"//new_line('a')// &
-                    "end program test"
+            char(9)//"implicit none"//new_line('a')// &
+            char(9)//"integer :: x"//new_line('a')// &
+            char(9)//"x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -148,14 +148,14 @@ contains
 
         ! Multiple lines with mixed indentation
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &            ! 4 spaces
-                    char(9)//"integer :: x"//new_line('a')// &     ! 1 tab
-                    "  "//char(9)//"real :: y"//new_line('a')// &
-                    ! 2 spaces + 1 tab (mixed)
-                    char(9)//"  x = 42"//new_line('a')// &
-                    ! 1 tab + 2 spaces (mixed)
-                    "    y = 3.14"//new_line('a')// &                 ! 4 spaces
-                    "end program test"
+            "    implicit none"//new_line('a')// & ! 4 spaces
+            char(9)//"integer :: x"//new_line('a')// & ! 1 tab
+            "  "//char(9)//"real :: y"//new_line('a')// &
+        ! 2 spaces + 1 tab (mixed)
+        char(9)//"  x = 42"//new_line('a')// &
+        ! 1 tab + 2 spaces (mixed)
+        "    y = 3.14"//new_line('a')// & ! 4 spaces
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -222,9 +222,9 @@ contains
             if (diagnostics(i)%code /= "F005") cycle
             if (diagnostics(i)%location%start%line /= line) cycle
             call assert_equal_int(diagnostics(i)%location%start%column, start_col, &
-                                  "Bad F005 start column")
+                "Bad F005 start column")
             call assert_equal_int(diagnostics(i)%location%end%column, end_col, &
-                                  "Bad F005 end column")
+                "Bad F005 end column")
             found = .true.
             exit
         end do

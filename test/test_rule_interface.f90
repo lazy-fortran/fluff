@@ -35,8 +35,8 @@ contains
 
         ! Create test AST context (with declaration to trigger F001)
         call ast_ctx%from_source("program test"//new_line('a')// &
-                                 "    integer :: x"//new_line('a')// &
-                                 "end program test", error_msg)
+            "    integer :: x"//new_line('a')// &
+            "end program test", error_msg)
 
         if (allocated(error_msg) .and. len_trim(error_msg) > 0) then
             error stop "Failed to create AST: "//error_msg
@@ -106,8 +106,8 @@ contains
         ! Set up context
         filename = "test.f90"
         source_code = "program test"//new_line('a')// &
-                      "real :: x"//new_line('a')// &
-                      "end program test"
+            "real :: x"//new_line('a')// &
+            "end program test"
 
         ! Create rule context
         rule_ctx = create_rule_context(ast_ctx, filename, source_code)

@@ -75,13 +75,13 @@ contains
     subroutine setup_test_directory()
         call execute_command_line("mkdir -p /tmp/fluff_test_dir_207/subdir", wait=.true.)
         call execute_command_line("echo 'program test1' > /tmp/fluff_test_dir_207/test1.f90", &
-                                  wait=.true.)
+            wait=.true.)
         call execute_command_line("echo 'program test2' > /tmp/fluff_test_dir_207/test2.F90", &
-                                  wait=.true.)
+            wait=.true.)
         call execute_command_line("echo 'program test3' > /tmp/fluff_test_dir_207/subdir/test3.f90", &
-                                  wait=.true.)
+            wait=.true.)
         call execute_command_line("echo 'not fortran' > /tmp/fluff_test_dir_207/readme.txt", &
-                                  wait=.true.)
+            wait=.true.)
     end subroutine setup_test_directory
 
     subroutine cleanup_test_directory()

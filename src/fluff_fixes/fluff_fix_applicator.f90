@@ -47,7 +47,7 @@ contains
             can_apply = .true.
             do j = 1, size(fix%edits)
                 if (line_already_modified(fix%edits(j)%range%start%line, &
-                                          applied_lines, applied_count)) then
+                    applied_lines, applied_count)) then
                     can_apply = .false.
                     exit
                 end if
@@ -59,7 +59,7 @@ contains
 
             do j = 1, size(fix%edits)
                 call mark_line_modified(fix%edits(j)%range%start%line, &
-                                        applied_lines, applied_count)
+                    applied_lines, applied_count)
             end do
 
             current_code = fixed_code
@@ -119,7 +119,7 @@ contains
         first = .true.
 
         open (newunit=unit, file=file_path, status="old", action="read", &
-              iostat=iostat_val)
+            iostat=iostat_val)
         if (iostat_val /= 0) then
             error_msg = "Could not open file"
             return
@@ -148,7 +148,7 @@ contains
 
         error_msg = ""
         open (newunit=unit, file=file_path, status="replace", action="write", &
-              iostat=iostat_val)
+            iostat=iostat_val)
         if (iostat_val /= 0) then
             error_msg = "Could not open file for writing"
             return

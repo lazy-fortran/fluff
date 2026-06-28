@@ -1,9 +1,9 @@
 module fluff_rule_symbol_collect
     use fluff_ast, only: fluff_ast_context_t
     use fortfront, only: ast_arena_t, declaration_node, do_loop_node, &
-                         function_def_node, get_children, identifier_node, &
-                         parameter_declaration_node, program_node, &
-                         subroutine_def_node
+        function_def_node, get_children, identifier_node, &
+        parameter_declaration_node, program_node, &
+        subroutine_def_node
     implicit none
     private
 
@@ -62,13 +62,13 @@ contains
         do while (current > 0 .and. current <= arena%size)
             if (allocated(arena%entries(current)%node)) then
                 select type (node => arena%entries(current)%node)
-                type is (program_node)
+                    type is (program_node)
                     unit_index = current
                     return
-                type is (function_def_node)
+                    type is (function_def_node)
                     unit_index = current
                     return
-                type is (subroutine_def_node)
+                    type is (subroutine_def_node)
                     unit_index = current
                     return
                 end select
@@ -125,7 +125,7 @@ contains
     end subroutine grow_names_arrays
 
     subroutine collect_declared_names(ctx, root_index, names, lines, columns, &
-                                      is_parameter)
+            is_parameter)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: root_index
         character(len=:), allocatable, intent(out) :: names(:)
@@ -152,13 +152,13 @@ contains
             if (.not. is_in_same_unit(ctx%arena, root_index, i)) cycle
 
             select type (node => ctx%arena%entries(i)%node)
-            type is (declaration_node)
+                type is (declaration_node)
                 if (node%is_multi_declaration .and. allocated(node%var_names)) then
                     do j = 1, size(node%var_names)
                         if (len_trim(node%var_names(j)) == 0) cycle
                         if (count >= capacity) then
                             call grow_names_arrays(names, lines, columns, &
-                                                   is_parameter, capacity*2)
+                                is_parameter, capacity*2)
                             capacity = size(names)
                         end if
                         count = count + 1
@@ -171,7 +171,7 @@ contains
                     if (len_trim(node%var_name) == 0) cycle
                     if (count >= capacity) then
                         call grow_names_arrays(names, lines, columns, is_parameter, &
-                                               capacity*2)
+                            capacity*2)
                         capacity = size(names)
                     end if
                     count = count + 1
@@ -180,12 +180,12 @@ contains
                     columns(count) = node%column
                     is_parameter(count) = node%is_parameter
                 end if
-            type is (parameter_declaration_node)
+                type is (parameter_declaration_node)
                 if (allocated(node%name)) then
                     if (len_trim(node%name) == 0) cycle
                     if (count >= capacity) then
                         call grow_names_arrays(names, lines, columns, is_parameter, &
-                                               capacity*2)
+                            capacity*2)
                         capacity = size(names)
                     end if
                     count = count + 1
@@ -245,7 +245,7 @@ contains
 
             var_name = ""
             select type (node => ctx%arena%entries(i)%node)
-            type is (identifier_node)
+                type is (identifier_node)
                 if (allocated(node%name)) var_name = node%name
             end select
 
@@ -287,7 +287,7 @@ contains
     end subroutine add_unique_name
 
     recursive subroutine collect_loop_var_names_recursive(arena, node_index, tmp, count, &
-                                                          grown)
+            grown)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: node_index
         character(len=256), allocatable, intent(inout) :: tmp(:)
@@ -302,14 +302,14 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (do_loop_node)
+            type is (do_loop_node)
             if (allocated(node%var_name)) then
                 call add_unique_name(tmp, count, node%var_name, grown)
             end if
             if (allocated(node%body_indices)) then
                 do i = 1, size(node%body_indices)
                     call collect_loop_var_names_recursive(arena, node%body_indices(i), &
-                                                          tmp, count, grown)
+                        tmp, count, grown)
                 end do
             end if
         class default
@@ -317,7 +317,7 @@ contains
             do i = 1, size(children)
                 if (children(i) > 0) then
                     call collect_loop_var_names_recursive(arena, children(i), tmp, &
-                                                          count, grown)
+                        count, grown)
                 end if
             end do
         end select

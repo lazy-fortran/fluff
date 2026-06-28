@@ -37,19 +37,19 @@ contains
         character(len=:), allocatable :: test_code
         character(len=200) :: long_line
         character(len=*), parameter :: filename = &
-                                       "/tmp/fluff_test_f003_line_too_long.f90"
+            "/tmp/fluff_test_f003_line_too_long.f90"
         integer :: i, expected_end_col
         logical :: found_f003, found_location
 
         ! Create a line that's definitely too long (> 88 characters)
         long_line = "    real :: very_long_variable_name_that_exceeds_the_maximum_"// &
-                    "line_length_limit_of_88_characters_in_fortran"
+            "line_length_limit_of_88_characters_in_fortran"
         expected_end_col = len_trim(long_line)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    trim(long_line)//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            trim(long_line)//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -105,10 +105,10 @@ contains
         logical :: found_f003
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    real :: x, y, z  ! This line is well within the 88 "// &
-                    "character limit"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    real :: x, y, z  ! This line is well within the 88 "// &
+            "character limit"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -148,15 +148,15 @@ contains
         type(diagnostic_t), allocatable :: diagnostics(:)
         character(len=:), allocatable :: test_code
         character(len=*), parameter :: filename = &
-                                       "/tmp/fluff_test_f003_continuation.f90"
+            "/tmp/fluff_test_f003_continuation.f90"
         integer :: i
         logical :: found_f003, found_location
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    real :: result = very_long_expression_that_exceeds_line_"// &
-                    "limit + another_very_long_term"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    real :: result = very_long_expression_that_exceeds_line_"// &
+            "limit + another_very_long_term"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -212,13 +212,13 @@ contains
 
         ! Comments should be ignored by F003
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    ! This is a very long comment line that definitely "// &
-                    "exceeds the 88 character limit but should be ignored by "// &
-                    "F003"// &
-                    new_line('a')// &
-                    "    real :: x = 42"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    ! This is a very long comment line that definitely "// &
+            "exceeds the 88 character limit but should be ignored by "// &
+            "F003"// &
+            new_line('a')// &
+            "    real :: x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -267,9 +267,9 @@ contains
         config%line_length = 20
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    real :: this_is_longer_than_twenty"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    real :: this_is_longer_than_twenty"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call linter%set_config(config)
@@ -316,9 +316,9 @@ contains
         expected_end_col = visual_columns(long_line)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    long_line//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            long_line//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

@@ -1,6 +1,6 @@
 program test_lsp_dispatcher
     use fluff_json, only: json_get_member_json, json_get_string_member, &
-                          json_has_member, json_parse
+        json_has_member, json_parse
     use fluff_lsp_dispatcher, only: lsp_dispatcher_t
     use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
@@ -43,8 +43,8 @@ contains
         print *, "Testing initialize request..."
 
         init_request = '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                       '"params":{"processId":12345,'// &
-                       '"rootPath":"/test/project","capabilities":{}}}'
+            '"params":{"processId":12345,'// &
+            '"rootPath":"/test/project","capabilities":{}}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(init_request, response, has_response)
@@ -98,7 +98,7 @@ contains
         print *, "Testing shutdown request..."
 
         init_request = '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                       '"params":{"processId":12345,"rootPath":"/test"}}'
+            '"params":{"processId":12345,"rootPath":"/test"}}'
         call dispatcher%dispatch(init_request, response, has_response)
 
         shutdown_request = '{"jsonrpc":"2.0","id":2,"method":"shutdown"}'
@@ -147,7 +147,7 @@ contains
         print *, "Testing initialized notification..."
 
         init_request = '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                       '"params":{"processId":12345,"rootPath":"/test"}}'
+            '"params":{"processId":12345,"rootPath":"/test"}}'
         call dispatcher%dispatch(init_request, response, has_response)
 
         initialized_notif = '{"jsonrpc":"2.0","method":"initialized","params":{}}'
@@ -174,7 +174,7 @@ contains
         print *, "Testing exit notification..."
 
         init_request = '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                       '"params":{"processId":12345,"rootPath":"/test"}}'
+            '"params":{"processId":12345,"rootPath":"/test"}}'
         call dispatcher%dispatch(init_request, response, has_response)
 
         exit_notif = '{"jsonrpc":"2.0","method":"exit"}'
@@ -208,13 +208,13 @@ contains
         print *, "Testing document lifecycle via dispatcher..."
 
         init_request = '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                       '"params":{"processId":12345,"rootPath":"/test"}}'
+            '"params":{"processId":12345,"rootPath":"/test"}}'
         call dispatcher%dispatch(init_request, response, has_response)
 
         did_open = '{"jsonrpc":"2.0","method":"textDocument/didOpen",'// &
-                   '"params":{"textDocument":{'// &
-                   '"uri":"file:///test.f90","languageId":"fortran",'// &
-                   '"version":1,"text":"program test\n  implicit none\nend program"}}}'
+            '"params":{"textDocument":{'// &
+            '"uri":"file:///test.f90","languageId":"fortran",'// &
+            '"version":1,"text":"program test\n  implicit none\nend program"}}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(did_open, response, has_response)
@@ -239,10 +239,10 @@ contains
         print *, "[OK] didOpen via dispatcher"
 
         did_change = '{"jsonrpc":"2.0","method":"textDocument/didChange",'// &
-                     '"params":{"textDocument":{'// &
-                     '"uri":"file:///test.f90","version":2},'// &
-                     '"contentChanges":[{"text":"program changed\n  '// &
-                     'implicit none\nend program"}]}}'
+            '"params":{"textDocument":{'// &
+            '"uri":"file:///test.f90","version":2},'// &
+            '"contentChanges":[{"text":"program changed\n  '// &
+            'implicit none\nend program"}]}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(did_change, response, has_response)
@@ -261,7 +261,7 @@ contains
         print *, "[OK] didChange via dispatcher"
 
         did_save = '{"jsonrpc":"2.0","method":"textDocument/didSave",'// &
-                   '"params":{"textDocument":{"uri":"file:///test.f90"}}}'
+            '"params":{"textDocument":{"uri":"file:///test.f90"}}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(did_save, response, has_response)
@@ -275,7 +275,7 @@ contains
         print *, "[OK] didSave via dispatcher"
 
         did_close = '{"jsonrpc":"2.0","method":"textDocument/didClose",'// &
-                    '"params":{"textDocument":{"uri":"file:///test.f90"}}}'
+            '"params":{"textDocument":{"uri":"file:///test.f90"}}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(did_close, response, has_response)
@@ -343,7 +343,7 @@ contains
         print *, "Testing unknown method handling..."
 
         unknown_request = '{"jsonrpc":"2.0","id":1,'// &
-                          '"method":"unknownMethod","params":{}}'
+            '"method":"unknownMethod","params":{}}'
 
         total_tests = total_tests + 1
         call dispatcher%dispatch(unknown_request, response, has_response)
