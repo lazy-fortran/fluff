@@ -32,6 +32,12 @@ program test_cli_subcommands
     ! Test 8: Show fixes flag
     call test_show_fixes_flag()
 
+    ! Test 9: Select flag
+    call test_select_flag()
+
+    ! Test 10: Ignore flag
+    call test_ignore_flag()
+
     print *, "[OK] All CLI subcommand tests passed!"
 
 contains
@@ -270,5 +276,67 @@ contains
         print *, "[OK] Show fixes flag handling"
 
     end subroutine test_show_fixes_flag
+
+    subroutine test_select_flag()
+        type(cli_app_t) :: app
+        character(len=30) :: argv(4)
+
+        app = create_cli_app()
+
+        argv(1) = "check"
+        argv(2) = "--select"
+        argv(3) = "F001"
+        argv(4) = "test.f90"
+
+        call app%args%parse(4, argv)
+
+        if (.not. allocated(app%args%select_rules)) then
+            error stop "Failed: select_rules should be allocated"
+        end if
+
+        if (size(app%args%select_rules) /= 1) then
+            error stop "Failed: should have 1 select rule"
+        end if
+
+        if (app%args%select_rules(1) /= "F001") then
+            error stop "Failed: select rule should be F001"
+        end if
+
+        print *, "[OK] Select flag parsing"
+
+    end subroutine test_select_flag
+
+    subroutine test_ignore_flag()
+        type(cli_app_t) :: app
+        character(len=30) :: argv(4)
+
+        app = create_cli_app()
+
+        argv(1) = "check"
+        argv(2) = "--ignore"
+        argv(3) = "F001,F006"
+        argv(4) = "test.f90"
+
+        call app%args%parse(4, argv)
+
+        if (.not. allocated(app%args%ignore_rules)) then
+            error stop "Failed: ignore_rules should be allocated"
+        end if
+
+        if (size(app%args%ignore_rules) /= 2) then
+            error stop "Failed: should have 2 ignore rules"
+        end if
+
+        if (app%args%ignore_rules(1) /= "F001") then
+            error stop "Failed: first ignore rule should be F001"
+        end if
+
+        if (app%args%ignore_rules(2) /= "F006") then
+            error stop "Failed: second ignore rule should be F006"
+        end if
+
+        print *, "[OK] Ignore flag parsing"
+
+    end subroutine test_ignore_flag
 
 end program test_cli_subcommands

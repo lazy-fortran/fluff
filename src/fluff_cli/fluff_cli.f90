@@ -18,6 +18,8 @@ module fluff_cli
         character(len=:), allocatable :: command ! check, format, server
         character(len=:), allocatable :: files(:) ! Files to process
         character(len=:), allocatable :: exclude_patterns(:) ! Exclude patterns
+        character(len=:), allocatable :: select_rules(:)
+        character(len=:), allocatable :: ignore_rules(:)
         logical :: fix = .false.
         logical :: diff = .false.
         logical :: check = .false.
@@ -96,6 +98,10 @@ contains
                     this%stdin_filename = trim(argv(i))
                 case ("--exclude")
                     call add_file_to_list(this%exclude_patterns, trim(argv(i)))
+                case ("--select")
+                    call add_csv_to_list(this%select_rules, trim(argv(i)))
+                case ("--ignore")
+                    call add_csv_to_list(this%ignore_rules, trim(argv(i)))
                 end select
                 expecting_value = .false.
 
@@ -133,6 +139,12 @@ contains
                     expecting_value = .true.
                 case ("--exclude")
                     current_flag = "--exclude"
+                    expecting_value = .true.
+                case ("--select")
+                    current_flag = "--select"
+                    expecting_value = .true.
+                case ("--ignore")
+                    current_flag = "--ignore"
                     expecting_value = .true.
                 end select
 
@@ -193,6 +205,77 @@ contains
         end if
 
     end subroutine add_file_to_list
+
+    subroutine split_csv(str, parts)
+        character(len=*), intent(in) :: str
+        character(len=:), allocatable, intent(out) :: parts(:)
+
+        integer :: i, count, start, max_len, current_len
+        character(len=:), allocatable :: temp(:)
+
+        if (len_trim(str) == 0) then
+            return
+        end if
+
+        count = 1
+        do i = 1, len_trim(str)
+            if (str(i:i) == ',') count = count + 1
+        end do
+
+        allocate (character(len=256) :: temp(count))
+        count = 0
+        start = 1
+
+        do i = 1, len_trim(str)
+            if (str(i:i) == ',') then
+                count = count + 1
+                temp(count) = adjustl(str(start:i - 1))
+                start = i + 1
+            end if
+        end do
+
+        count = count + 1
+        temp(count) = adjustl(str(start:))
+
+        max_len = 0
+        do i = 1, count
+            current_len = len_trim(temp(i))
+            if (current_len > max_len) max_len = current_len
+        end do
+
+        if (allocated(parts)) deallocate (parts)
+        allocate (character(len=max_len) :: parts(count))
+        do i = 1, count
+            parts(i) = trim(temp(i))
+        end do
+
+    end subroutine split_csv
+
+    subroutine add_csv_to_list(list, csv_str)
+        character(len=:), allocatable, intent(inout) :: list(:)
+        character(len=*), intent(in) :: csv_str
+
+        character(len=:), allocatable :: parts(:)
+        character(len=:), allocatable :: temp(:)
+        integer :: i, n, max_len, new_count
+
+        call split_csv(csv_str, parts)
+
+        if (.not. allocated(parts)) return
+
+        if (.not. allocated(list)) then
+            call move_alloc(parts, list)
+        else
+            n = size(list)
+            new_count = n + size(parts)
+            max_len = max(len(list), len(parts))
+            allocate (character(len=max_len) :: temp(new_count))
+            temp(1:n) = list
+            temp(n + 1:new_count) = parts
+            call move_alloc(temp, list)
+        end if
+
+    end subroutine add_csv_to_list
 
     ! True when the request reads its single source from stdin ("-")
     function args_use_stdin(args) result(use_stdin)
@@ -544,6 +627,14 @@ contains
             call config%from_file(app%args%config_file)
         else
             config = create_default_config()
+        end if
+
+        ! Apply CLI overrides for select/ignore rules
+        if (allocated(app%args%select_rules)) then
+            config%rules%select = app%args%select_rules
+        end if
+        if (allocated(app%args%ignore_rules)) then
+            config%rules%ignore = app%args%ignore_rules
         end if
 
         ! Initialize linter
