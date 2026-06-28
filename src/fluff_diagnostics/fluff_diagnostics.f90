@@ -94,6 +94,7 @@ module fluff_diagnostics
     public :: severity_to_string
     public :: format_diagnostic
     public :: format_diagnostic_with_source
+    public :: format_diagnostic_sarif
     public :: format_diagnostic_text
 
 contains
@@ -189,6 +190,7 @@ contains
         class(diagnostic_t), intent(in) :: this
         character(len=:), allocatable :: json
         character(len=:), allocatable :: file_str
+        character(len=:), allocatable :: fixes_json
         character(len=20) :: line_str, col_str, end_line_str, end_col_str
 
         ! Convert integers to strings to avoid format issues
@@ -213,8 +215,16 @@ contains
             '  "location": {' // new_line('a') // &
             '    "start": {"line": ' // trim(line_str) // ', "column": ' // trim(col_str) // '},' // new_line('a') // &
             '    "end": {"line": ' // trim(end_line_str) // ', "column": ' // trim(end_col_str) // '}' // new_line('a') // &
-            '  }' // new_line('a') // &
-            '}'
+            '  }'
+
+        if (allocated(this%fixes)) then
+            if (size(this%fixes) > 0) then
+                fixes_json = fixes_to_json(this%fixes)
+                json = json // ',' // new_line('a') // '  "fixes": ' // fixes_json
+            end if
+        end if
+
+        json = json // new_line('a') // '}'
 
     end function diagnostic_to_json
 
@@ -545,6 +555,7 @@ contains
     function format_diagnostic_sarif(diagnostic) result(formatted)
         type(diagnostic_t), intent(in) :: diagnostic
         character(len=:), allocatable :: formatted
+        character(len=:), allocatable :: fixes_sarif
         character(len=20) :: start_line_str, start_col_str, end_line_str, end_col_str
 
         ! Convert integers to strings
@@ -565,8 +576,16 @@ contains
             ', "endLine": ' // trim(end_line_str) // &
             ', "endColumn": ' // trim(end_col_str) // '}' // new_line('a') // &
             '    }' // new_line('a') // &
-            '  }]' // new_line('a') // &
-            '}'
+            '  }]'
+
+        if (allocated(diagnostic%fixes)) then
+            if (size(diagnostic%fixes) > 0) then
+                fixes_sarif = fixes_to_sarif(diagnostic%fixes, diagnostic%file_path)
+                formatted = formatted // ',' // new_line('a') // '  "fixes": ' // fixes_sarif
+            end if
+        end if
+
+        formatted = formatted // new_line('a') // '}'
 
     end function format_diagnostic_sarif
 
@@ -937,5 +956,127 @@ contains
         escaped = buffer(1:j-1)
 
     end function escape_json_value
+
+    ! Convert fixes array to JSON format
+    function fixes_to_json(fixes) result(json)
+        type(fix_suggestion_t), intent(in) :: fixes(:)
+        character(len=:), allocatable :: json
+
+        character(len=:), allocatable :: buf
+        character(len=20) :: sl, sc, el, ec
+        integer :: i, j, n_fixes
+
+        allocate(character(len=10000) :: buf)
+        buf = "["
+        n_fixes = size(fixes)
+
+        do i = 1, n_fixes
+            if (i > 1) buf = buf // ","
+            buf = buf // new_line('a') // "      {"
+            buf = buf // new_line('a') // '        "description": "'
+
+            if (allocated(fixes(i)%description)) then
+                buf = buf // escape_json_value(fixes(i)%description)
+            end if
+            buf = buf // '",'
+
+            if (fixes(i)%is_safe) then
+                buf = buf // new_line('a') // '        "is_safe": true,'
+            else
+                buf = buf // new_line('a') // '        "is_safe": false,'
+            end if
+
+            buf = buf // new_line('a') // '        "edits": ['
+
+            if (allocated(fixes(i)%edits)) then
+                do j = 1, size(fixes(i)%edits)
+                    if (j > 1) buf = buf // ","
+                    write(sl, '(I0)') fixes(i)%edits(j)%range%start%line
+                    write(sc, '(I0)') fixes(i)%edits(j)%range%start%column
+                    write(el, '(I0)') fixes(i)%edits(j)%range%end%line
+                    write(ec, '(I0)') fixes(i)%edits(j)%range%end%column
+
+                    buf = buf // new_line('a') // '          {'
+                    buf = buf // new_line('a') // &
+                        '            "range": {"start": {"line": ' // trim(sl) // &
+                        ', "column": ' // trim(sc) // '}, "end": {"line": ' // &
+                        trim(el) // ', "column": ' // trim(ec) // '}},'
+                    buf = buf // new_line('a') // '            "new_text": "'
+
+                    if (allocated(fixes(i)%edits(j)%new_text)) then
+                        buf = buf // escape_json_value(fixes(i)%edits(j)%new_text)
+                    end if
+                    buf = buf // '"' // new_line('a') // '          }'
+                end do
+            end if
+
+            buf = buf // new_line('a') // '        ]' // new_line('a') // '      }'
+        end do
+
+        buf = buf // new_line('a') // "    ]"
+        json = trim(buf)
+
+    end function fixes_to_json
+
+    ! Convert fixes array to SARIF format
+    function fixes_to_sarif(fixes, file_path) result(sarif)
+        type(fix_suggestion_t), intent(in) :: fixes(:)
+        character(len=*), intent(in) :: file_path
+        character(len=:), allocatable :: sarif
+
+        character(len=:), allocatable :: buf
+        character(len=20) :: sl, sc, el, ec
+        integer :: i, j, n_fixes
+
+        allocate(character(len=10000) :: buf)
+        buf = "["
+        n_fixes = size(fixes)
+
+        do i = 1, n_fixes
+            if (i > 1) buf = buf // ","
+            buf = buf // new_line('a') // "      {"
+            buf = buf // new_line('a') // '        "description": {"text": "'
+
+            if (allocated(fixes(i)%description)) then
+                buf = buf // escape_json_value(fixes(i)%description)
+            end if
+            buf = buf // '"},'
+
+            buf = buf // new_line('a') // '        "artifactChanges": [{' // &
+                new_line('a') // '          "artifactLocation": {"uri": "' // &
+                trim(file_path) // '"},'
+
+            buf = buf // new_line('a') // '          "replacements": ['
+
+            if (allocated(fixes(i)%edits)) then
+                do j = 1, size(fixes(i)%edits)
+                    if (j > 1) buf = buf // ","
+                    write(sl, '(I0)') fixes(i)%edits(j)%range%start%line
+                    write(sc, '(I0)') fixes(i)%edits(j)%range%start%column
+                    write(el, '(I0)') fixes(i)%edits(j)%range%end%line
+                    write(ec, '(I0)') fixes(i)%edits(j)%range%end%column
+
+                    buf = buf // new_line('a') // '            {'
+                    buf = buf // new_line('a') // &
+                        '              "deletedRegion": {"startLine": ' // trim(sl) // &
+                        ', "startColumn": ' // trim(sc) // ', "endLine": ' // &
+                        trim(el) // ', "endColumn": ' // trim(ec) // '},'
+                    buf = buf // new_line('a') // '              "insertedContent": {"text": "'
+
+                    if (allocated(fixes(i)%edits(j)%new_text)) then
+                        buf = buf // escape_json_value(fixes(i)%edits(j)%new_text)
+                    end if
+                    buf = buf // '"}' // new_line('a') // '            }'
+                end do
+            end if
+
+            buf = buf // new_line('a') // '          ]' // &
+                new_line('a') // '        }]' // new_line('a') // '      }'
+        end do
+
+        buf = buf // new_line('a') // "    ]"
+        sarif = trim(buf)
+
+    end function fixes_to_sarif
 
 end module fluff_diagnostics
