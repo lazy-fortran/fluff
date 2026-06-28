@@ -565,9 +565,9 @@ contains
                 if (app%args%statistics) then
                     call print_statistics(all_diagnostics, 1)
                 else if (allocated(all_diagnostics)) then
-                    call print_diagnostics(all_diagnostics, app%args%output_format)
+                    call print_diagnostics(all_diagnostics, app%args%output_format, app%args%show_fixes)
                 else
-                    call print_diagnostics([diagnostic_t::], app%args%output_format)
+                    call print_diagnostics([diagnostic_t::], app%args%output_format, app%args%show_fixes)
                 end if
             end if
             return
@@ -615,9 +615,9 @@ contains
                     call print_statistics(all_diagnostics, i)
                 else
                     if (allocated(all_diagnostics)) then
-                        call print_diagnostics(all_diagnostics, app%args%output_format)
+                        call print_diagnostics(all_diagnostics, app%args%output_format, app%args%show_fixes)
                     else
-                        call print_diagnostics([diagnostic_t::], app%args%output_format)
+                        call print_diagnostics([diagnostic_t::], app%args%output_format, app%args%show_fixes)
                     end if
                 end if
             end if
@@ -1396,14 +1396,16 @@ contains
     end function int_to_str
 
     ! Print diagnostics
-    subroutine print_diagnostics(diagnostics, format)
-        use fluff_diagnostics, only: diagnostic_collection_t
+    subroutine print_diagnostics(diagnostics, format, show_fixes)
+        use fluff_diagnostics, only: diagnostic_collection_t, format_diagnostic_text
         type(diagnostic_t), intent(in) :: diagnostics(:)
         character(len=*), intent(in), optional :: format
+        logical, intent(in), optional :: show_fixes
 
-        character(len=:), allocatable :: output_format, json_output, sarif_output
+        character(len=:), allocatable :: output_format, json_output, sarif_output, formatted_line
         type(diagnostic_collection_t) :: collection
         integer :: i
+        logical :: display_fixes, has_fix
 
         if (present(format)) then
             output_format = format
@@ -1411,10 +1413,29 @@ contains
             output_format = "text"
         end if
 
+        if (present(show_fixes)) then
+            display_fixes = show_fixes
+        else
+            display_fixes = .false.
+        end if
+
         select case (output_format)
         case ("text")
             do i = 1, size(diagnostics)
-                call diagnostics(i)%print()
+                if (display_fixes) then
+                    has_fix = .false.
+                    if (allocated(diagnostics(i)%fixes)) then
+                        if (size(diagnostics(i)%fixes) > 0) has_fix = .true.
+                    end if
+                    formatted_line = format_diagnostic_text(diagnostics(i))
+                    if (has_fix) then
+                        write(*,'(A)') trim(formatted_line)//" [*]"
+                    else
+                        write(*,'(A)') trim(formatted_line)
+                    end if
+                else
+                    call diagnostics(i)%print()
+                end if
             end do
         case ("json")
             ! Create collection and output as JSON

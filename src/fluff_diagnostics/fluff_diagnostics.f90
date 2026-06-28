@@ -94,6 +94,7 @@ module fluff_diagnostics
     public :: severity_to_string
     public :: format_diagnostic
     public :: format_diagnostic_with_source
+    public :: format_diagnostic_text
 
 contains
 

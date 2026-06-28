@@ -3,6 +3,7 @@ program test_cli_subcommands
     use fluff_cli
     use fluff_linter
     use fluff_formatter
+    use fluff_diagnostics, only: diagnostic_t, format_diagnostic_text
     implicit none
 
     print *, "Testing CLI subcommands..."
@@ -27,6 +28,9 @@ program test_cli_subcommands
 
     ! Test 7: Glob pattern matching
     call test_glob_pattern_matching()
+
+    ! Test 8: Show fixes flag
+    call test_show_fixes_flag()
 
     print *, "[OK] All CLI subcommand tests passed!"
 
@@ -205,5 +209,66 @@ contains
         print *, "[OK] Glob pattern matching"
 
     end subroutine test_glob_pattern_matching
+
+    subroutine test_show_fixes_flag()
+        type(cli_app_t) :: app
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: source_code, formatted_with_fixes, formatted_without_fixes, error_msg
+        integer :: i
+        logical :: has_fix, found_f001
+
+        app = create_cli_app()
+        linter = create_linter_engine()
+
+        source_code = "program p" // new_line('a') // "  integer :: x" // new_line('a') // &
+            "end program p"
+
+        call linter%lint_source(source_code, "test.f90", diagnostics, error_msg)
+
+        if (error_msg /= "") then
+            error stop "Failed to lint source: "//error_msg
+        end if
+
+        if (.not. allocated(diagnostics)) then
+            error stop "Failed: diagnostics should be allocated"
+        end if
+
+        found_f001 = .false.
+        do i = 1, size(diagnostics)
+            if (diagnostics(i)%code == "F001") then
+                has_fix = .false.
+                if (allocated(diagnostics(i)%fixes)) then
+                    if (size(diagnostics(i)%fixes) > 0) has_fix = .true.
+                end if
+
+                if (has_fix) then
+                    found_f001 = .true.
+
+                    formatted_with_fixes = format_diagnostic_text(diagnostics(i))
+                    formatted_with_fixes = trim(formatted_with_fixes)//" [*]"
+
+                    formatted_without_fixes = format_diagnostic_text(diagnostics(i))
+
+                    if (index(formatted_with_fixes, "[*]") == 0) then
+                        error stop "Failed: [*] should be present in formatted_with_fixes"
+                    end if
+
+                    if (index(formatted_without_fixes, "[*]") /= 0) then
+                        error stop "Failed: [*] should not be present in formatted_without_fixes"
+                    end if
+
+                    exit
+                end if
+            end if
+        end do
+
+        if (.not. found_f001) then
+            error stop "Failed: no F001 diagnostic with fixes found"
+        end if
+
+        print *, "[OK] Show fixes flag handling"
+
+    end subroutine test_show_fixes_flag
 
 end program test_cli_subcommands
