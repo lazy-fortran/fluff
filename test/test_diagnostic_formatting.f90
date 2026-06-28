@@ -24,6 +24,9 @@ program test_diagnostic_formatting
     ! Test 6: Filename display in diagnostics (fixes #204)
     call test_filename_display()
 
+    ! Test 7: No extra space before colon for different-length filenames (fixes #238)
+    call test_filename_no_padding()
+
     print *, "[OK] All diagnostic formatting tests passed!"
     
 contains
@@ -291,5 +294,46 @@ contains
         print *, "[OK] Filename display in diagnostics"
 
     end subroutine test_filename_display
+
+    subroutine test_filename_no_padding()
+        type(diagnostic_t) :: diagnostic
+        type(source_range_t) :: loc
+        character(len=:), allocatable :: text_output
+        character(len=20) :: padded_filename
+
+        print *, "  TOOLS Testing no padding before colon (fixes #238)..."
+
+        loc%start%line = 1
+        loc%start%column = 1
+        loc%end%line = 1
+        loc%end%column = 1
+
+        padded_filename = "test.f90"
+
+        diagnostic = create_diagnostic( &
+            code="F001", &
+            message="Missing implicit none", &
+            file_path=padded_filename, &
+            location=loc, &
+            severity=SEVERITY_WARNING &
+        )
+
+        text_output = format_diagnostic(diagnostic, OUTPUT_FORMAT_TEXT)
+
+        if (index(text_output, "test.f90:1:1") == 0) then
+            print *, "ERROR: Expected 'test.f90:1:1' in output"
+            print *, "  Got: '", text_output, "'"
+            error stop "Diagnostic output has extra space before colon (issue #238)"
+        end if
+
+        if (index(text_output, "test.f90 :") > 0) then
+            print *, "ERROR: Found space before colon in output"
+            print *, "  Got: '", text_output, "'"
+            error stop "Extra space before colon detected (issue #238)"
+        end if
+
+        print *, "[OK] No padding before colon in diagnostic output"
+
+    end subroutine test_filename_no_padding
 
 end program test_diagnostic_formatting
