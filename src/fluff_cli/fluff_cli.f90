@@ -426,10 +426,12 @@ contains
                 end if
             end do
 
-            if (allocated(all_diagnostics)) then
-                call print_diagnostics(all_diagnostics, app%args%output_format)
-            else
-                call print_diagnostics([diagnostic_t::], app%args%output_format)
+            if (.not. app%args%quiet) then
+                if (allocated(all_diagnostics)) then
+                    call print_diagnostics(all_diagnostics, app%args%output_format)
+                else
+                    call print_diagnostics([diagnostic_t::], app%args%output_format)
+                end if
             end if
         else
             print *, "No files specified"
