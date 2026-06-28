@@ -6,30 +6,30 @@ module fluff_cli
     use fluff_config, only: create_default_config, fluff_config_t
     use fluff_diagnostics, only: diagnostic_t
     use fluff_json, only: json_array_get_element_json, json_escape_string, &
-                          json_get_int_member, json_get_member_json, &
-                          json_get_string_member, json_get_string_value, json_parse
+        json_get_int_member, json_get_member_json, &
+        json_get_string_member, json_get_string_value, json_parse
     use fluff_json_rpc, only: create_json_error_response, create_json_response, &
-                              parse_lsp_message
+        parse_lsp_message
     implicit none
     private
 
     ! CLI argument types
     type, public :: cli_args_t
-        character(len=:), allocatable :: command     ! check, format, server
-        character(len=:), allocatable :: files(:)    ! Files to process
+        character(len=:), allocatable :: command ! check, format, server
+        character(len=:), allocatable :: files(:) ! Files to process
         logical :: fix = .false.
         logical :: diff = .false.
         logical :: check = .false.
         logical :: version = .false.
         logical :: help = .false.
-        logical :: help_requested = .false.         ! Alias for help
-        logical :: version_requested = .false.       ! Alias for version
+        logical :: help_requested = .false. ! Alias for help
+        logical :: version_requested = .false. ! Alias for version
         logical :: show_fixes = .false.
         logical :: quiet = .false.
         logical :: verbose = .false.
         character(len=:), allocatable :: config_file
-        character(len=:), allocatable :: output_format  ! text, json, sarif
-        character(len=:), allocatable :: error_msg    ! Parse error message
+        character(len=:), allocatable :: output_format ! text, json, sarif
+        character(len=:), allocatable :: error_msg ! Parse error message
     contains
         procedure :: parse => args_parse
         procedure :: validate => args_validate
@@ -73,7 +73,7 @@ contains
         character(len=:), allocatable :: current_flag
 
         ! Initialize
-        this%command = "check"  ! Default command
+        this%command = "check" ! Default command
         this%error_msg = ""
         expecting_value = .false.
         i = 1
@@ -184,8 +184,8 @@ contains
         temp_file = "/tmp/fluff_isdir_"//trim(int_to_str(getpid()))//".txt"
 
         call execute_command_line("test -d "//trim(path)//" && echo y > "// &
-                                  trim(temp_file)//" 2>/dev/null", wait=.true., &
-                                  exitstat=exit_status)
+            trim(temp_file)//" 2>/dev/null", wait=.true., &
+            exitstat=exit_status)
 
         is_dir = (exit_status == 0)
         call execute_command_line("rm -f "//trim(temp_file), wait=.true.)
@@ -206,18 +206,18 @@ contains
         temp_file = "/tmp/fluff_find_output_"//trim(int_to_str(getpid()))//".txt"
 
         find_cmd = "find "//trim(dir_path)//" -type f \( "// &
-                   "-name '*.f90' -o -name '*.F90' -o "// &
-                   "-name '*.f95' -o -name '*.F95' -o "// &
-                   "-name '*.f03' -o -name '*.F03' -o "// &
-                   "-name '*.f08' -o -name '*.F08' -o "// &
-                   "-name '*.f' -o -name '*.F' -o "// &
-                   "-name '*.for' -o -name '*.FOR' "// &
-                   "\) 2>/dev/null > "//trim(temp_file)
+            "-name '*.f90' -o -name '*.F90' -o "// &
+            "-name '*.f95' -o -name '*.F95' -o "// &
+            "-name '*.f03' -o -name '*.F03' -o "// &
+            "-name '*.f08' -o -name '*.F08' -o "// &
+            "-name '*.f' -o -name '*.F' -o "// &
+            "-name '*.for' -o -name '*.FOR' "// &
+            "\) 2>/dev/null > "//trim(temp_file)
 
         call execute_command_line(find_cmd, wait=.true.)
 
         open (newunit=unit, file=trim(temp_file), status="old", action="read", &
-              iostat=iostat_val)
+            iostat=iostat_val)
         if (iostat_val /= 0) then
             call execute_command_line("rm -f "//trim(temp_file), wait=.true.)
             return
@@ -257,7 +257,7 @@ contains
         do i = 1, size(input_files)
             if (path_is_directory(input_files(i))) then
                 call find_fortran_files_in_directory(input_files(i), temp_files, &
-                                                     dir_file_count)
+                    dir_file_count)
             else
                 call add_file_to_list(temp_files, trim(input_files(i)))
             end if
@@ -409,7 +409,7 @@ contains
 
                     if (app%args%fix) then
                         call apply_fixes_to_file(app%args%files(i), diagnostics, &
-                                                 fixes_applied, error_msg)
+                            fixes_applied, error_msg)
                         if (error_msg /= "") then
                             print *, "Error applying fixes: ", error_msg
                         else if (fixes_applied > 0 .and. .not. app%args%quiet) then
@@ -466,7 +466,7 @@ contains
         if (allocated(expanded_files)) then
             do i = 1, size(expanded_files)
                 call app%formatter%format_file(expanded_files(i), &
-                                               formatted_code, error_msg)
+                    formatted_code, error_msg)
 
                 if (error_msg /= "") then
                     print *, "Error formatting file: ", error_msg
@@ -478,11 +478,11 @@ contains
                         exit_code = 1
                     else
                         call print_unified_diff(expanded_files(i), original_code, &
-                                                formatted_code)
+                            formatted_code)
                     end if
                 else if (app%args%check) then
                     call read_raw_text_file(expanded_files(i), original_code, &
-                                            error_msg)
+                        error_msg)
                     if (error_msg /= "") then
                         print *, "Error reading file: ", error_msg
                         exit_code = 1
@@ -492,7 +492,7 @@ contains
                     end if
                 else if (app%args%fix) then
                     call write_raw_text_file(expanded_files(i), formatted_code, &
-                                             error_msg)
+                        error_msg)
                     if (error_msg /= "") then
                         print *, "Error writing file: ", error_msg
                         exit_code = 1
@@ -517,7 +517,7 @@ contains
 
         error_msg = ""
         open (newunit=unit, file=file_path, status="old", action="read", &
-              access="stream", form="unformatted", iostat=iostat_val)
+            access="stream", form="unformatted", iostat=iostat_val)
         if (iostat_val /= 0) then
             error_msg = "Could not open file"
             return
@@ -549,7 +549,7 @@ contains
 
         error_msg = ""
         open (newunit=unit, file=file_path, status="replace", action="write", &
-              access="stream", form="unformatted", iostat=iostat_val)
+            access="stream", form="unformatted", iostat=iostat_val)
         if (iostat_val /= 0) then
             error_msg = "Could not open file"
             return
@@ -624,7 +624,7 @@ contains
 
             ! Parse JSON-RPC message
             call parse_lsp_message(message, message_type, message_id, &
-                                   method, success)
+                method, success)
 
             if (.not. success) then
                 if (app%args%verbose) then
@@ -637,7 +637,7 @@ contains
             select case (message_type)
             case ("request")
                 call handle_lsp_request_framed(lsp_server, message_id, method, &
-                                               message, success)
+                    message, success)
                 if (method == "shutdown") then
                     server_running = .false.
                 end if
@@ -669,7 +669,7 @@ contains
         call json_get_member_json(message, "params", params_json, found, ok)
         if (ok .and. found) then
             call json_get_string_member(params_json, "rootPath", root_path, &
-                                        found, ok)
+                found, ok)
             if (.not. found .or. .not. ok) root_path = "."
         else
             root_path = "."
@@ -812,7 +812,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -825,7 +825,7 @@ contains
         end if
 
         call json_get_string_member(text_document_json, "languageId", language_id, &
-                                    found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -844,7 +844,7 @@ contains
         end if
 
         call server%handle_text_document_did_open(uri, language_id, version, text, &
-                                                  success)
+            success)
     end subroutine handle_did_open_notification
 
     subroutine handle_did_change_notification(server, message, success)
@@ -872,7 +872,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -891,7 +891,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "contentChanges", changes_json, found, &
-                                  ok)
+            ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -936,7 +936,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -975,7 +975,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             return
@@ -1022,7 +1022,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             response = create_json_error_response(id, -32602, "Invalid params")
@@ -1082,7 +1082,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "textDocument", text_document_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             success = .false.
             response = create_json_error_response(id, -32602, "Invalid params")
