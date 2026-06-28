@@ -18,7 +18,7 @@ contains
         integer, intent(in), optional :: line_length
         integer, intent(in), optional :: tab_width
 
-        current_filename = filename
+        current_filename = trim(filename)
         if (present(line_length)) then
             if (line_length > 0) then
                 current_line_length = line_length

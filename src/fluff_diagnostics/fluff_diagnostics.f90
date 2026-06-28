@@ -108,7 +108,7 @@ contains
         
         diag%code = code
         diag%message = message
-        diag%file_path = file_path
+        diag%file_path = trim(file_path)
         diag%location = location
         
         if (present(severity)) then
