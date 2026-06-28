@@ -2,10 +2,10 @@ module fluff_rule_f004
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, &
-                                 create_fix_suggestion, SEVERITY_WARNING, text_edit_t
+        create_fix_suggestion, SEVERITY_WARNING, text_edit_t
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_trivia_utils, only: location_buffer_t, location_buffer_init, &
-                                       location_buffer_push, location_buffer_finish
+        location_buffer_push, location_buffer_finish
     use fortfront, only: token_t, tokenize_core_with_trivia, trivia_token_t
     use lexer_token_types, only: TK_NEWLINE, TK_WHITESPACE
     implicit none
@@ -105,8 +105,8 @@ contains
         type(text_edit_t) :: edits(1)
 
         diag = create_diagnostic(code="F004", message="Trailing whitespace", &
-                                 file_path=current_filename, location=location, &
-                                 severity=SEVERITY_WARNING)
+            file_path=current_filename, location=location, &
+            severity=SEVERITY_WARNING)
 
         edits(1)%range = location
         edits(1)%new_text = ""

@@ -28,9 +28,9 @@ contains
         test_file = "/tmp/test_fix_applies.f90"
 
         original_content = "program no_implicit_none" // new_line('a') // &
-                          "integer :: x" // new_line('a') // &
-                          "x = 42" // new_line('a') // &
-                          "end program no_implicit_none"
+            "integer :: x" // new_line('a') // &
+            "x = 42" // new_line('a') // &
+            "end program no_implicit_none"
 
         call write_text_file(test_file, original_content)
 
@@ -128,11 +128,11 @@ contains
         test_file = "/tmp/test_fix_preserves.f90"
 
         original_content = "program test_preserve" // new_line('a') // &
-                          "! Important comment to preserve" // new_line('a') // &
-                          "integer :: important_var" // new_line('a') // &
-                          "important_var = 999" // new_line('a') // &
-                          "print *, important_var" // new_line('a') // &
-                          "end program test_preserve"
+            "! Important comment to preserve" // new_line('a') // &
+            "integer :: important_var" // new_line('a') // &
+            "important_var = 999" // new_line('a') // &
+            "print *, important_var" // new_line('a') // &
+            "end program test_preserve"
 
         call write_text_file(test_file, original_content)
 

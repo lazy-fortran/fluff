@@ -2,20 +2,20 @@ module fluff_formatter
     ! Code formatting engine
     use fluff_ast, only: fluff_ast_context_t
     use fluff_format_quality, only: aesthetic_settings_t, &
-                                    apply_aesthetic_improvements, &
-                                    assess_format_quality, create_aesthetic_settings, &
-                                    create_quality_metrics, format_quality_t
+        apply_aesthetic_improvements, &
+        assess_format_quality, create_aesthetic_settings, &
+        create_quality_metrics, format_quality_t
     use fluff_format_continuation, only: has_leading_ampersand_continuations, &
-                                         preserve_leading_ampersand_lines
+        preserve_leading_ampersand_lines
     use fluff_user_feedback, only: collect_interactive_feedback, create_user_feedback, &
-                                   user_feedback_t
+        user_feedback_t
     use fluff_formatter_style, only: detect_style_guide_from_source, &
-                                     configure_clean_style, configure_standard_style, &
-                                     configure_modern_style, configure_hpc_style, &
-                                     configure_custom_style
+        configure_clean_style, configure_standard_style, &
+        configure_modern_style, configure_hpc_style, &
+        configure_custom_style
     use fluff_formatter_validation, only: validate_format_with_emit, &
-                                          compare_semantics_with_emit, &
-                                          analyze_format_diff_with_tokens
+        compare_semantics_with_emit, &
+        analyze_format_diff_with_tokens
     use fortfront, only: format_options_t
     implicit none
     private
@@ -88,7 +88,7 @@ contains
         error_msg = ""
 
         open (newunit=unit, file=filename, status="old", action="read", &
-              access="stream", form="unformatted", iostat=iostat)
+            access="stream", form="unformatted", iostat=iostat)
         if (iostat /= 0) then
             error_msg = "Could not open file: "//filename
             return
@@ -125,8 +125,8 @@ contains
     ! Format an AST
     subroutine formatter_format_ast(this, ast_ctx, formatted_code)
         use codegen_api, only: get_indent_config, get_line_length_config, &
-                               get_type_standardization, set_indent_config, &
-                               set_line_length_config, set_type_standardization
+            get_type_standardization, set_indent_config, &
+            set_line_length_config, set_type_standardization
         use fortfront, only: emit_fortran
         class(formatter_engine_t), intent(in) :: this
         type(fluff_ast_context_t), intent(inout) :: ast_ctx
@@ -162,7 +162,7 @@ contains
                 improved_code = temp_code
                 do iter = 1, 2
                     call apply_aesthetic_improvements(improved_code, next_code, &
-                                                      this%aesthetic_settings)
+                        this%aesthetic_settings)
                     changed = next_code /= improved_code
                     improved_code = next_code
                     if (.not. changed) exit
@@ -197,7 +197,7 @@ contains
         prev_code = ""
 
         should_preserve = this%aesthetic_settings%preserve_leading_ampersand .and. &
-                          has_leading_ampersand_continuations(source_code)
+            has_leading_ampersand_continuations(source_code)
 
         do iter = 1, 4
             call ast_ctx%from_source(current_code, error_msg)
@@ -219,7 +219,7 @@ contains
 
         if (should_preserve) then
             call preserve_leading_ampersand_lines(source_code, current_code, &
-                                                  preserved_code)
+                preserved_code)
             formatted_code = preserved_code
         else
             formatted_code = current_code
@@ -229,10 +229,10 @@ contains
 
     ! Format a specific range of lines
     subroutine formatter_format_range(this, ast_ctx, start_line, end_line, &
-                                      formatted_code)
+            formatted_code)
         use codegen_api, only: get_indent_config, get_line_length_config, &
-                               get_type_standardization, set_indent_config, &
-                               set_line_length_config, set_type_standardization
+            get_type_standardization, set_indent_config, &
+            set_line_length_config, set_type_standardization
         use fortfront, only: emit_fortran
         class(formatter_engine_t), intent(in) :: this
         type(fluff_ast_context_t), intent(inout) :: ast_ctx
@@ -394,7 +394,7 @@ contains
     end subroutine formatter_assess_quality
 
     subroutine formatter_format_with_quality(this, source_code, formatted_code, &
-                                             error_msg, quality)
+            error_msg, quality)
         class(formatter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: formatted_code, error_msg
@@ -423,20 +423,20 @@ contains
 
     ! User feedback procedures
     subroutine formatter_collect_user_feedback(this, original_code, formatted_code, &
-                                               quality, feedback)
+            quality, feedback)
         class(formatter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: original_code, formatted_code
         type(format_quality_t), intent(in) :: quality
         type(user_feedback_t), intent(out) :: feedback
 
         call collect_interactive_feedback(original_code, formatted_code, quality, &
-                                          feedback)
+            feedback)
 
     end subroutine formatter_collect_user_feedback
 
     subroutine formatter_format_with_feedback(this, source_code, formatted_code, &
-                                              error_msg, quality, feedback, &
-                                              collect_feedback)
+            error_msg, quality, feedback, &
+            collect_feedback)
         class(formatter_engine_t), intent(in) :: this
         character(len=*), intent(in) :: source_code
         character(len=:), allocatable, intent(out) :: formatted_code, error_msg
@@ -460,7 +460,7 @@ contains
         ! Collect user feedback if requested
         if (should_collect) then
             call this%collect_user_feedback(source_code, formatted_code, &
-                                            quality, feedback)
+                quality, feedback)
         else
             feedback = create_user_feedback()
         end if

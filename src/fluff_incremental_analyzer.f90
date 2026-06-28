@@ -3,9 +3,9 @@ module fluff_incremental_analyzer
     use fluff_lsp_performance
     use fluff_incremental_types
     use fortfront, only: ast_arena_t, semantic_context_t, token_t, &
-                         lex_source, parse_tokens, analyze_semantics, &
-                         create_ast_arena, create_semantic_context, &
-                         get_identifiers_in_subtree
+        lex_source, parse_tokens, analyze_semantics, &
+        create_ast_arena, create_semantic_context, &
+        get_identifiers_in_subtree
     implicit none
     private
 
@@ -150,7 +150,7 @@ contains
                 this%nodes(this%node_count)%requires_analysis = .true.
 
                 allocate (character(len=256) :: &
-                          this%nodes(this%node_count)%dependencies(10))
+                    this%nodes(this%node_count)%dependencies(10))
             end if
         end do
 
@@ -227,7 +227,7 @@ contains
 
                     j = 0
                     do while (j < size(identifiers) .and. j < &
-                              size(this%nodes(i)%dependencies))
+                            size(this%nodes(i)%dependencies))
                         j = j + 1
                         this%nodes(i)%dependencies(j) = identifiers(j)
                     end do
@@ -304,7 +304,7 @@ contains
                     this%node_count = this%node_count + 1
                     this%nodes(this%node_count)%file_path = dependency_file
                     allocate (character(len=256) :: &
-                              this%nodes(this%node_count)%dependencies(10))
+                        this%nodes(this%node_count)%dependencies(10))
                     this%nodes(this%node_count)%dependency_count = 0
                     this%nodes(this%node_count)%is_up_to_date = .false.
                     this%nodes(this%node_count)%requires_analysis = .false.
@@ -474,7 +474,7 @@ contains
                 this%node_count = this%node_count + 1
                 this%nodes(this%node_count)%file_path = file_path
                 allocate (character(len=256) :: &
-                          this%nodes(this%node_count)%dependencies(10))
+                    this%nodes(this%node_count)%dependencies(10))
                 this%nodes(this%node_count)%dependency_count = 0
                 this%nodes(this%node_count)%is_up_to_date = .false.
                 this%nodes(this%node_count)%requires_analysis = .true.
@@ -734,7 +734,7 @@ contains
 
         if (this%cache_stats%total_requests > 0) then
             this%cache_stats%hit_rate = real(this%cache_stats%cache_hits)/ &
-                                        real(this%cache_stats%total_requests)
+                real(this%cache_stats%total_requests)
         end if
 
     end function has_cached_results
@@ -902,9 +902,9 @@ contains
         logical :: is_public
 
         is_public = len_trim(identifier) > 0 .and. &
-                    (index(identifier, 'function') > 0 .or. &
-                     index(identifier, 'subroutine') > 0 .or. &
-                     index(identifier, 'module') > 0)
+            (index(identifier, 'function') > 0 .or. &
+            index(identifier, 'subroutine') > 0 .or. &
+            index(identifier, 'module') > 0)
 
     end function is_public_interface_identifier
 

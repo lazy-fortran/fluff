@@ -37,7 +37,7 @@ contains
 
         ! Try Linux /proc/self/fd/0 first
         open (newunit=stream_input_unit, file="/proc/self/fd/0", access="stream", &
-              form="unformatted", iostat=iostat)
+            form="unformatted", iostat=iostat)
         if (iostat == 0) then
             stream_open_success = .true.
             stream_initialized = .true.
@@ -46,7 +46,7 @@ contains
 
         ! Try macOS/BSD /dev/stdin
         open (newunit=stream_input_unit, file="/dev/stdin", access="stream", &
-              form="unformatted", iostat=iostat)
+            form="unformatted", iostat=iostat)
         if (iostat == 0) then
             stream_open_success = .true.
             stream_initialized = .true.
@@ -97,7 +97,7 @@ contains
             ! Parse Content-Length header
             if (index(header_line, CONTENT_LENGTH_PREFIX) == 1) then
                 call lsp_parse_content_length(trim(header_line), content_length, &
-                                              success)
+                    success)
                 if (.not. success) then
                     error_msg = "Invalid Content-Length header"
                     return

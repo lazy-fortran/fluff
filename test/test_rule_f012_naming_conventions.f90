@@ -3,7 +3,7 @@ program test_rule_f012_naming_conventions
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F012: Inconsistent naming conventions rule..."
@@ -35,17 +35,17 @@ contains
         ! Test inconsistent variable naming
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: first_value"//new_line('a')// &  ! snake_case
-                    "    integer :: secondValue"//new_line('a')// &  ! camelCase
-                    "    integer :: ThirdValue"//new_line('a')// &   ! PascalCase
-                    "    integer :: fourth_val"//new_line('a')// &   ! snake_case
-                    "    "//new_line('a')// &
-                    "    first_value = 10"//new_line('a')// &
-                    "    secondValue = 20"//new_line('a')// &
-                    "    ThirdValue = 30"//new_line('a')// &
-                    "    fourth_val = 40"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: first_value"//new_line('a')// & ! snake_case
+            "    integer :: secondValue"//new_line('a')// & ! camelCase
+            "    integer :: ThirdValue"//new_line('a')// & ! PascalCase
+            "    integer :: fourth_val"//new_line('a')// & ! snake_case
+            "    "//new_line('a')// &
+            "    first_value = 10"//new_line('a')// &
+            "    secondValue = 20"//new_line('a')// &
+            "    ThirdValue = 30"//new_line('a')// &
+            "    fourth_val = 40"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -88,17 +88,17 @@ contains
         ! Test consistent snake_case
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: first_value"//new_line('a')// &
-                    "    integer :: second_value"//new_line('a')// &
-                    "    integer :: third_value"//new_line('a')// &
-                    "    integer :: fourth_value"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "    first_value = 10"//new_line('a')// &
-                    "    second_value = 20"//new_line('a')// &
-                    "    third_value = 30"//new_line('a')// &
-                    "    fourth_value = 40"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: first_value"//new_line('a')// &
+            "    integer :: second_value"//new_line('a')// &
+            "    integer :: third_value"//new_line('a')// &
+            "    integer :: fourth_value"//new_line('a')// &
+            "    "//new_line('a')// &
+            "    first_value = 10"//new_line('a')// &
+            "    second_value = 20"//new_line('a')// &
+            "    third_value = 30"//new_line('a')// &
+            "    fourth_value = 40"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -141,17 +141,17 @@ contains
         ! Test consistent camelCase
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: firstValue"//new_line('a')// &
-                    "    integer :: secondValue"//new_line('a')// &
-                    "    integer :: thirdValue"//new_line('a')// &
-                    "    integer :: fourthValue"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "    firstValue = 10"//new_line('a')// &
-                    "    secondValue = 20"//new_line('a')// &
-                    "    thirdValue = 30"//new_line('a')// &
-                    "    fourthValue = 40"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: firstValue"//new_line('a')// &
+            "    integer :: secondValue"//new_line('a')// &
+            "    integer :: thirdValue"//new_line('a')// &
+            "    integer :: fourthValue"//new_line('a')// &
+            "    "//new_line('a')// &
+            "    firstValue = 10"//new_line('a')// &
+            "    secondValue = 20"//new_line('a')// &
+            "    thirdValue = 30"//new_line('a')// &
+            "    fourthValue = 40"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -193,17 +193,17 @@ contains
 
         ! Test mixed naming styles
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: snake_case_var"//new_line('a')// &
-                    "    integer :: camelCaseVar"//new_line('a')// &
-                    "    integer :: PascalCaseVar"//new_line('a')// &
-                    "    integer :: UPPERCASE_VAR"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "    snake_case_var = 10"//new_line('a')// &
-                    "    camelCaseVar = 20"//new_line('a')// &
-                    "    PascalCaseVar = 30"//new_line('a')// &
-                    "    UPPERCASE_VAR = 40"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: snake_case_var"//new_line('a')// &
+            "    integer :: camelCaseVar"//new_line('a')// &
+            "    integer :: PascalCaseVar"//new_line('a')// &
+            "    integer :: UPPERCASE_VAR"//new_line('a')// &
+            "    "//new_line('a')// &
+            "    snake_case_var = 10"//new_line('a')// &
+            "    camelCaseVar = 20"//new_line('a')// &
+            "    PascalCaseVar = 30"//new_line('a')// &
+            "    UPPERCASE_VAR = 40"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

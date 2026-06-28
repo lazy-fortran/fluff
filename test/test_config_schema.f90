@@ -48,7 +48,7 @@ contains
         if (allocated(config%rules%select)) deallocate (config%rules%select)
         allocate (character(len=10) :: config%rules%select(1))
         config%rules%select(1) = "Z999"
-        config%line_length = 88  ! Fix line length
+        config%line_length = 88 ! Fix line length
 
         is_valid = config%validate(error_msg)
 

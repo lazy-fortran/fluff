@@ -15,7 +15,7 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: violations(:)
 
         call check_undefined_variable_usage(ctx, node_index, "C001", SEVERITY_ERROR, &
-                                            "Use of undefined variable: ", violations)
+            "Use of undefined variable: ", violations)
     end subroutine check_c001_undefined_var
 
 end module fluff_rule_c001

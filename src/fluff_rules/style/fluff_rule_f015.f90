@@ -5,10 +5,10 @@ module fluff_rule_f015
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fluff_token_helpers, only: token_location, first_nontrivia_in_line, &
-                                   next_nontrivia_same_line, next_nontrivia
+        next_nontrivia_same_line, next_nontrivia
     use fortfront, only: token_t, tokenize_core_with_trivia
     use lexer_token_types, only: TK_KEYWORD, TK_NEWLINE, TK_NUMBER, TK_OPERATOR, &
-                                 TK_WHITESPACE
+        TK_WHITESPACE
     implicit none
     private
 
@@ -74,12 +74,12 @@ contains
                 call collect_arithmetic_if_targets(tokens, i, referenced_labels)
             else if (keyword == "read" .or. keyword == "write") then
                 call collect_io_label_targets(tokens, i, referenced_labels, &
-                                              include_format=.true.)
+                    include_format=.true.)
             else if (keyword == "open" .or. keyword == "close" .or. &
-                     keyword == "inquire" .or. keyword == "backspace" .or. &
-                     keyword == "rewind" .or. keyword == "endfile") then
+                    keyword == "inquire" .or. keyword == "backspace" .or. &
+                    keyword == "rewind" .or. keyword == "endfile") then
                 call collect_io_label_targets(tokens, i, referenced_labels, &
-                                              include_format=.false.)
+                    include_format=.false.)
             end if
         end do
     end subroutine collect_label_references
@@ -207,7 +207,7 @@ contains
     end subroutine collect_arithmetic_if_targets
 
     subroutine collect_io_label_targets(tokens, stmt_idx, referenced_labels, &
-                                        include_format)
+            include_format)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: stmt_idx
         integer, allocatable, intent(inout) :: referenced_labels(:)
@@ -248,17 +248,17 @@ contains
                         if (depth == 0) then
                             item_end = i - 1
                             call parse_io_control_item(tokens, item_start, &
-                                                       item_end, positional_count, &
-                                                       referenced_labels, &
-                                                       include_format)
+                                item_end, positional_count, &
+                                referenced_labels, &
+                                include_format)
                             exit
                         end if
                     else if (tokens(i)%text == "," .and. depth == 1) then
                         item_end = i - 1
                         call parse_io_control_item(tokens, item_start, &
-                                                   item_end, positional_count, &
-                                                   referenced_labels, &
-                                                   include_format)
+                            item_end, positional_count, &
+                            referenced_labels, &
+                            include_format)
                         item_start = next_nontrivia(tokens, i + 1)
                         if (item_start <= 0) exit
                     end if
@@ -269,8 +269,8 @@ contains
     end subroutine collect_io_label_targets
 
     subroutine parse_io_control_item(tokens, item_start, item_end, &
-                                     positional_count, referenced_labels, &
-                                     include_format)
+            positional_count, referenced_labels, &
+            include_format)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: item_start
         integer, intent(in) :: item_end
@@ -352,7 +352,7 @@ contains
     end subroutine parse_io_control_item
 
     subroutine scan_continue_statements(tokens, referenced_labels, tmp, &
-                                        violation_count)
+            violation_count)
         type(token_t), allocatable, intent(in) :: tokens(:)
         integer, intent(in) :: referenced_labels(:)
         type(diagnostic_t), allocatable, intent(inout) :: tmp(:)
@@ -370,13 +370,13 @@ contains
             if (tokens(first_idx)%line /= current_line) then
                 current_line = tokens(first_idx)%line
                 call check_continue_line(tokens, first_idx, referenced_labels, tmp, &
-                                         violation_count)
+                    violation_count)
             end if
         end do
     end subroutine scan_continue_statements
 
     subroutine check_continue_line(tokens, line_start, referenced_labels, tmp, &
-                                   violation_count)
+            violation_count)
         type(token_t), intent(in) :: tokens(:)
         integer, intent(in) :: line_start
         integer, intent(in) :: referenced_labels(:)
@@ -407,11 +407,11 @@ contains
 
         if (tokens(idx0)%kind /= TK_NUMBER) then
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F015", &
-                                 message="Redundant CONTINUE statement", &
-                                 file_path=current_filename, &
-                                 location=token_location(tokens(idx1)), &
-                                 severity=SEVERITY_INFO))
+                code="F015", &
+                message="Redundant CONTINUE statement", &
+                file_path=current_filename, &
+                location=token_location(tokens(idx1)), &
+                severity=SEVERITY_INFO))
             return
         end if
 
@@ -420,11 +420,11 @@ contains
 
         if (.not. is_label_referenced(referenced_labels, label)) then
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F015", &
-                                 message="Redundant CONTINUE statement", &
-                                 file_path=current_filename, &
-                                 location=token_location(tokens(idx1)), &
-                                 severity=SEVERITY_INFO))
+                code="F015", &
+                message="Redundant CONTINUE statement", &
+                file_path=current_filename, &
+                location=token_location(tokens(idx1)), &
+                severity=SEVERITY_INFO))
         end if
     end subroutine check_continue_line
 

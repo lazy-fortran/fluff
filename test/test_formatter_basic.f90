@@ -1,7 +1,7 @@
 program test_formatter_basic
     use fluff_formatter, only: formatter_engine_t
     use test_support, only: delete_file_if_exists, make_temp_fortran_path, &
-                            write_text_file
+        write_text_file
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -16,10 +16,10 @@ program test_formatter_basic
 
     ! Test 1: Simple program formatting
     source_code = "program test"//new_line('a')// &
-                  "implicit none"//new_line('a')// &
-                  "integer :: i"//new_line('a')// &
-                  "i = 42"//new_line('a')// &
-                  "end program test"
+        "implicit none"//new_line('a')// &
+        "integer :: i"//new_line('a')// &
+        "i = 42"//new_line('a')// &
+        "end program test"
 
     call formatter%format_source(source_code, formatted_code, error_msg)
 
@@ -37,11 +37,11 @@ program test_formatter_basic
 
     ! Test 2: With variables
     source_code = "program vars"//new_line('a')// &
-                  "real :: x, y, z"//new_line('a')// &
-                  "x = 1.0"//new_line('a')// &
-                  "y = 2.0"//new_line('a')// &
-                  "z = x + y"//new_line('a')// &
-                  "end program vars"
+        "real :: x, y, z"//new_line('a')// &
+        "x = 1.0"//new_line('a')// &
+        "y = 2.0"//new_line('a')// &
+        "z = x + y"//new_line('a')// &
+        "end program vars"
 
     call formatter%format_source(source_code, formatted_code, error_msg)
 
@@ -58,9 +58,9 @@ program test_formatter_basic
 
     long_payload = repeat("a", 1200)//"TAILMARK"
     source_code = "program p"//new_line('a')// &
-                  "implicit none"//new_line('a')// &
-                  "print *, '"//long_payload//"'"//new_line('a')// &
-                  "end program p"//new_line('a')
+        "implicit none"//new_line('a')// &
+        "print *, '"//long_payload//"'"//new_line('a')// &
+        "end program p"//new_line('a')
 
     call write_text_file(temp_path, source_code)
 

@@ -4,7 +4,7 @@ module fluff_rule_p007
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: binary_op_node, call_or_subscript_node, declaration_node, &
-                         identifier_node, literal_node, symbol_info_t, TREAL
+        identifier_node, literal_node, symbol_info_t, TREAL
     implicit none
     private
 
@@ -49,23 +49,23 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (b => ctx%arena%entries(i)%node)
-            type is (binary_op_node)
+                type is (binary_op_node)
                 if (binary_op_is_mixed_precision(ctx, i, props)) then
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                         code="P007", &
-                                         message="Mixed precision arithmetic can "// &
-                                         "hurt performance", &
-                                         file_path=current_filename, &
-                                         location=ctx%get_node_location(i), &
-                                         severity=SEVERITY_INFO &
-                                         ))
+                        code="P007", &
+                        message="Mixed precision arithmetic can "// &
+                        "hurt performance", &
+                        file_path=current_filename, &
+                        location=ctx%get_node_location(i), &
+                        severity=SEVERITY_INFO &
+                        ))
                 end if
             end select
         end do
     end subroutine analyze_p007
 
     logical function binary_op_is_mixed_precision(ctx, node_index, props) &
-        result(is_mixed)
+            result(is_mixed)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(var_prop_t), allocatable, intent(in) :: props(:)
@@ -78,7 +78,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (b => ctx%arena%entries(node_index)%node)
-        type is (binary_op_node)
+            type is (binary_op_node)
             if (.not. allocated(b%operator)) return
             op = trim(b%operator)
             if (op /= "+" .and. op /= "-" .and. op /= "*" .and. op /= "/" .and. &
@@ -109,7 +109,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (.not. allocated(n%name)) return
             name = to_lower_ascii(trim(n%name))
 
@@ -121,7 +121,7 @@ contains
 
             kind_val = prop_real_kind(props, name)
 
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (.not. allocated(n%name)) return
             name = to_lower_ascii(trim(n%name))
 
@@ -144,11 +144,11 @@ contains
                 kind_val = prop_real_kind(props, name)
             end if
 
-        type is (literal_node)
+            type is (literal_node)
             if (.not. allocated(n%value)) return
             kind_val = infer_literal_kind(n%value)
 
-        type is (binary_op_node)
+            type is (binary_op_node)
             sub_kind = expr_real_kind(ctx, n%left_index, props)
             if (sub_kind >= 0) then
                 kind_val = sub_kind
@@ -195,11 +195,11 @@ contains
 
         select case (name)
         case ("real", "dble", "float", "sngl", "sin", "cos", "tan", &
-              "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
-              "sqrt", "exp", "log", "log10", "abs", "mod", "modulo", &
-              "floor", "ceiling", "nint", "sign", "min", "max", &
-              "sum", "product", "maxval", "minval", "dot_product", &
-              "huge", "tiny", "epsilon")
+                "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
+                "sqrt", "exp", "log", "log10", "abs", "mod", "modulo", &
+                "floor", "ceiling", "nint", "sign", "min", "max", &
+                "sum", "product", "maxval", "minval", "dot_product", &
+                "huge", "tiny", "epsilon")
             is_real = .true.
         end select
     end function is_real_returning_intrinsic
@@ -247,7 +247,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (d => ctx%arena%entries(i)%node)
-            type is (declaration_node)
+                type is (declaration_node)
                 call add_decl_props(ctx, i, props)
             end select
         end do
@@ -266,7 +266,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (d => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             if (.not. allocated(d%type_name)) return
             tname = to_lower_ascii(trim(d%type_name))
             rk = -1

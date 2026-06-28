@@ -1,7 +1,7 @@
 program test_lsp_message_handling
     use fluff_json_rpc, only: check_message_errors, parse_lsp_message, &
-                              process_capabilities, process_diagnostic_message, &
-                              process_document_sync, process_initialize_request
+        process_capabilities, process_diagnostic_message, &
+        process_document_sync, process_initialize_request
     use, intrinsic :: iso_fortran_env, only: dp => real64
     implicit none
 
@@ -38,27 +38,27 @@ contains
 
         ! Test 1: Parse basic request message
         call run_message_test("Basic request parsing", &
-                              '{"jsonrpc":"2.0","id":1,'// &
-                              '"method":"initialize","params":{}}', &
-                              "request", 1, "initialize")
+            '{"jsonrpc":"2.0","id":1,'// &
+            '"method":"initialize","params":{}}', &
+            "request", 1, "initialize")
 
         ! Test 2: Parse notification message (no id)
         call run_message_test("Notification parsing", &
-                              '{"jsonrpc":"2.0","method":"textDocument/didOpen",'// &
-                              '"params":{}}', &
-                              "notification", -1, "textDocument/didOpen")
+            '{"jsonrpc":"2.0","method":"textDocument/didOpen",'// &
+            '"params":{}}', &
+            "notification", -1, "textDocument/didOpen")
 
         ! Test 3: Parse response message
         call run_message_test("Response parsing", &
-                              '{"jsonrpc":"2.0","id":1,'// &
-                              '"result":{"capabilities":{}}}', &
-                              "response", 1, "")
+            '{"jsonrpc":"2.0","id":1,'// &
+            '"result":{"capabilities":{}}}', &
+            "response", 1, "")
 
         ! Test 4: Parse error response
         call run_message_test("Error response parsing", &
-                              '{"jsonrpc":"2.0","id":1,"error":{"code":-32600,'// &
-                              '"message":"Invalid Request"}}', &
-                              "error", 1, "")
+            '{"jsonrpc":"2.0","id":1,"error":{"code":-32600,'// &
+            '"message":"Invalid Request"}}', &
+            "error", 1, "")
 
     end subroutine test_json_rpc_parsing
 
@@ -68,26 +68,26 @@ contains
 
         ! Test 1: Initialize with client capabilities
         call run_initialize_test("Initialize with capabilities", &
-                                 '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                                 '"params":{'// &
-                                 '"processId":12345,"rootPath":"/project",'// &
-                                 '"capabilities":{"textDocument":{'// &
-                                 '"synchronization":{'// &
-                                 '"dynamicRegistration":true'// &
-                                 '}}}}}')
+            '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
+            '"params":{'// &
+            '"processId":12345,"rootPath":"/project",'// &
+            '"capabilities":{"textDocument":{'// &
+            '"synchronization":{'// &
+            '"dynamicRegistration":true'// &
+            '}}}}}')
 
         ! Test 2: Initialize without optional fields
         call run_initialize_test("Initialize minimal", &
-                                 '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                                 '"params":{"processId":null}}')
+            '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
+            '"params":{"processId":null}}')
 
         ! Test 3: Initialize with workspace folders
         call run_initialize_test("Initialize with workspaces", &
-                                 '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
-                                 '"params":{'// &
-                                 '"processId":12345,'// &
-                                 '"workspaceFolders":[{"uri":"file:///project",'// &
-                                 '"name":"project"}]}}')
+            '{"jsonrpc":"2.0","id":1,"method":"initialize",'// &
+            '"params":{'// &
+            '"processId":12345,'// &
+            '"workspaceFolders":[{"uri":"file:///project",'// &
+            '"name":"project"}]}}')
 
     end subroutine test_initialize_request
 
@@ -97,35 +97,35 @@ contains
 
         ! Test 1: textDocument/didOpen
         call run_document_test("Document did open", &
-                               '{"jsonrpc":"2.0","method":"textDocument/didOpen",'// &
-                               '"params":{'// &
-                               '"textDocument":{"uri":"file:///test.f90",'// &
-                               '"languageId":"fortran","version":1,'// &
-                               '"text":"program test\\n'// &
-                               '  implicit none\\nend program"}}}')
+            '{"jsonrpc":"2.0","method":"textDocument/didOpen",'// &
+            '"params":{'// &
+            '"textDocument":{"uri":"file:///test.f90",'// &
+            '"languageId":"fortran","version":1,'// &
+            '"text":"program test\\n'// &
+            '  implicit none\\nend program"}}}')
 
         ! Test 2: textDocument/didChange
         call run_document_test("Document did change", &
-                               '{"jsonrpc":"2.0",'// &
-                               '"method":"textDocument/didChange",'// &
-                               '"params":{'// &
-                               '"textDocument":{"uri":"file:///test.f90",'// &
-                               '"version":2},'// &
-                               '"contentChanges":[{"text":"program modified\\n'// &
-                               '  implicit none\\n'// &
-                               'end program"}]}}')
+            '{"jsonrpc":"2.0",'// &
+            '"method":"textDocument/didChange",'// &
+            '"params":{'// &
+            '"textDocument":{"uri":"file:///test.f90",'// &
+            '"version":2},'// &
+            '"contentChanges":[{"text":"program modified\\n'// &
+            '  implicit none\\n'// &
+            'end program"}]}}')
 
         ! Test 3: textDocument/didSave
         call run_document_test("Document did save", &
-                               '{"jsonrpc":"2.0","method":"textDocument/didSave",'// &
-                               '"params":{'// &
-                               '"textDocument":{"uri":"file:///test.f90"},'// &
-                               '"text":"saved content"}}')
+            '{"jsonrpc":"2.0","method":"textDocument/didSave",'// &
+            '"params":{'// &
+            '"textDocument":{"uri":"file:///test.f90"},'// &
+            '"text":"saved content"}}')
 
         ! Test 4: textDocument/didClose
         call run_document_test("Document did close", &
-                               '{"jsonrpc":"2.0","method":"textDocument/didClose",'// &
-                               '"params":{"textDocument":{"uri":"file:///test.f90"}}}')
+            '{"jsonrpc":"2.0","method":"textDocument/didClose",'// &
+            '"params":{"textDocument":{"uri":"file:///test.f90"}}}')
 
     end subroutine test_document_sync_messages
 
@@ -135,35 +135,35 @@ contains
 
         ! Test 1: Publish diagnostics
         call run_diagnostic_test("Publish diagnostics", &
-                                 '{"jsonrpc":"2.0",'// &
-                                 '"method":"textDocument/publishDiagnostics",'// &
-                                 '"params":{'// &
-                                 '"uri":"file:///test.f90","diagnostics":[{'// &
-                                 '"range":{"start":{"line":0,"character":0},'// &
-                                 '"end":{"line":0,"character":10}},'// &
-                                 '"severity":1,"message":"Missing implicit '// &
-                                 'none"}]}}')
+            '{"jsonrpc":"2.0",'// &
+            '"method":"textDocument/publishDiagnostics",'// &
+            '"params":{'// &
+            '"uri":"file:///test.f90","diagnostics":[{'// &
+            '"range":{"start":{"line":0,"character":0},'// &
+            '"end":{"line":0,"character":10}},'// &
+            '"severity":1,"message":"Missing implicit '// &
+            'none"}]}}')
 
         ! Test 2: Clear diagnostics
         call run_diagnostic_test("Clear diagnostics", &
-                                 '{"jsonrpc":"2.0",'// &
-                                 '"method":"textDocument/publishDiagnostics",'// &
-                                 '"params":{"uri":"file:///test.f90",'// &
-                                 '"diagnostics":[]}}')
+            '{"jsonrpc":"2.0",'// &
+            '"method":"textDocument/publishDiagnostics",'// &
+            '"params":{"uri":"file:///test.f90",'// &
+            '"diagnostics":[]}}')
 
         ! Test 3: Multiple diagnostics
         call run_diagnostic_test("Multiple diagnostics", &
-                                 '{"jsonrpc":"2.0",'// &
-                                 '"method":"textDocument/publishDiagnostics",'// &
-                                 '"params":{'// &
-                                 '"uri":"file:///test.f90","diagnostics":['// &
-                                 '{"range":{"start":{"line":0,"character":0},'// &
-                                 '"end":{"line":0,"character":10}},'// &
-                                 '"severity":1,"message":"Error 1"},'// &
-                                 '{"range":{"start":{"line":1,"character":0},'// &
-                                 '"end":{"line":1,"character":5}},'// &
-                                 '"severity":2,"message":"Warning '// &
-                                 '1"}]}}')
+            '{"jsonrpc":"2.0",'// &
+            '"method":"textDocument/publishDiagnostics",'// &
+            '"params":{'// &
+            '"uri":"file:///test.f90","diagnostics":['// &
+            '{"range":{"start":{"line":0,"character":0},'// &
+            '"end":{"line":0,"character":10}},'// &
+            '"severity":1,"message":"Error 1"},'// &
+            '{"range":{"start":{"line":1,"character":0},'// &
+            '"end":{"line":1,"character":5}},'// &
+            '"severity":2,"message":"Warning '// &
+            '1"}]}}')
 
     end subroutine test_diagnostic_messages
 
@@ -173,18 +173,18 @@ contains
 
         ! Test 1: Server capabilities response
         call run_capability_test("Server capabilities", &
-                                 '{"textDocumentSync":2,"hoverProvider":true,'// &
-                                 '"definitionProvider":true,'// &
-                                 '"documentFormattingProvider":true,'// &
-                                 '"diagnosticProvider":{'// &
-                                 '"interFileDependencies":true}}')
+            '{"textDocumentSync":2,"hoverProvider":true,'// &
+            '"definitionProvider":true,'// &
+            '"documentFormattingProvider":true,'// &
+            '"diagnosticProvider":{'// &
+            '"interFileDependencies":true}}')
 
         ! Test 2: Client capabilities processing
         call run_capability_test("Client capabilities", &
-                                 '{"textDocument":{'// &
-                                 '"synchronization":{"dynamicRegistration":true},'// &
-                                 '"hover":{"dynamicRegistration":true},'// &
-                                 '"formatting":{"dynamicRegistration":true}}}')
+            '{"textDocument":{'// &
+            '"synchronization":{"dynamicRegistration":true},'// &
+            '"hover":{"dynamicRegistration":true},'// &
+            '"formatting":{"dynamicRegistration":true}}}')
 
     end subroutine test_capability_negotiation
 
@@ -200,23 +200,23 @@ contains
 
         ! Test 3: Invalid method
         call run_error_test("Invalid method", &
-                            '{"jsonrpc":"2.0","id":1,'// &
-                            '"method":"nonexistent","params":{}}', &
-                            "MethodNotFound")
+            '{"jsonrpc":"2.0","id":1,'// &
+            '"method":"nonexistent","params":{}}', &
+            "MethodNotFound")
 
         ! Test 4: Invalid parameters
         call run_error_test("Invalid params", &
-                            '{"jsonrpc":"2.0","id":1,'// &
-                            '"method":"initialize","params":"invalid"}', &
-                            "InvalidParams")
+            '{"jsonrpc":"2.0","id":1,'// &
+            '"method":"initialize","params":"invalid"}', &
+            "InvalidParams")
 
     end subroutine test_error_handling
 
     ! Helper subroutines for testing
     subroutine run_message_test(test_name, json_message, expected_type, expected_id, &
-                                expected_method)
+            expected_method)
         character(len=*), intent(in) :: test_name, json_message, expected_type, &
-                                        expected_method
+            expected_method
         integer, intent(in) :: expected_id
 
         character(len=:), allocatable :: message_type, method

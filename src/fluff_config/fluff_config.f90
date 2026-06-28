@@ -136,7 +136,7 @@ contains
         if (allocated(this%output_format)) output_format = this%output_format
 
         open (newunit=unit, file=filename, status='old', action='read', &
-              iostat=iostat)
+            iostat=iostat)
         if (iostat /= 0) then
             if (present(error_msg)) error_msg = "Cannot open config file: "//filename
             return
@@ -209,7 +209,7 @@ contains
         class(*), intent(in) :: cli_args
 
         select type (args => cli_args)
-        type is (config_override_t)
+            type is (config_override_t)
             if (args%has_fix) this%fix = args%fix
             if (args%has_show_fixes) this%show_fixes = args%show_fixes
             if (args%has_output_format .and. allocated(args%output_format)) then
@@ -424,27 +424,27 @@ contains
         character(len=:), allocatable :: doc
 
         doc = "# fluff Configuration (Fortran Namelist Format)"//new_line('a')// &
-              new_line('a')// &
-              "Configuration file: `.fluff.nml` or `fluff.nml`"//new_line('a')// &
-              new_line('a')// &
-              "```fortran"//new_line('a')// &
-              "&fluff"//new_line('a')// &
-              "  fix = .false."//new_line('a')// &
-              "  show_fixes = .false."//new_line('a')// &
-              "  line_length = 88"//new_line('a')// &
-              "  tab_width = 4"//new_line('a')// &
-              '  target_version = "2018"'//new_line('a')// &
-              '  output_format = "text"'//new_line('a')// &
-              "/"//new_line('a')// &
-              "```"//new_line('a')// &
-              new_line('a')// &
-              "## Options"//new_line('a')// &
-              "- fix: Auto-fix violations (.true./.false.)"//new_line('a')// &
-              "- show_fixes: Show suggested fixes"//new_line('a')// &
-              "- line_length: Max line length (40-200)"//new_line('a')// &
-              "- tab_width: Tab width for columns (1-16)"//new_line('a')// &
-              '- target_version: "2008", "2018", "2023"'//new_line('a')// &
-              '- output_format: "text", "json", "sarif"'//new_line('a')
+            new_line('a')// &
+            "Configuration file: `.fluff.nml` or `fluff.nml`"//new_line('a')// &
+            new_line('a')// &
+            "```fortran"//new_line('a')// &
+            "&fluff"//new_line('a')// &
+            "  fix = .false."//new_line('a')// &
+            "  show_fixes = .false."//new_line('a')// &
+            "  line_length = 88"//new_line('a')// &
+            "  tab_width = 4"//new_line('a')// &
+            '  target_version = "2018"'//new_line('a')// &
+            '  output_format = "text"'//new_line('a')// &
+            "/"//new_line('a')// &
+            "```"//new_line('a')// &
+            new_line('a')// &
+            "## Options"//new_line('a')// &
+            "- fix: Auto-fix violations (.true./.false.)"//new_line('a')// &
+            "- show_fixes: Show suggested fixes"//new_line('a')// &
+            "- line_length: Max line length (40-200)"//new_line('a')// &
+            "- tab_width: Tab width for columns (1-16)"//new_line('a')// &
+            '- target_version: "2008", "2018", "2023"'//new_line('a')// &
+            '- output_format: "text", "json", "sarif"'//new_line('a')
 
     end function get_config_schema_doc
 

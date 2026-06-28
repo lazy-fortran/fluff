@@ -5,7 +5,7 @@ module fluff_rule_f012
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fluff_rule_file_context, only: current_filename
     use fluff_text_helpers, only: has_lowercase, has_uppercase, is_lowercase_letter, &
-                                  is_uppercase_letter
+        is_uppercase_letter
     use fortfront, only: declaration_node
     use ast_nodes_data, only: mixed_construct_container_node
     implicit none
@@ -43,7 +43,7 @@ contains
         do i = 1, size(start_indices)
             if (start_indices(i) <= 0) cycle
             call walk_naming_styles(ctx, start_indices(i), snake_count, camel_count, &
-                                    pascal_count, first_location, has_first_location, 0)
+                pascal_count, first_location, has_first_location, 0)
         end do
 
         if (has_mixed_naming_styles(snake_count, camel_count, pascal_count)) then
@@ -54,11 +54,11 @@ contains
                 first_location%end%column = 1
             end if
             call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                 code="F012", &
-                                 message="Inconsistent naming convention", &
-                                 file_path=current_filename, &
-                                 location=first_location, &
-                                 severity=SEVERITY_INFO))
+                code="F012", &
+                message="Inconsistent naming convention", &
+                file_path=current_filename, &
+                location=first_location, &
+                severity=SEVERITY_INFO))
         end if
 
         allocate (violations(violation_count))
@@ -80,7 +80,7 @@ contains
         end if
 
         select type (n => ctx%arena%entries(root_index)%node)
-        type is (mixed_construct_container_node)
+            type is (mixed_construct_container_node)
             if (allocated(n%explicit_program_indices)) then
                 start_indices = n%explicit_program_indices
             else
@@ -93,8 +93,8 @@ contains
     end subroutine get_traversal_roots
 
     recursive subroutine walk_naming_styles(ctx, node_index, snake_count, camel_count, &
-                                            pascal_count, first_location, &
-                                            has_first_location, depth)
+            pascal_count, first_location, &
+            has_first_location, depth)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         integer, intent(inout) :: snake_count
@@ -114,7 +114,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             if (n%is_multi_declaration .and. allocated(n%var_names)) then
                 do j = 1, size(n%var_names)
                     name = trim(n%var_names(j))
@@ -138,8 +138,8 @@ contains
         do i = 1, size(children)
             if (children(i) <= 0) cycle
             call walk_naming_styles(ctx, children(i), snake_count, camel_count, &
-                                    pascal_count, first_location, has_first_location, &
-                                    depth + 1)
+                pascal_count, first_location, has_first_location, &
+                depth + 1)
         end do
     end subroutine walk_naming_styles
 
@@ -156,14 +156,14 @@ contains
     end subroutine count_one
 
     pure logical function has_mixed_naming_styles(snake_count, camel_count, &
-                                                  pascal_count) result(has_mixed)
+            pascal_count) result(has_mixed)
         integer, intent(in) :: snake_count
         integer, intent(in) :: camel_count
         integer, intent(in) :: pascal_count
 
         has_mixed = (snake_count > 0 .and. camel_count > 0) .or. &
-                    (snake_count > 0 .and. pascal_count > 0) .or. &
-                    (camel_count > 0 .and. pascal_count > 0)
+            (snake_count > 0 .and. pascal_count > 0) .or. &
+            (camel_count > 0 .and. pascal_count > 0)
     end function has_mixed_naming_styles
 
     pure logical function is_snake_case(name) result(is_snake)

@@ -3,7 +3,7 @@ program test_rule_f006_unused_variable
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F006: Unused variable declaration rule..."
@@ -38,11 +38,11 @@ contains
         call make_temp_fortran_path("fluff_test_f006", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y"//new_line('a')// &  ! x is unused
-                    "    y = 42"//new_line('a')// &
-                    "    print *, y"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y"//new_line('a')// & ! x is unused
+            "    y = 42"//new_line('a')// &
+            "    print *, y"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -84,12 +84,12 @@ contains
         call make_temp_fortran_path("fluff_test_f006_ok", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y"//new_line('a')// &
-                    "    x = 10"//new_line('a')// &
-                    "    y = x + 32"//new_line('a')// &
-                    "    print *, x, y"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y"//new_line('a')// &
+            "    x = 10"//new_line('a')// &
+            "    y = x + 32"//new_line('a')// &
+            "    print *, x, y"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -129,11 +129,11 @@ contains
         call make_temp_fortran_path("fluff_test_f006_multi", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: a, b, c"//new_line('a')// &
-                    "    b = 1"//new_line('a')// &
-                    "    print *, b"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: a, b, c"//new_line('a')// &
+            "    b = 1"//new_line('a')// &
+            "    print *, b"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -169,12 +169,12 @@ contains
         call make_temp_fortran_path("fluff_test_f006_param", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer, parameter :: p = 3"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer, parameter :: p = 3"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -213,16 +213,16 @@ contains
         call make_temp_fortran_path("fluff_test_f006_loop", tmpfile)
 
         test_code = "program nested"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: i, j, k"//new_line('a')// &
-                    "    do i = 1, 10"//new_line('a')// &
-                    "        do j = 1, 10"//new_line('a')// &
-                    "            do k = 1, 10"//new_line('a')// &
-                    "                print *, i, j, k"//new_line('a')// &
-                    "            end do"//new_line('a')// &
-                    "        end do"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "end program nested"
+            "    implicit none"//new_line('a')// &
+            "    integer :: i, j, k"//new_line('a')// &
+            "    do i = 1, 10"//new_line('a')// &
+            "        do j = 1, 10"//new_line('a')// &
+            "            do k = 1, 10"//new_line('a')// &
+            "                print *, i, j, k"//new_line('a')// &
+            "            end do"//new_line('a')// &
+            "        end do"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "end program nested"
 
         linter = create_linter_engine()
 

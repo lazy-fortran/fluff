@@ -1,16 +1,16 @@
 program test_optimize_line_breaks
     use fluff_format_quality, only: optimize_line_breaks
     implicit none
-    
+
     character(len=:), allocatable :: input_code, expected_output, actual_output
     logical :: test_passed
     integer :: test_count, pass_count
-    
+
     test_count = 0
     pass_count = 0
-    
+
     print *, "=== Testing optimize_line_breaks function ==="
-    
+
     ! Test 1: Short line should not be modified
     test_count = test_count + 1
     input_code = "    integer :: x, y, z"
@@ -26,14 +26,14 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Test 2: Long line with commas should break after comma
     test_count = test_count + 1
     input_code = "    integer :: very_long_var_name_one, very_long_var_name_two, " // &
-                 "very_long_var_name_three, very_long_var_name_four"
+        "very_long_var_name_three, very_long_var_name_four"
     expected_output = "    integer :: very_long_var_name_one, very_long_var_name_two, " // &
-                      "very_long_var_name_three, &" // new_line('a') // &
-                      "        very_long_var_name_four"
+        "very_long_var_name_three, &" // new_line('a') // &
+        "        very_long_var_name_four"
     actual_output = input_code
     call optimize_line_breaks(actual_output, 88)
     test_passed = (actual_output == expected_output)
@@ -45,12 +45,12 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Test 3: Long line with operators should break after operator
     test_count = test_count + 1
     input_code = "    result = very_long_variable_name_one + very_long_variable_name_two + very_long_variable_name_three"
     expected_output = "    result = very_long_variable_name_one + very_long_variable_name_two + &" // new_line('a') // &
-                      "        very_long_variable_name_three"
+        "        very_long_variable_name_three"
     actual_output = input_code
     call optimize_line_breaks(actual_output, 88)
     test_passed = (actual_output == expected_output)
@@ -62,20 +62,20 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Test 4: Multiple lines should be handled correctly
     test_count = test_count + 1
     input_code = "program test" // new_line('a') // &
-                 "    integer :: very_long_var_name_one_that_is_really_very_very_long, " // &
-                 "very_long_var_name_two_that_is_also_very_long, very_long_var_name_three" // new_line('a') // &
-                 "    x = 1" // new_line('a') // &
-                 "end program"
+        "    integer :: very_long_var_name_one_that_is_really_very_very_long, " // &
+        "very_long_var_name_two_that_is_also_very_long, very_long_var_name_three" // new_line('a') // &
+        "    x = 1" // new_line('a') // &
+        "end program"
     expected_output = "program test" // new_line('a') // &
-                      "    integer :: very_long_var_name_one_that_is_really_very_very_long, &" // new_line('a') // &
-                      "        very_long_var_name_two_that_is_also_very_long, " // &
-                      "very_long_var_name_three" // new_line('a') // &
-                      "    x = 1" // new_line('a') // &
-                      "end program"
+        "    integer :: very_long_var_name_one_that_is_really_very_very_long, &" // new_line('a') // &
+        "        very_long_var_name_two_that_is_also_very_long, " // &
+        "very_long_var_name_three" // new_line('a') // &
+        "    x = 1" // new_line('a') // &
+        "end program"
     actual_output = input_code
     call optimize_line_breaks(actual_output, 88)
     test_passed = (actual_output == expected_output)
@@ -87,15 +87,15 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Test 5: Empty lines and comments should be preserved
     test_count = test_count + 1
     input_code = "program test" // new_line('a') // &
-                 new_line('a') // &
-                 "    ! This is a comment" // new_line('a') // &
-                 "    x = 1" // new_line('a') // &
-                 "end program"
-    expected_output = input_code  ! Should remain unchanged
+        new_line('a') // &
+        "    ! This is a comment" // new_line('a') // &
+        "    x = 1" // new_line('a') // &
+        "end program"
+    expected_output = input_code ! Should remain unchanged
     actual_output = input_code
     call optimize_line_breaks(actual_output, 88)
     test_passed = (actual_output == expected_output)
@@ -107,14 +107,14 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Test 6: Magic comment should prevent line breaking
     test_count = test_count + 1
     input_code = "    ! fmt: skip" // new_line('a') // &
-                 "    integer :: very_long_var_name_one, very_long_var_name_two, " // &
-                 "very_long_var_name_three, very_long_var_name_four" // new_line('a') // &
-                 "    ! fmt: on"
-    expected_output = input_code  ! Should remain unchanged
+        "    integer :: very_long_var_name_one, very_long_var_name_two, " // &
+        "very_long_var_name_three, very_long_var_name_four" // new_line('a') // &
+        "    ! fmt: on"
+    expected_output = input_code ! Should remain unchanged
     actual_output = input_code
     call optimize_line_breaks(actual_output, 88)
     test_passed = (actual_output == expected_output)
@@ -126,16 +126,16 @@ program test_optimize_line_breaks
         print *, "  Expected: '", expected_output, "'"
         print *, "  Got:      '", actual_output, "'"
     end if
-    
+
     ! Summary
     print *, ""
     print *, "=== Test Summary ==="
     print *, "Total tests: ", test_count
     print *, "Passed: ", pass_count
     print *, "Failed: ", test_count - pass_count
-    
+
     if (pass_count /= test_count) then
         error stop "Tests failed"
     end if
-    
+
 end program test_optimize_line_breaks

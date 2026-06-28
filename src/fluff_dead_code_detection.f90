@@ -6,22 +6,22 @@ module fluff_dead_code_detection
     use ast_nodes_misc, only: module_procedure_node, visibility_statement_node
     use ast_nodes_transfer, only: goto_node
     use fortfront, only: ast_arena_t, semantic_context_t, &
-                         lex_source, parse_tokens, analyze_semantics, &
-                         create_ast_arena, create_semantic_context, &
-                         declaration_node, identifier_node, assignment_node, &
-                         function_def_node, subroutine_def_node, &
-                         return_node, stop_node, if_node, &
-                         ast_node, program_node, binary_op_node, &
-                         call_or_subscript_node, subroutine_call_node, &
-                         literal_node, print_statement_node, do_loop_node, &
-                         do_while_node, select_case_node, derived_type_node, &
-                         interface_block_node, module_node, use_statement_node, &
-                         include_statement_node, parameter_declaration_node, &
-                         LITERAL_LOGICAL, get_node_type_id_from_arena, &
-                         symbol_reference_t, &
-                         NODE_RETURN, NODE_STOP, NODE_CYCLE, NODE_EXIT, &
-                         visit_node_at, get_node_type_id, &
-                         call_graph_t, build_call_graph_from_arena, is_procedure_used
+        lex_source, parse_tokens, analyze_semantics, &
+        create_ast_arena, create_semantic_context, &
+        declaration_node, identifier_node, assignment_node, &
+        function_def_node, subroutine_def_node, &
+        return_node, stop_node, if_node, &
+        ast_node, program_node, binary_op_node, &
+        call_or_subscript_node, subroutine_call_node, &
+        literal_node, print_statement_node, do_loop_node, &
+        do_while_node, select_case_node, derived_type_node, &
+        interface_block_node, module_node, use_statement_node, &
+        include_statement_node, parameter_declaration_node, &
+        LITERAL_LOGICAL, get_node_type_id_from_arena, &
+        symbol_reference_t, &
+        NODE_RETURN, NODE_STOP, NODE_CYCLE, NODE_EXIT, &
+        visit_node_at, get_node_type_id, &
+        call_graph_t, build_call_graph_from_arena, is_procedure_used
 
     implicit none
     private
@@ -61,7 +61,7 @@ module fluff_dead_code_detection
 contains
 
     function detector_analyze_source_ast(this, source_code, file_path) &
-        result(found_dead_code)
+            result(found_dead_code)
         use fortfront, only: token_t
         class(dead_code_detector_t), intent(inout) :: this
         character(len=*), intent(in) :: source_code
@@ -107,7 +107,7 @@ contains
         call this%visitor%finalize_analysis()
 
         found_dead_code = this%visitor%unused_count > 0 .or. &
-                          this%visitor%unreachable_count > 0
+            this%visitor%unreachable_count > 0
 
     end function detector_analyze_source_ast
 
@@ -171,7 +171,7 @@ contains
             end select
 
             select type (node => this%arena%entries(i)%node)
-            type is (if_node)
+                type is (if_node)
                 call this%check_impossible_condition(i)
             end select
         end do
@@ -212,15 +212,15 @@ contains
                 this%arena%entries(i)%depth == terminator_depth .and. &
                 in_same_block) then
                 select type (node => this%arena%entries(i)%node)
-                type is (print_statement_node)
+                    type is (print_statement_node)
                     call this%visitor%add_unreachable_code( &
                         node%line, node%line, node%column, node%column + 10, &
                         "after_termination", "Code after terminating statement")
-                type is (assignment_node)
+                    type is (assignment_node)
                     call this%visitor%add_unreachable_code( &
                         node%line, node%line, node%column, node%column + 10, &
                         "after_termination", "Code after terminating statement")
-                type is (subroutine_call_node)
+                    type is (subroutine_call_node)
                     call this%visitor%add_unreachable_code( &
                         node%line, node%line, node%column, node%column + 10, &
                         "after_termination", "Code after terminating statement")
@@ -236,12 +236,12 @@ contains
         integer :: cond_idx
 
         select type (node => this%arena%entries(if_idx)%node)
-        type is (if_node)
+            type is (if_node)
             cond_idx = node%condition_index
             if (cond_idx > 0 .and. cond_idx <= this%arena%size) then
                 if (allocated(this%arena%entries(cond_idx)%node)) then
                     select type (cond => this%arena%entries(cond_idx)%node)
-                    type is (literal_node)
+                        type is (literal_node)
                         if (cond%literal_kind == LITERAL_LOGICAL .and. &
                             (cond%value == ".false." .or. cond%value == ".FALSE.")) then
                             call this%mark_if_block_unreachable(if_idx, .true.)
@@ -323,10 +323,10 @@ contains
             if (param_indices(i) > 0 .and. param_indices(i) <= this%arena%size) then
                 if (allocated(this%arena%entries(param_indices(i))%node)) then
                     select type (param_node => &
-                                 this%arena%entries(param_indices(i))%node)
-                    type is (parameter_declaration_node)
+                            this%arena%entries(param_indices(i))%node)
+                        type is (parameter_declaration_node)
                         call this%visitor%add_declared_variable(param_node%name)
-                    type is (declaration_node)
+                        type is (declaration_node)
                         call this%visitor%add_declared_variable(param_node%var_name)
                     end select
                 end if
@@ -349,31 +349,31 @@ contains
         if (.not. allocated(this%arena%entries(node_index)%node)) return
 
         select type (node => this%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             found = get_declaration_info(this%arena, node_index, var_names, type_spec, &
-                                         attributes)
+                attributes)
             if (found .and. allocated(var_names)) then
                 do i = 1, size(var_names)
                     call this%visitor%add_declared_variable(var_names(i))
                 end do
             end if
 
-        type is (identifier_node)
+            type is (identifier_node)
             found = get_identifier_name(this%arena, node_index, var_name)
             if (found .and. allocated(var_name)) then
                 call this%visitor%add_used_variable(var_name)
             end if
 
-        type is (assignment_node)
+            type is (assignment_node)
             found = get_assignment_indices(this%arena, node_index, target_index, &
-                                           value_index, operator_str)
+                value_index, operator_str)
 
             if (found) then
                 is_self_assignment = .false.
 
                 if (target_index > 0) then
                     found = get_identifier_name(this%arena, target_index, &
-                                                target_var_name)
+                        target_var_name)
                 end if
 
                 if (value_index > 0 .and. allocated(target_var_name)) then
@@ -391,16 +391,16 @@ contains
                 end if
             end if
 
-        type is (binary_op_node)
+            type is (binary_op_node)
             found = get_binary_op_info(this%arena, node_index, left_index, &
-                                       right_index, operator_str)
+                right_index, operator_str)
 
             if (found) then
                 if (left_index > 0) call this%process_node_enhanced(left_index)
                 if (right_index > 0) call this%process_node_enhanced(right_index)
             end if
 
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             found = get_call_info(this%arena, node_index, var_name, indices)
             if (found) then
                 if (allocated(var_name)) then
@@ -413,20 +413,20 @@ contains
                 end if
             end if
 
-        type is (subroutine_call_node)
+            type is (subroutine_call_node)
 
-        type is (print_statement_node)
+            type is (print_statement_node)
 
-        type is (if_node)
+            type is (if_node)
             if (node%condition_index > 0) then
                 call this%process_node_enhanced(node%condition_index)
             end if
 
-        type is (do_loop_node)
+            type is (do_loop_node)
 
-        type is (literal_node)
+            type is (literal_node)
 
-        type is (program_node)
+            type is (program_node)
             found = get_program_info(this%arena, node_index, var_name, indices)
             if (found) then
                 if (allocated(indices)) then
@@ -436,21 +436,21 @@ contains
                 end if
             end if
 
-        type is (subroutine_def_node)
+            type is (subroutine_def_node)
             if (allocated(node%name)) then
             end if
 
-        type is (function_def_node)
+            type is (function_def_node)
             if (allocated(node%name)) then
             end if
 
-        type is (module_node)
+            type is (module_node)
 
-        type is (return_node)
+            type is (return_node)
 
-        type is (stop_node)
+            type is (stop_node)
 
-        type is (parameter_declaration_node)
+            type is (parameter_declaration_node)
 
         class default
         end select
@@ -469,7 +469,7 @@ contains
                 if (allocated(this%arena%entries(proc_indices(i))%node)) then
                     is_called = .false.
                     select type (proc_node => this%arena%entries(proc_indices(i))%node)
-                    type is (subroutine_def_node)
+                        type is (subroutine_def_node)
                         proc_name = proc_node%name
                         is_called = this%is_procedure_called(proc_name)
                         if (.not. is_called) then
@@ -479,7 +479,7 @@ contains
                                 "unused_procedure", &
                                 "Unused internal procedure '"//proc_name//"'")
                         end if
-                    type is (function_def_node)
+                        type is (function_def_node)
                         proc_name = proc_node%name
                         is_called = this%is_procedure_called(proc_name)
                         if (.not. is_called) then
@@ -521,11 +521,11 @@ contains
             proc_line = 0
             proc_column = 0
             select type (node => this%arena%entries(i)%node)
-            type is (subroutine_def_node)
+                type is (subroutine_def_node)
                 proc_name = node%name
                 proc_line = node%line
                 proc_column = node%column
-            type is (function_def_node)
+                type is (function_def_node)
                 proc_name = node%name
                 proc_line = node%line
                 proc_column = node%column
@@ -573,7 +573,7 @@ contains
         do i = 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
             select type (node => this%arena%entries(i)%node)
-            type is (visibility_statement_node)
+                type is (visibility_statement_node)
                 if (node%is_private) cycle
                 if (.not. node%has_list) cycle
                 if (.not. allocated(node%names)) cycle
@@ -606,14 +606,14 @@ contains
         do i = 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
             select type (iface => this%arena%entries(i)%node)
-            type is (interface_block_node)
+                type is (interface_block_node)
                 if (.not. allocated(iface%procedure_indices)) cycle
                 do j = 1, size(iface%procedure_indices)
                     idx = iface%procedure_indices(j)
                     if (idx <= 0 .or. idx > this%arena%size) cycle
                     if (.not. allocated(this%arena%entries(idx)%node)) cycle
                     select type (proc_decl => this%arena%entries(idx)%node)
-                    type is (module_procedure_node)
+                        type is (module_procedure_node)
                         if (.not. allocated(proc_decl%procedure_names)) cycle
                         do k = 1, size(proc_decl%procedure_names)
                             if (.not. allocated(proc_decl%procedure_names(k)%s)) cycle
@@ -677,7 +677,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (allocated(node%name)) then
                 name = node%name
                 success = .true.
@@ -686,7 +686,7 @@ contains
     end function get_identifier_name
 
     function get_declaration_info(arena, node_index, var_names, type_spec, attributes) &
-        result(success)
+            result(success)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: node_index
         character(len=:), allocatable, intent(out) :: var_names(:)
@@ -704,7 +704,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             if (node%is_multi_declaration .and. allocated(node%var_names)) then
                 deallocate (var_names)
                 allocate (var_names(size(node%var_names)), source=node%var_names)
@@ -755,7 +755,7 @@ contains
     end function get_declaration_info
 
     function get_assignment_indices(arena, node_index, target_index, value_index, &
-                                    operator_str) result(success)
+            operator_str) result(success)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: node_index
         integer, intent(out) :: target_index, value_index
@@ -771,7 +771,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (assignment_node)
+            type is (assignment_node)
             target_index = node%target_index
             value_index = node%value_index
             if (allocated(node%operator)) operator_str = node%operator
@@ -780,7 +780,7 @@ contains
     end function get_assignment_indices
 
     function get_binary_op_info(arena, node_index, left_index, right_index, &
-                                operator_str) result(success)
+            operator_str) result(success)
         type(ast_arena_t), intent(in) :: arena
         integer, intent(in) :: node_index
         integer, intent(out) :: left_index, right_index
@@ -796,7 +796,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (binary_op_node)
+            type is (binary_op_node)
             left_index = node%left_index
             right_index = node%right_index
             if (allocated(node%operator)) operator_str = node%operator
@@ -819,7 +819,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (allocated(node%name)) name = node%name
             if (allocated(node%arg_indices)) then
                 deallocate (arg_indices)
@@ -845,7 +845,7 @@ contains
         if (.not. allocated(arena%entries(node_index)%node)) return
 
         select type (node => arena%entries(node_index)%node)
-        type is (program_node)
+            type is (program_node)
             if (allocated(node%name)) name = node%name
             if (allocated(node%body_indices)) then
                 deallocate (body_indices)
@@ -857,7 +857,7 @@ contains
     end function get_program_info
 
     function detector_is_unconditional_terminator(this, terminator_idx) &
-        result(is_unconditional)
+            result(is_unconditional)
         class(dead_code_detector_t), intent(in) :: this
         integer, intent(in) :: terminator_idx
         logical :: is_unconditional
@@ -872,20 +872,20 @@ contains
         do while (current_idx > 0 .and. current_idx <= this%arena%size)
             if (allocated(this%arena%entries(current_idx)%node)) then
                 select type (ancestor => this%arena%entries(current_idx)%node)
-                type is (if_node)
+                    type is (if_node)
                     is_unconditional = .false.
                     return
-                type is (do_loop_node)
+                    type is (do_loop_node)
                     is_unconditional = .false.
                     return
-                type is (select_case_node)
+                    type is (select_case_node)
                     is_unconditional = .false.
                     return
-                type is (program_node)
+                    type is (program_node)
                     exit
-                type is (function_def_node)
+                    type is (function_def_node)
                     exit
-                type is (subroutine_def_node)
+                    type is (subroutine_def_node)
                     exit
                 end select
             end if
@@ -906,7 +906,7 @@ contains
         do i = 1, this%arena%size
             if (.not. allocated(this%arena%entries(i)%node)) cycle
             select type (prog => this%arena%entries(i)%node)
-            type is (program_node)
+                type is (program_node)
                 if (.not. allocated(prog%body_indices)) cycle
                 after_goto = .false.
                 target_label = ""
@@ -937,7 +937,7 @@ contains
                     end if
 
                     select type (stmt => this%arena%entries(stmt_index)%node)
-                    type is (goto_node)
+                        type is (goto_node)
                         if (allocated(stmt%label)) then
                             if (len_trim(stmt%label) > 0) then
                                 after_goto = .true.

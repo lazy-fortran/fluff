@@ -1,9 +1,9 @@
 module fluff_lsp_dispatcher
     use fluff_json, only: json_array_get_element_json, json_array_length, &
-                          json_get_int_member, json_get_member_json, &
-                          json_get_string_member, json_is_array, json_parse
+        json_get_int_member, json_get_member_json, &
+        json_get_string_member, json_is_array, json_parse
     use fluff_json_rpc, only: create_json_error_response, create_json_response, &
-                              parse_lsp_message
+        parse_lsp_message
     use fluff_lsp_server, only: fluff_lsp_server_t, document_t
     use fluff_lsp_hover, only: get_hover_info
     implicit none
@@ -43,11 +43,11 @@ contains
         response = ""
 
         call parse_lsp_message(json_message, message_type, message_id, method, &
-                               success)
+            success)
 
         if (.not. success) then
             response = create_json_error_response(0, LSP_ERROR_PARSE_ERROR, &
-                                                  "Parse error")
+                "Parse error")
             has_response = .true.
             return
         end if
@@ -77,10 +77,10 @@ contains
         select case (method)
         case ("initialize")
             call json_get_member_json(json_message, "params", params_json, &
-                                      found, ok)
+                found, ok)
             if (ok .and. found) then
                 call json_get_string_member(params_json, "rootPath", root_path, &
-                                            found, ok)
+                    found, ok)
                 if (.not. found .or. .not. ok) root_path = "."
             else
                 root_path = "."
@@ -93,7 +93,7 @@ contains
         case ("shutdown")
             if (.not. this%server%is_initialized) then
                 response = create_json_error_response(message_id, &
-                             LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
+                    LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
                 return
             end if
             call this%server%shutdown()
@@ -102,23 +102,23 @@ contains
         case ("textDocument/formatting")
             if (.not. this%server%is_initialized) then
                 response = create_json_error_response(message_id, &
-                             LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
+                    LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
                 return
             end if
             call handle_formatting_request(this, json_message, message_id, &
-                                           response)
+                response)
 
         case ("textDocument/hover")
             if (.not. this%server%is_initialized) then
                 response = create_json_error_response(message_id, &
-                             LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
+                    LSP_ERROR_SERVER_NOT_INITIALIZED, "Server not initialized")
                 return
             end if
             call handle_hover_request(this, json_message, message_id, response)
 
         case default
             response = create_json_error_response(message_id, &
-                               LSP_ERROR_METHOD_NOT_FOUND, "Method not found: "//method)
+                LSP_ERROR_METHOD_NOT_FOUND, "Method not found: "//method)
         end select
     end subroutine handle_request
 
@@ -141,50 +141,50 @@ contains
 
         case ("textDocument/didOpen")
             call json_get_member_json(json_message, "params", params_json, &
-                                      found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_member_json(params_json, "textDocument", &
-                                      text_doc_json, found, ok)
+                text_doc_json, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(text_doc_json, "uri", uri, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(text_doc_json, "languageId", &
-                                        language_id, found, ok)
+                language_id, found, ok)
             if (.not. ok .or. .not. found) language_id = "fortran"
 
             call json_get_int_member(text_doc_json, "version", version, &
-                                     found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) version = 1
 
             call json_get_string_member(text_doc_json, "text", content, &
-                                        found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) content = ""
 
             call this%server%handle_text_document_did_open(uri, language_id, &
-                                                           version, content, &
-                                                           success)
+                version, content, &
+                success)
 
         case ("textDocument/didChange")
             call json_get_member_json(json_message, "params", params_json, &
-                                      found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_member_json(params_json, "textDocument", &
-                                      text_doc_json, found, ok)
+                text_doc_json, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(text_doc_json, "uri", uri, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_int_member(text_doc_json, "version", version, &
-                                     found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) version = 1
 
             call json_get_member_json(params_json, "contentChanges", &
-                                      changes_json, found, ok)
+                changes_json, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_is_array(changes_json, ok, success)
@@ -194,22 +194,22 @@ contains
             if (.not. ok .or. n_changes < 1) return
 
             call json_array_get_element_json(changes_json, 1, change_json, &
-                                             found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(change_json, "text", content, found, ok)
             if (.not. ok .or. .not. found) return
 
             call this%server%handle_text_document_did_change(uri, version, &
-                                                             content, success)
+                content, success)
 
         case ("textDocument/didSave")
             call json_get_member_json(json_message, "params", params_json, &
-                                      found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_member_json(params_json, "textDocument", &
-                                      text_doc_json, found, ok)
+                text_doc_json, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(text_doc_json, "uri", uri, found, ok)
@@ -219,11 +219,11 @@ contains
 
         case ("textDocument/didClose")
             call json_get_member_json(json_message, "params", params_json, &
-                                      found, ok)
+                found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_member_json(params_json, "textDocument", &
-                                      text_doc_json, found, ok)
+                text_doc_json, found, ok)
             if (.not. ok .or. .not. found) return
 
             call json_get_string_member(text_doc_json, "uri", uri, found, ok)
@@ -237,7 +237,7 @@ contains
     end subroutine handle_notification
 
     subroutine handle_formatting_request(this, json_message, message_id, &
-                                         response)
+            response)
         class(lsp_dispatcher_t), intent(inout) :: this
         character(len=*), intent(in) :: json_message
         integer, intent(in) :: message_id
@@ -248,25 +248,25 @@ contains
         logical :: found, ok, success
 
         call json_get_member_json(json_message, "params", params_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                             LSP_ERROR_INVALID_PARAMS, "Missing params")
+                LSP_ERROR_INVALID_PARAMS, "Missing params")
             return
         end if
 
         call json_get_member_json(params_json, "textDocument", text_doc_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                       LSP_ERROR_INVALID_PARAMS, "Missing textDocument")
+                LSP_ERROR_INVALID_PARAMS, "Missing textDocument")
             return
         end if
 
         call json_get_string_member(text_doc_json, "uri", uri, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                                LSP_ERROR_INVALID_PARAMS, "Missing uri")
+                LSP_ERROR_INVALID_PARAMS, "Missing uri")
             return
         end if
 
@@ -295,43 +295,43 @@ contains
         call json_get_member_json(json_message, "params", params_json, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                         LSP_ERROR_INVALID_PARAMS, "Missing params")
+                LSP_ERROR_INVALID_PARAMS, "Missing params")
             return
         end if
 
         call json_get_member_json(params_json, "textDocument", text_doc_json, &
-                                  found, ok)
+            found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                   LSP_ERROR_INVALID_PARAMS, "Missing textDocument")
+                LSP_ERROR_INVALID_PARAMS, "Missing textDocument")
             return
         end if
 
         call json_get_string_member(text_doc_json, "uri", uri, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                            LSP_ERROR_INVALID_PARAMS, "Missing uri")
+                LSP_ERROR_INVALID_PARAMS, "Missing uri")
             return
         end if
 
         call json_get_member_json(params_json, "position", position_json, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                         LSP_ERROR_INVALID_PARAMS, "Missing position")
+                LSP_ERROR_INVALID_PARAMS, "Missing position")
             return
         end if
 
         call json_get_int_member(position_json, "line", line, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                            LSP_ERROR_INVALID_PARAMS, "Missing line")
+                LSP_ERROR_INVALID_PARAMS, "Missing line")
             return
         end if
 
         call json_get_int_member(position_json, "character", character, found, ok)
         if (.not. ok .or. .not. found) then
             response = create_json_error_response(message_id, &
-                                       LSP_ERROR_INVALID_PARAMS, "Missing character")
+                LSP_ERROR_INVALID_PARAMS, "Missing character")
             return
         end if
 
@@ -350,7 +350,7 @@ contains
 
         escaped_content = escape_json_string(hover_content)
         response = create_json_response(message_id, &
-                   '{"contents":{"kind":"markdown","value":"'//escaped_content//'"}}')
+            '{"contents":{"kind":"markdown","value":"'//escaped_content//'"}}')
 
     end subroutine handle_hover_request
 

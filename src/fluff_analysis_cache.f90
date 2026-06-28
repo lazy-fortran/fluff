@@ -100,7 +100,7 @@ module fluff_analysis_cache
 
         ! Storage management
         integer :: current_size_bytes = 0
-        integer :: max_size_bytes = 52428800  ! 50MB default
+        integer :: max_size_bytes = 52428800 ! 50MB default
         logical :: compression_enabled = .false.
         logical :: adaptive_compression = .false.
 
@@ -201,7 +201,7 @@ contains
             cache%cache_dir = cache_dir
 
             ! Check if directory is writable (simplified)
-         if (index(cache_dir, "invalid") > 0 .or. index(cache_dir, "readonly") > 0) then
+            if (index(cache_dir, "invalid") > 0 .or. index(cache_dir, "readonly") > 0) then
                 ! Leave uninitialized and exit early
                 return
             end if
@@ -297,7 +297,7 @@ contains
         call start_timer(timer)
 
         index = this%find_entry_index(file_path)
-  if (index > 0 .and. index <= this%entry_count .and. this%entries(index)%is_valid) then
+        if (index > 0 .and. index <= this%entry_count .and. this%entries(index)%is_valid) then
             result = this%entries(index)%result
 
             ! Update access time and count
@@ -381,7 +381,7 @@ contains
         if (this%entry_count > 0) then
             this%entries(this%entry_count)%is_compressed = .true.
             ! Reduce the size increase by half (simulate 50% compression)
-            this%current_size_bytes = size_before + 512  ! Instead of +1024
+            this%current_size_bytes = size_before + 512 ! Instead of +1024
         end if
 
     end subroutine store_analysis_compressed
@@ -420,7 +420,7 @@ contains
         do i = 1, this%entry_count
             if (allocated(this%entries(i)%uri)) then
                 ! Simple pattern matching (*.f90 -> .f90 suffix)
-               if (pattern == "*.f90" .and. index(this%entries(i)%uri, ".f90") > 0) then
+                if (pattern == "*.f90" .and. index(this%entries(i)%uri, ".f90") > 0) then
                     this%entries(i)%is_valid = .false.
                 end if
             end if
@@ -453,7 +453,7 @@ contains
 
         do i = 1, this%entry_count
             if (this%entries(i)%is_valid) then
-             if (current_time - this%entries(i)%last_access_time > max_age_seconds) then
+                if (current_time - this%entries(i)%last_access_time > max_age_seconds) then
                     this%entries(i)%is_valid = .false.
                 end if
             end if
@@ -497,11 +497,11 @@ contains
             end if
         end do
 
- if (dep_index == 0 .and. this%dependency_node_count < size(this%dependency_graph)) then
+        if (dep_index == 0 .and. this%dependency_node_count < size(this%dependency_graph)) then
             this%dependency_node_count = this%dependency_node_count + 1
             dep_index = this%dependency_node_count
             this%dependency_graph(dep_index)%file_path = dependency_file
-        allocate (character(len=256) :: this%dependency_graph(dep_index)%dependents(10))
+            allocate (character(len=256) :: this%dependency_graph(dep_index)%dependents(10))
             this%dependency_graph(dep_index)%dependent_count = 0
         end if
 
@@ -531,7 +531,7 @@ contains
         if (index > 0 .and. index <= this%entry_count) then
             if (allocated(this%entries(index)%dependencies)) then
                 count = min(this%entries(index)%dependency_count, &
-                            size(this%entries(index)%dependencies))
+                    size(this%entries(index)%dependencies))
                 if (count > 0) then
                     do i = 1, count
                         if (len_trim(this%entries(index)%dependencies(i)) > 0) then
@@ -637,11 +637,11 @@ contains
                 do j = 1, this%entries(i)%dependency_count
                     ! Check if dependency also depends on this file
                     do k = 1, this%entry_count
-                 if (allocated(this%entries(k)%uri) .and. this%entries(k)%is_valid) then
-                        if (this%entries(k)%uri == this%entries(i)%dependencies(j)) then
+                        if (allocated(this%entries(k)%uri) .and. this%entries(k)%is_valid) then
+                            if (this%entries(k)%uri == this%entries(i)%dependencies(j)) then
                                 ! Check if k depends on i
-           if (any(this%entries(k)%dependencies(1:this%entries(k)%dependency_count) == &
-                                        this%entries(i)%uri)) then
+                                if (any(this%entries(k)%dependencies(1:this%entries(k)%dependency_count) == &
+                                    this%entries(i)%uri)) then
                                     has_cycles = .true.
                                     return
                                 end if
@@ -681,10 +681,10 @@ contains
         if (dep_index > 0 .and. dep_index <= this%dependency_node_count) then
             if (allocated(this%dependency_graph(dep_index)%dependents)) then
                 count = min(this%dependency_graph(dep_index)%dependent_count, &
-                            size(this%dependency_graph(dep_index)%dependents))
+                    size(this%dependency_graph(dep_index)%dependents))
                 do i = 1, count
-                  if (len_trim(this%dependency_graph(dep_index)%dependents(i)) > 0) then
-            call dependents%append(trim(this%dependency_graph(dep_index)%dependents(i)))
+                    if (len_trim(this%dependency_graph(dep_index)%dependents(i)) > 0) then
+                        call dependents%append(trim(this%dependency_graph(dep_index)%dependents(i)))
                     end if
                 end do
             end if
@@ -725,10 +725,10 @@ contains
         if (allocated(this%cache_file_path) .and. this%entry_count > 0) then
             ! Ensure cache directory exists
             if (allocated(this%cache_dir)) then
-               call execute_command_line("mkdir -p "//trim(this%cache_dir), wait=.true.)
+                call execute_command_line("mkdir -p "//trim(this%cache_dir), wait=.true.)
             end if
 
-         open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
+            open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
             if (iostat == 0) then
                 write (unit, '(A,I0)') "# Fluff Cache - Entry Count: ", this%entry_count
                 write (unit, '(A,I0)') "# Size (bytes): ", this%current_size_bytes
@@ -787,16 +787,16 @@ contains
         ! Actually create the cache file
         if (allocated(this%cache_file_path)) then
             ! Try to create the cache file directly (Fortran will create parent dirs if possible)
-         open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
+            open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
             if (iostat == 0) then
                 write (unit, '(A)') "# Fluff Analysis Cache File"
                 close (unit)
             else
                 ! If direct creation fails, try creating in /tmp instead
-            if (allocated(this%cache_dir) .and. index(this%cache_dir, "/tmp") == 0) then
+                if (allocated(this%cache_dir) .and. index(this%cache_dir, "/tmp") == 0) then
                     deallocate (this%cache_file_path)
                     this%cache_file_path = "/tmp/fluff_cache.dat"
-         open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
+                    open (newunit=unit, file=this%cache_file_path, status='replace', iostat=iostat)
                     if (iostat == 0) then
                         write (unit, '(A)') "# Fluff Analysis Cache File"
                         close (unit)
@@ -882,7 +882,7 @@ contains
         call stop_timer(timer)
 
         miss_time = get_elapsed_ms(timer)
-        if (miss_time < 0.1) miss_time = 0.5  ! Ensure positive time
+        if (miss_time < 0.1) miss_time = 0.5 ! Ensure positive time
 
     end function measure_cache_miss_time
 
@@ -958,7 +958,7 @@ contains
         end do
 
         this%entry_count = new_count
-        this%current_size_bytes = new_count*1024  ! Rough estimate
+        this%current_size_bytes = new_count*1024 ! Rough estimate
 
     end subroutine optimize_memory
 
@@ -1046,7 +1046,7 @@ contains
             ! Calculate actual compression ratio based on storage savings
             ratio = 1.0 + (real(compressed_count)/real(this%entry_count))*0.5
         else
-            ratio = 1.0  ! No compression
+            ratio = 1.0 ! No compression
         end if
 
     end function get_compression_ratio
@@ -1374,7 +1374,7 @@ contains
         end if
 
         if (this%stats%total_requests > 0) then
-      this%stats%hit_ratio = real(this%stats%cache_hits)/real(this%stats%total_requests)
+            this%stats%hit_ratio = real(this%stats%cache_hits)/real(this%stats%total_requests)
             this%stats%miss_ratio = 1.0 - this%stats%hit_ratio
         end if
 
@@ -1390,7 +1390,7 @@ contains
         do i = 1, this%dependency_graph(dep_node_index)%dependent_count
             do j = 1, this%entry_count
                 if (allocated(this%entries(j)%uri)) then
-    if (this%entries(j)%uri == this%dependency_graph(dep_node_index)%dependents(i)) then
+                    if (this%entries(j)%uri == this%dependency_graph(dep_node_index)%dependents(i)) then
                         this%entries(j)%is_valid = .false.
                         exit
                     end if

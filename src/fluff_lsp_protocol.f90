@@ -1,7 +1,7 @@
 module fluff_lsp_protocol
     use fluff_diagnostics, only: diagnostic_t, SEVERITY_ERROR, SEVERITY_HINT, &
-                                 SEVERITY_INFO, &
-                                 SEVERITY_WARNING
+        SEVERITY_INFO, &
+        SEVERITY_WARNING
     use fluff_json, only: json_escape_string
     implicit none
     private
@@ -36,14 +36,14 @@ contains
         severity_str = int_to_str(lsp_severity)
 
         formatted = '{"range":{"start":{"line":'//start_line//',"character":'// &
-                    start_char//'},"end":{"line":'//end_line//',"character":'// &
-                    end_char//'}},"severity":'//severity_str//',"code":'// &
-                    code_json//',"source":"fluff","message":'//message_json//'}'
+            start_char//'},"end":{"line":'//end_line//',"character":'// &
+            end_char//'}},"severity":'//severity_str//',"code":'// &
+            code_json//',"source":"fluff","message":'//message_json//'}'
         success = .true.
     end subroutine lsp_format_diagnostic
 
     subroutine lsp_publish_diagnostics_notification(uri, diagnostics, &
-                                                    notification, success)
+            notification, success)
         character(len=*), intent(in) :: uri
         type(diagnostic_t), intent(in) :: diagnostics(:)
         character(len=:), allocatable, intent(out) :: notification
@@ -88,7 +88,7 @@ contains
     end subroutine lsp_clear_diagnostics_notification
 
     pure integer function lsp_severity_from_diagnostic(diagnostic_severity) &
-        result(lsp_severity)
+            result(lsp_severity)
         integer, intent(in) :: diagnostic_severity
 
         select case (diagnostic_severity)

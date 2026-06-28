@@ -1,12 +1,12 @@
 program test_lsp_diagnostics
     use fluff_ast, only: fluff_ast_context_t
     use fluff_json, only: json_array_length, json_get_member_json, &
-                          json_get_string_member, &
-                          json_parse
+        json_get_string_member, &
+        json_parse
     use fluff_linter, only: linter_engine_t
     use fluff_lsp_protocol, only: lsp_clear_diagnostics_notification, &
-                                  lsp_format_diagnostic, &
-                                  lsp_publish_diagnostics_notification
+        lsp_format_diagnostic, &
+        lsp_publish_diagnostics_notification
     use fluff_lsp_server, only: fluff_lsp_server_t
     use fluff_diagnostics, only: diagnostic_t
     use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -51,7 +51,7 @@ contains
         end if
 
         call server%handle_text_document_did_open("file:///test.f90", "fortran", 1, &
-                                                  sample_code_ok(), ok)
+            sample_code_ok(), ok)
         if (.not. ok) then
             print *, "[FAIL] Server didOpen"
             return
@@ -99,7 +99,7 @@ contains
         end if
 
         call json_get_member_json(params_json, "diagnostics", &
-                                  diagnostics_json, found, ok)
+            diagnostics_json, found, ok)
         if (.not. ok .or. .not. found) then
             print *, "[FAIL] Clear notification missing diagnostics"
             return
@@ -131,14 +131,14 @@ contains
         end if
 
         call lint_to_notification("file:///rt.f90", sample_code_changed(), &
-                                  expected2, ok)
+            expected2, ok)
         if (.not. ok) then
             print *, "[FAIL] Expected realtime notification 2"
             return
         end if
 
         call server%handle_text_document_did_open("file:///rt.f90", "fortran", 1, &
-                                                  sample_code_ok(), ok)
+            sample_code_ok(), ok)
         if (.not. ok) then
             print *, "[FAIL] Server didOpen realtime"
             return
@@ -150,8 +150,8 @@ contains
         end if
 
         call server%handle_text_document_did_change("file:///rt.f90", 2, &
-                                                    sample_code_changed(), &
-                                                    ok)
+            sample_code_changed(), &
+            ok)
         if (.not. ok) then
             print *, "[FAIL] Server didChange realtime"
             return
@@ -217,7 +217,7 @@ contains
         end if
 
         call lsp_publish_diagnostics_notification(uri, diagnostics, &
-                                                  notification, success)
+            notification, success)
     end subroutine lint_to_notification
 
     subroutine lint_to_diagnostics(content, diagnostics, success)
@@ -254,20 +254,20 @@ contains
         character(len=:), allocatable :: code
 
         code = "program test"//new_line('a')// &
-               "  implicit none"//new_line('a')// &
-               "  integer :: x"//new_line('a')// &
-               "  x = 1"//new_line('a')// &
-               "end program"
+            "  implicit none"//new_line('a')// &
+            "  integer :: x"//new_line('a')// &
+            "  x = 1"//new_line('a')// &
+            "end program"
     end function sample_code_ok
 
     function sample_code_changed() result(code)
         character(len=:), allocatable :: code
 
         code = "program test"//new_line('a')// &
-               "  implicit none"//new_line('a')// &
-               "  integer :: x"//new_line('a')// &
-               "  x = 2"//new_line('a')// &
-               "end program"
+            "  implicit none"//new_line('a')// &
+            "  integer :: x"//new_line('a')// &
+            "  x = 2"//new_line('a')// &
+            "end program"
     end function sample_code_changed
 
 end program test_lsp_diagnostics

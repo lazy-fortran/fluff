@@ -1,8 +1,8 @@
 program test_leading_ampersand
     use fluff_format_continuation, only: has_leading_ampersand_continuations, &
-                                         extract_continuation_regions, &
-                                         preserve_leading_ampersand_lines, &
-                                         continuation_region_t
+        extract_continuation_regions, &
+        preserve_leading_ampersand_lines, &
+        continuation_region_t
     use fluff_formatter, only: formatter_engine_t
     implicit none
 
@@ -33,8 +33,8 @@ contains
         print *, "Test: has_leading_ampersand_continuations detection"
 
         code_with = "x = 1 + &"//new_line('a')// &
-                    "    & 2 + &"//new_line('a')// &
-                    "    & 3"
+            "    & 2 + &"//new_line('a')// &
+            "    & 3"
 
         result = has_leading_ampersand_continuations(code_with)
         if (result) then
@@ -45,8 +45,8 @@ contains
         end if
 
         code_without = "x = 1 + &"//new_line('a')// &
-                       "    2 + &"//new_line('a')// &
-                       "    3"
+            "    2 + &"//new_line('a')// &
+            "    3"
 
         result = has_leading_ampersand_continuations(code_without)
         if (.not. result) then
@@ -69,10 +69,10 @@ contains
         print *, "Test: extract_continuation_regions"
 
         code = "program test"//new_line('a')// &
-               "    x = 1 + &"//new_line('a')// &
-               "        & 2 + &"//new_line('a')// &
-               "        & 3"//new_line('a')// &
-               "end program test"
+            "    x = 1 + &"//new_line('a')// &
+            "        & 2 + &"//new_line('a')// &
+            "        & 3"//new_line('a')// &
+            "end program test"
 
         call extract_continuation_regions(code, regions)
 
@@ -113,12 +113,12 @@ contains
         print *, "Test: preserve_leading_ampersand_lines indentation"
 
         original = "    x = 1 + &"//new_line('a')// &
-                   "            & 2 + &"//new_line('a')// &
-                   "            & 3"
+            "            & 2 + &"//new_line('a')// &
+            "            & 3"
 
         formatted = "    x = 1 + &"//new_line('a')// &
-                    "      & 2 + &"//new_line('a')// &
-                    "      & 3"
+            "      & 2 + &"//new_line('a')// &
+            "      & 3"
 
         call preserve_leading_ampersand_lines(original, formatted, result)
 
@@ -150,15 +150,15 @@ contains
         long_vars = "very_long_variable_name_one + very_long_variable_name_two"
 
         source = "program preserve_test"//new_line('a')// &
-                 "    implicit none"//new_line('a')// &
-                 "    real :: very_long_variable_name_one"//new_line('a')// &
-                 "    real :: very_long_variable_name_two"//new_line('a')// &
-                 "    real :: very_long_result_variable"//new_line('a')// &
-                 "    very_long_result_variable = "//long_vars//" + &"// &
-                 new_line('a')// &
-                 "                                & "//long_vars// &
-                 new_line('a')// &
-                 "end program preserve_test"
+            "    implicit none"//new_line('a')// &
+            "    real :: very_long_variable_name_one"//new_line('a')// &
+            "    real :: very_long_variable_name_two"//new_line('a')// &
+            "    real :: very_long_result_variable"//new_line('a')// &
+            "    very_long_result_variable = "//long_vars//" + &"// &
+            new_line('a')// &
+            "                                & "//long_vars// &
+            new_line('a')// &
+            "end program preserve_test"
 
         call formatter%format_source(source, formatted, error_msg)
 

@@ -118,9 +118,9 @@ contains
         character(len=1), intent(in) :: ch
 
         is_identifier_char = (ch >= 'a' .and. ch <= 'z') .or. &
-                             (ch >= 'A' .and. ch <= 'Z') .or. &
-                             (ch >= '0' .and. ch <= '9') .or. &
-                             ch == '_'
+            (ch >= 'A' .and. ch <= 'Z') .or. &
+            (ch >= '0' .and. ch <= '9') .or. &
+            ch == '_'
     end function is_identifier_char
 
     ! Find identifier as whole word (not substring)
@@ -219,7 +219,7 @@ contains
                     if (index(lines(pos), "::") > 0) then
                         if (find_identifier(lines(pos), orig_name) > 0) then
                             location%line = pos
-                         location%character = find_identifier(lines(pos), orig_name) - 1
+                            location%character = find_identifier(lines(pos), orig_name) - 1
                             location%found = .true.
                             return
                         end if
@@ -240,7 +240,7 @@ contains
 
         ! Initialize
         location%found = .false.
-        location%uri = "file:///test.f90"  ! Simplified for GREEN phase
+        location%uri = "file:///test.f90" ! Simplified for GREEN phase
 
         ! First check for procedure arguments in subroutine/function header
         do i = current_line - 1, 1, -1
@@ -254,7 +254,7 @@ contains
                     pos = index(lines(i) (paren_pos:), token)
                     if (pos > 0) then
                         location%line = i
-                        location%character = paren_pos + pos - 2  ! Convert to 0-based
+                        location%character = paren_pos + pos - 2 ! Convert to 0-based
                         location%found = .true.
                         return
                     end if
@@ -273,7 +273,7 @@ contains
                 if (pos > index(lines(i), "::")) then
                     ! Found variable declaration
                     location%line = i
-                    location%character = pos - 1  ! Convert to 0-based
+                    location%character = pos - 1 ! Convert to 0-based
                     location%found = .true.
                     return
                 end if
@@ -281,11 +281,11 @@ contains
 
             ! Check for procedure definitions (not arguments)
             if ((index(trimmed_line, "subroutine") > 0 .or. &
-                 index(trimmed_line, "function") > 0) .and. &
+                index(trimmed_line, "function") > 0) .and. &
                 find_identifier(lines(i), token) > 0) then
                 pos = find_identifier(lines(i), token)
                 location%line = i
-                location%character = pos - 1  ! Convert to 0-based
+                location%character = pos - 1 ! Convert to 0-based
                 location%found = .true.
                 return
             end if
@@ -296,7 +296,7 @@ contains
                 find_identifier(lines(i), token) > 0) then
                 pos = find_identifier(lines(i), token)
                 location%line = i
-                location%character = pos - 1  ! Convert to 0-based
+                location%character = pos - 1 ! Convert to 0-based
                 location%found = .true.
                 return
             end if
@@ -307,7 +307,7 @@ contains
                 find_identifier(lines(i), token) > 0) then
                 pos = find_identifier(lines(i), token)
                 location%line = i
-                location%character = pos - 1  ! Convert to 0-based
+                location%character = pos - 1 ! Convert to 0-based
                 location%found = .true.
                 return
             end if
@@ -322,7 +322,7 @@ contains
                 pos = find_identifier(lines(i), token)
                 if (pos > 0) then
                     location%line = i
-                    location%character = pos - 1  ! Convert to 0-based
+                    location%character = pos - 1 ! Convert to 0-based
                     location%found = .true.
                     return
                 end if
@@ -333,7 +333,7 @@ contains
                 pos = find_identifier(lines(i), token)
                 if (pos > 0) then
                     location%line = i
-                    location%character = pos - 1  ! Convert to 0-based
+                    location%character = pos - 1 ! Convert to 0-based
                     location%found = .true.
                     return
                 end if
@@ -367,7 +367,7 @@ contains
         if (token == "external_module") then
             location%uri = "file:///src/external_module.f90"
             location%line = 1
-            location%character = 7  ! "module " is 7 chars, 0-based position
+            location%character = 7 ! "module " is 7 chars, 0-based position
             location%found = .true.
             return
         else if (token == "common") then
@@ -379,13 +379,13 @@ contains
         else if (token == "parent") then
             location%uri = "file:///src/parent.f90"
             location%line = 1
-            location%character = 7  ! "module " is 7 chars
+            location%character = 7 ! "module " is 7 chars
             location%found = .true.
             return
         else if (token == "solver") then
             location%uri = "file:///lib/solver.f90"
             location%line = 1
-            location%character = 11  ! "subroutine " is 11 chars
+            location%character = 11 ! "subroutine " is 11 chars
             location%found = .true.
             return
         end if

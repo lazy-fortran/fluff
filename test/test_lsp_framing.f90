@@ -31,19 +31,19 @@ contains
 
         ! Test 1: Valid Content-Length header
         call run_content_length_test("Valid Content-Length", &
-                                     "Content-Length: 123", 123, .true.)
+            "Content-Length: 123", 123, .true.)
 
         ! Test 2: Content-Length with leading whitespace in value
         call run_content_length_test("Content-Length with whitespace", &
-                                     "Content-Length:   456", 456, .true.)
+            "Content-Length:   456", 456, .true.)
 
         ! Test 3: Zero Content-Length
         call run_content_length_test("Zero Content-Length", &
-                                     "Content-Length: 0", 0, .true.)
+            "Content-Length: 0", 0, .true.)
 
         ! Test 4: Large Content-Length
         call run_content_length_test("Large Content-Length", &
-                                     "Content-Length: 9999999", 9999999, .true.)
+            "Content-Length: 9999999", 9999999, .true.)
 
     end subroutine test_parse_content_length
 
@@ -53,15 +53,15 @@ contains
 
         ! Test 1: Missing value
         call run_content_length_test("Missing value", &
-                                     "Content-Length: ", -1, .false.)
+            "Content-Length: ", -1, .false.)
 
         ! Test 2: Invalid value (non-numeric)
         call run_content_length_test("Non-numeric value", &
-                                     "Content-Length: abc", -1, .false.)
+            "Content-Length: abc", -1, .false.)
 
         ! Test 3: Negative value
         call run_content_length_test("Negative value", &
-                                     "Content-Length: -1", -1, .false.)
+            "Content-Length: -1", -1, .false.)
 
         ! Test 4: Empty header
         call run_content_length_test("Empty header", "", -1, .false.)
@@ -72,7 +72,7 @@ contains
     end subroutine test_content_length_edge_cases
 
     subroutine run_content_length_test(test_name, header, expected_length, &
-                                       expected_success)
+            expected_success)
         character(len=*), intent(in) :: test_name, header
         integer, intent(in) :: expected_length
         logical, intent(in) :: expected_success

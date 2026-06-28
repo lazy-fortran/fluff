@@ -107,7 +107,7 @@ contains
 
         ! Read file contents preserving trailing whitespace
         open (newunit=unit, file=filename, status='old', action='read', &
-              access='stream', form='unformatted', iostat=iostat)
+            access='stream', form='unformatted', iostat=iostat)
         if (iostat /= 0) then
             error_msg = "Failed to open file: "//filename
             allocate (diagnostics(0))
@@ -136,7 +136,7 @@ contains
         call ast_ctx%from_source(source_code, error_msg)
 
         call set_current_file_context(filename, this%config%line_length, &
-                                      this%config%tab_width)
+            this%config%tab_width)
 
         if (allocated(error_msg) .and. len(error_msg) > 0) then
             ! Return parse error gracefully instead of crashing
@@ -339,12 +339,12 @@ contains
 
                     ! Execute rule
                     call enabled_rules(i)%check(ast_ctx, ast_ctx%root_index, &
-                                                rule_violations)
+                        rule_violations)
 
                     ! End timing
                     if (allocated(rule_violations)) then
                         call this%metrics%end_rule(enabled_rules(i)%code, rule_timer, &
-                                                   size(rule_violations))
+                            size(rule_violations))
                         ! Append violations
                         all_violations = [all_violations, rule_violations]
                         total_violations = total_violations + size(rule_violations)
@@ -393,7 +393,7 @@ contains
 
         ! Split source into lines
         line_count = count([(source_code(i:i) == new_line('a'), i=1, &
-                             len(source_code))]) + 1
+            len(source_code))]) + 1
         allocate (character(len=200) :: ctx%lines(line_count))
 
         ! Simple line splitting
@@ -446,7 +446,7 @@ contains
     ! Execute all enabled rules in parallel
     subroutine registry_execute_rules_parallel(this, ast_ctx, selection, diagnostics)
         use fluff_config, only: rule_selection_t
-!$      use omp_lib
+        !$      use omp_lib
         class(rule_registry_t), intent(inout) :: this
         type(fluff_ast_context_t), intent(in) :: ast_ctx
         type(rule_selection_t), intent(in), optional :: selection
@@ -468,7 +468,7 @@ contains
 
         ! Determine number of threads
         num_threads = 1
-!$      num_threads = omp_get_max_threads()
+        !$      num_threads = omp_get_max_threads()
 
         ! Fall back to serial execution for small rule sets or no OpenMP
         if (size(enabled_rules) < 3 .or. num_threads == 1) then
@@ -480,21 +480,21 @@ contains
         allocate (all_violations(0))
 
         ! Execute rules in parallel with critical section for results
-!$omp parallel private(i,rule_violations) shared(all_violations,enabled_rules,ast_ctx)
-!$omp do
+        !$omp parallel private(i,rule_violations) shared(all_violations,enabled_rules,ast_ctx)
+        !$omp do
         do i = 1, size(enabled_rules)
             if (associated(enabled_rules(i)%check)) then
                 call enabled_rules(i)%check(ast_ctx, 1, rule_violations)
 
                 if (allocated(rule_violations)) then
-!$omp critical
+                    !$omp critical
                     all_violations = [all_violations, rule_violations]
-!$omp end critical
+                    !$omp end critical
                 end if
             end if
         end do
-!$omp end do
-!$omp end parallel
+        !$omp end do
+        !$omp end parallel
 
         ! Return all violations
         diagnostics = all_violations

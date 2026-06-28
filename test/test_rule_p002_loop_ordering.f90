@@ -3,8 +3,8 @@ program test_rule_p002_loop_ordering
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code, &
-                            lint_file_checked
+        delete_file_if_exists, assert_has_diagnostic_code, &
+        lint_file_checked
     implicit none
 
     print *, "Testing P002: Inefficient loop ordering rule..."
@@ -26,19 +26,19 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
-                    "    real :: matrix(n, m)"//new_line('a')// &
-                    "    integer :: i, j"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "    ! Inefficient: accessing by rows in "//new_line('a')// &
-                    "    ! column-major Fortran"//new_line('a')// &
-                    "    do i = 1, n"//new_line('a')// &
-                    "        do j = 1, m"//new_line('a')// &
-                    "            matrix(i, j) = real(i * j)"//new_line('a')// &
-                    "        end do"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+            "    real :: matrix(n, m)"//new_line('a')// &
+            "    integer :: i, j"//new_line('a')// &
+            "    "//new_line('a')// &
+            "    ! Inefficient: accessing by rows in "//new_line('a')// &
+            "    ! column-major Fortran"//new_line('a')// &
+            "    do i = 1, n"//new_line('a')// &
+            "        do j = 1, m"//new_line('a')// &
+            "            matrix(i, j) = real(i * j)"//new_line('a')// &
+            "        end do"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -48,7 +48,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P002", .true., &
-                                        "inefficient loop ordering should be flagged")
+            "inefficient loop ordering should be flagged")
         print *, "[OK] Column-major inefficient ordering"
 
     end subroutine test_column_major_inefficient
@@ -60,19 +60,19 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
-                    "    real :: matrix(n, m)"//new_line('a')// &
-                    "    integer :: i, j"//new_line('a')// &
-                    "    "//new_line('a')// &
-                    "    ! Efficient: accessing by columns in "//new_line('a')// &
-                    "    ! column-major Fortran"//new_line('a')// &
-                    "    do j = 1, m"//new_line('a')// &
-                    "        do i = 1, n"//new_line('a')// &
-                    "            matrix(i, j) = real(i * j)"//new_line('a')// &
-                    "        end do"//new_line('a')// &
-                    "    end do"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer, parameter :: n = 10, m = 10"//new_line('a')// &
+            "    real :: matrix(n, m)"//new_line('a')// &
+            "    integer :: i, j"//new_line('a')// &
+            "    "//new_line('a')// &
+            "    ! Efficient: accessing by columns in "//new_line('a')// &
+            "    ! column-major Fortran"//new_line('a')// &
+            "    do j = 1, m"//new_line('a')// &
+            "        do i = 1, n"//new_line('a')// &
+            "            matrix(i, j) = real(i * j)"//new_line('a')// &
+            "        end do"//new_line('a')// &
+            "    end do"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -82,7 +82,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P002", .false., &
-                                        "efficient loop ordering should not be flagged")
+            "efficient loop ordering should not be flagged")
         print *, "[OK] Row-major efficient ordering"
 
     end subroutine test_row_major_efficient

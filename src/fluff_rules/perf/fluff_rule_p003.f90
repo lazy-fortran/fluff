@@ -4,7 +4,7 @@ module fluff_rule_p003
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, binary_op_node, declaration_node, &
-                         identifier_node, literal_node
+        identifier_node, literal_node
     implicit none
     private
 
@@ -49,23 +49,23 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (n => ctx%arena%entries(i)%node)
-            type is (assignment_node)
+                type is (assignment_node)
                 if (is_whole_array_binary_assignment(ctx, i, props)) then
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                        code="P003", &
-                                        message="Whole-array expression may "// &
-                                        "create temporaries", &
-                                        file_path=current_filename, &
-                                        location=ctx%get_node_location(i), &
-                                        severity=SEVERITY_INFO &
-                                        ))
+                        code="P003", &
+                        message="Whole-array expression may "// &
+                        "create temporaries", &
+                        file_path=current_filename, &
+                        location=ctx%get_node_location(i), &
+                        severity=SEVERITY_INFO &
+                        ))
                 end if
             end select
         end do
     end subroutine analyze_p003
 
     logical function is_whole_array_binary_assignment(ctx, node_index, props) &
-        result(is_bad)
+            result(is_bad)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         type(var_prop_t), allocatable, intent(in) :: props(:)
@@ -78,7 +78,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (a => ctx%arena%entries(node_index)%node)
-        type is (assignment_node)
+            type is (assignment_node)
             target_idx = a%target_index
             value_idx = a%value_index
         class default
@@ -93,7 +93,7 @@ contains
         if (.not. allocated(ctx%arena%entries(value_idx)%node)) return
 
         select type (b => ctx%arena%entries(value_idx)%node)
-        type is (binary_op_node)
+            type is (binary_op_node)
             if (.not. allocated(b%operator)) return
             op = trim(b%operator)
             if (op /= "+" .and. op /= "-" .and. op /= "*" .and. op /= "/") return
@@ -119,7 +119,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
         end select
     end subroutine get_identifier_arg_name
@@ -133,7 +133,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (d => ctx%arena%entries(i)%node)
-            type is (declaration_node)
+                type is (declaration_node)
                 call add_decl_props(ctx, i, props)
             end select
         end do
@@ -152,7 +152,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (d => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             if (.not. allocated(d%type_name)) return
             tname = to_lower_ascii(trim(d%type_name))
             rk = -1

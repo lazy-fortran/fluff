@@ -1,7 +1,7 @@
 program test_format_check
     use fluff_cli
     use test_support, only: make_temp_fortran_path, read_text_file, &
-                            delete_file_if_exists
+        delete_file_if_exists
     implicit none
 
     print *, "Testing format --check mode..."
@@ -19,7 +19,7 @@ contains
         integer :: unit, ios
 
         open (newunit=unit, file=path, status="replace", action="write", &
-              access="stream", form="unformatted", iostat=ios)
+            access="stream", form="unformatted", iostat=ios)
         if (ios /= 0) then
             error stop "Failed to open file for writing: "//trim(path)
         end if

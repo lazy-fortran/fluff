@@ -3,7 +3,7 @@ program test_rule_f011_missing_end_labels
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F011: Missing end statement labels rule..."
@@ -33,22 +33,22 @@ contains
         logical :: found_f011
 
         test_code = "program test_prog"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "    subroutine calc_values(x, y)"//new_line('a')// &
-                    "        real, intent(in) :: x, y"//new_line('a')// &
-                    "        print *, x + y"//new_line('a')// &
-                    "    end subroutine"//new_line('a')// &  ! Missing label
-                    ""//new_line('a')// &
-                    "    function compute(a) result(b)"//new_line('a')// &
-                    "        real, intent(in) :: a"//new_line('a')// &
-                    "        real :: b"//new_line('a')// &
-                    "        b = a * 2.0"//new_line('a')// &
-                    "    end function"//new_line('a')// &  ! Missing label
-                    ""//new_line('a')// &
-                    "end program"  ! Missing label
+            "    implicit none"//new_line('a')// &
+            ""//new_line('a')// &
+            "contains"//new_line('a')// &
+            ""//new_line('a')// &
+            "    subroutine calc_values(x, y)"//new_line('a')// &
+            "        real, intent(in) :: x, y"//new_line('a')// &
+            "        print *, x + y"//new_line('a')// &
+            "    end subroutine"//new_line('a')// & ! Missing label
+            ""//new_line('a')// &
+            "    function compute(a) result(b)"//new_line('a')// &
+            "        real, intent(in) :: a"//new_line('a')// &
+            "        real :: b"//new_line('a')// &
+            "        b = a * 2.0"//new_line('a')// &
+            "    end function"//new_line('a')// & ! Missing label
+            ""//new_line('a')// &
+            "end program" ! Missing label
 
         linter = create_linter_engine()
 
@@ -89,22 +89,22 @@ contains
         logical :: found_f011
 
         test_code = "program test_prog"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "    subroutine calc_values(x, y)"//new_line('a')// &
-                    "        real, intent(in) :: x, y"//new_line('a')// &
-                    "        print *, x + y"//new_line('a')// &
-                    "    end subroutine calc_values"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "    function compute(a) result(b)"//new_line('a')// &
-                    "        real, intent(in) :: a"//new_line('a')// &
-                    "        real :: b"//new_line('a')// &
-                    "        b = a * 2.0"//new_line('a')// &
-                    "    end function compute"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "end program test_prog"
+            "    implicit none"//new_line('a')// &
+            ""//new_line('a')// &
+            "contains"//new_line('a')// &
+            ""//new_line('a')// &
+            "    subroutine calc_values(x, y)"//new_line('a')// &
+            "        real, intent(in) :: x, y"//new_line('a')// &
+            "        print *, x + y"//new_line('a')// &
+            "    end subroutine calc_values"//new_line('a')// &
+            ""//new_line('a')// &
+            "    function compute(a) result(b)"//new_line('a')// &
+            "        real, intent(in) :: a"//new_line('a')// &
+            "        real :: b"//new_line('a')// &
+            "        b = a * 2.0"//new_line('a')// &
+            "    end function compute"//new_line('a')// &
+            ""//new_line('a')// &
+            "end program test_prog"
 
         linter = create_linter_engine()
 
@@ -145,15 +145,15 @@ contains
         logical :: found_f011
 
         test_code = "module m"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    "    subroutine ok()"//new_line('a')// &
-                    "        implicit none"//new_line('a')// &
-                    "    end subroutine ok"//new_line('a')// &
-                    "    subroutine bad()"//new_line('a')// &
-                    "        implicit none"//new_line('a')// &
-                    "    end subroutine"//new_line('a')// &
-                    "end module m"
+            "    implicit none"//new_line('a')// &
+            "contains"//new_line('a')// &
+            "    subroutine ok()"//new_line('a')// &
+            "        implicit none"//new_line('a')// &
+            "    end subroutine ok"//new_line('a')// &
+            "    subroutine bad()"//new_line('a')// &
+            "        implicit none"//new_line('a')// &
+            "    end subroutine"//new_line('a')// &
+            "end module m"
 
         linter = create_linter_engine()
 
@@ -190,14 +190,14 @@ contains
         logical :: found_f011
 
         test_code = "module m"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    "    function f(x) result(y)"//new_line('a')// &
-                    "        integer, intent(in) :: x"//new_line('a')// &
-                    "        integer :: y"//new_line('a')// &
-                    "        y = x + 1"//new_line('a')// &
-                    "    end function"//new_line('a')// &
-                    "end module m"
+            "    implicit none"//new_line('a')// &
+            "contains"//new_line('a')// &
+            "    function f(x) result(y)"//new_line('a')// &
+            "        integer, intent(in) :: x"//new_line('a')// &
+            "        integer :: y"//new_line('a')// &
+            "        y = x + 1"//new_line('a')// &
+            "    end function"//new_line('a')// &
+            "end module m"
 
         linter = create_linter_engine()
 

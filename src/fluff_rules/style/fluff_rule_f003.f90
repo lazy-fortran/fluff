@@ -3,7 +3,7 @@ module fluff_rule_f003
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename, current_line_length, &
-                                       current_tab_width
+        current_tab_width
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fluff_text_helpers, only: is_comment_only_line, int_to_str
     use fluff_visual_columns, only: visual_columns
@@ -50,9 +50,9 @@ contains
             if (line_length > max_length) then
                 if (.not. is_comment_only_line(line_text)) then
                     call push_diagnostic(buffer, violation_count, &
-                                         create_f003_diagnostic(line_num, &
-                                                                line_length, &
-                                                                max_length))
+                        create_f003_diagnostic(line_num, &
+                        line_length, &
+                        max_length))
                 end if
             end if
 
@@ -84,12 +84,12 @@ contains
         location%end%column = line_length
 
         diag = create_diagnostic( &
-               code="F003", &
-               message="Line too long ("//trim(int_to_str(line_length))//" > "// &
-               trim(int_to_str(max_length))//" characters)", &
-               file_path=current_filename, &
-               location=location, &
-               severity=SEVERITY_WARNING)
+            code="F003", &
+            message="Line too long ("//trim(int_to_str(line_length))//" > "// &
+            trim(int_to_str(max_length))//" characters)", &
+            file_path=current_filename, &
+            location=location, &
+            severity=SEVERITY_WARNING)
     end function create_f003_diagnostic
 
 end module fluff_rule_f003

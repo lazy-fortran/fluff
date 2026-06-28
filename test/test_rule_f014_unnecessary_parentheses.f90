@@ -3,7 +3,7 @@ program test_rule_f014_unnecessary_parentheses
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F014: Unnecessary parentheses rule..."
@@ -35,18 +35,18 @@ contains
         ! Enable test - fortfront is now available
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y, z"//new_line('a')// &
-                    "    x = (10)"//new_line('a')// &
-                    ! Unnecessary parentheses
-                    "    y = ((20))"//new_line('a')// &
-                    ! Double unnecessary parentheses
-                    "    z = (x + y) * 2"//new_line('a')// &   ! This one is needed
-                    "    if ((x > 5)) then"//new_line('a')// &
-                    ! Unnecessary in condition
-                    "        print *, (x)"//new_line('a')// &  ! Unnecessary in print
-                    "    end if"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y, z"//new_line('a')// &
+            "    x = (10)"//new_line('a')// &
+        ! Unnecessary parentheses
+        "    y = ((20))"//new_line('a')// &
+        ! Double unnecessary parentheses
+        "    z = (x + y) * 2"//new_line('a')// & ! This one is needed
+            "    if ((x > 5)) then"//new_line('a')// &
+        ! Unnecessary in condition
+        "        print *, (x)"//new_line('a')// & ! Unnecessary in print
+            "    end if"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -88,19 +88,19 @@ contains
         ! F014 rule now has proper precedence detection
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y, z"//new_line('a')// &
-                    "    x = 10"//new_line('a')// &
-                    "    y = 20"//new_line('a')// &
-                    "    z = (x + y) * 2"//new_line('a')// &
-                    ! Necessary for precedence
-                    "    if (x > 5 .and. y < 30) then"//new_line('a')// &
-                    ! Normal condition
-                    "        print *, x, y"//new_line('a')// &
-                    "    end if"//new_line('a')// &
-                    "    z = x * (y + 10)"//new_line('a')// &
-                    ! Necessary for precedence
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y, z"//new_line('a')// &
+            "    x = 10"//new_line('a')// &
+            "    y = 20"//new_line('a')// &
+            "    z = (x + y) * 2"//new_line('a')// &
+        ! Necessary for precedence
+        "    if (x > 5 .and. y < 30) then"//new_line('a')// &
+        ! Normal condition
+        "        print *, x, y"//new_line('a')// &
+            "    end if"//new_line('a')// &
+            "    z = x * (y + 10)"//new_line('a')// &
+        ! Necessary for precedence
+        "end program test"
 
         linter = create_linter_engine()
 
@@ -140,13 +140,13 @@ contains
         logical :: found_f014
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y, z"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    y = 2"//new_line('a')// &
-                    "    z = (x + y)"//new_line('a')// &  ! Not flagged (has operator)
-                    "    print *, z"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y, z"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    y = 2"//new_line('a')// &
+            "    z = (x + y)"//new_line('a')// & ! Not flagged (has operator)
+            "    print *, z"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -184,12 +184,12 @@ contains
         logical :: found_f014
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y"//new_line('a')// &
-                    "    x = 1"//new_line('a')// &
-                    "    y = abs(x)"//new_line('a')// &
-                    "    print *, y"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y"//new_line('a')// &
+            "    x = 1"//new_line('a')// &
+            "    y = abs(x)"//new_line('a')// &
+            "    print *, y"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

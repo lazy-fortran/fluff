@@ -2,13 +2,13 @@ module fluff_rule_f001
     use fluff_ast, only: fluff_ast_context_t
     use fluff_core, only: source_range_t
     use fluff_diagnostics, only: diagnostic_t, fix_suggestion_t, text_edit_t, &
-                                 create_diagnostic, SEVERITY_WARNING
+        create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_diagnostic_utils, only: push_diagnostic
     use fortfront, only: comment_node, declaration_node, directive_node, &
-                         function_def_node, implicit_statement_node, &
-                         interface_block_node, module_node, program_node, &
-                         subroutine_def_node, use_statement_node
+        function_def_node, implicit_statement_node, &
+        interface_block_node, module_node, program_node, &
+        subroutine_def_node, use_statement_node
     implicit none
     private
 
@@ -34,7 +34,7 @@ contains
     end subroutine check_f001_implicit_none
 
     recursive subroutine walk_tree(ctx, node_index, in_interface, tmp, &
-                                   violation_count)
+            violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         logical, intent(in) :: in_interface
@@ -50,21 +50,21 @@ contains
 
         child_in_interface = in_interface
         select type (node => ctx%arena%entries(node_index)%node)
-        type is (interface_block_node)
+            type is (interface_block_node)
             child_in_interface = .true.
-        type is (program_node)
+            type is (program_node)
             if (.not. in_interface) then
                 call check_scope(ctx, node_index, tmp, violation_count)
             end if
-        type is (module_node)
+            type is (module_node)
             if (.not. in_interface) then
                 call check_scope(ctx, node_index, tmp, violation_count)
             end if
-        type is (subroutine_def_node)
+            type is (subroutine_def_node)
             if (.not. in_interface) then
                 call check_scope(ctx, node_index, tmp, violation_count)
             end if
-        type is (function_def_node)
+            type is (function_def_node)
             if (.not. in_interface) then
                 call check_scope(ctx, node_index, tmp, violation_count)
             end if
@@ -101,11 +101,11 @@ contains
 
         location = ctx%get_node_location(scope_index)
         diag = create_diagnostic( &
-               code="F001", &
-               message="Missing implicit none statement", &
-               file_path=current_filename, &
-               location=location, &
-               severity=SEVERITY_WARNING)
+            code="F001", &
+            message="Missing implicit none statement", &
+            file_path=current_filename, &
+            location=location, &
+            severity=SEVERITY_WARNING)
 
         fix%description = "Add implicit none statement"
         fix%is_safe = .true.
@@ -117,12 +117,12 @@ contains
             if (.not. allocated(ctx%arena%entries(children(i))%node)) cycle
 
             select type (n => ctx%arena%entries(children(i))%node)
-            type is (use_statement_node)
+                type is (use_statement_node)
                 child_location = ctx%get_node_location(children(i))
                 insert_line = max(insert_line, child_location%end%line + 1)
-            type is (comment_node)
+                type is (comment_node)
                 cycle
-            type is (directive_node)
+                type is (directive_node)
                 cycle
             class default
                 exit
@@ -145,7 +145,7 @@ contains
     end subroutine check_scope
 
     recursive logical function scope_has_implicit_none(ctx, scope_index, &
-                                                       node_index) result(found)
+            node_index) result(found)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: scope_index
         integer, intent(in) :: node_index
@@ -159,15 +159,15 @@ contains
 
         if (node_index /= scope_index) then
             select type (n => ctx%arena%entries(node_index)%node)
-            type is (subroutine_def_node)
+                type is (subroutine_def_node)
                 return
-            type is (function_def_node)
+                type is (function_def_node)
                 return
             end select
         end if
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (implicit_statement_node)
+            type is (implicit_statement_node)
             found = n%is_none
             return
         end select
@@ -184,7 +184,7 @@ contains
     end function scope_has_implicit_none
 
     recursive logical function scope_has_declarations(ctx, scope_index, &
-                                                      node_index) result(found)
+            node_index) result(found)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: scope_index
         integer, intent(in) :: node_index
@@ -198,15 +198,15 @@ contains
 
         if (node_index /= scope_index) then
             select type (n => ctx%arena%entries(node_index)%node)
-            type is (subroutine_def_node)
+                type is (subroutine_def_node)
                 return
-            type is (function_def_node)
+                type is (function_def_node)
                 return
             end select
         end if
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             found = .true.
             return
         end select

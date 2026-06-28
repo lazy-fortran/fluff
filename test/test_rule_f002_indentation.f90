@@ -3,7 +3,7 @@ program test_rule_f002_indentation
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F002: Inconsistent indentation rule..."
@@ -34,10 +34,10 @@ contains
 
         ! Note: using explicit spaces for clarity
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &  ! 4 spaces
-                    "  integer :: x"//new_line('a')// &      ! 2 spaces (inconsistent)
-                    "    x = 42"//new_line('a')// &          ! 4 spaces
-                    "end program test"
+            "    implicit none"//new_line('a')// & ! 4 spaces
+            "  integer :: x"//new_line('a')// & ! 2 spaces (inconsistent)
+            "    x = 42"//new_line('a')// & ! 4 spaces
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -77,10 +77,10 @@ contains
         logical :: found_f002
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = 42"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -120,10 +120,10 @@ contains
         logical :: found_f002
 
         test_code = "program test"//new_line('a')// &
-                    "  implicit none"//new_line('a')// &
-                    "  integer :: x"//new_line('a')// &
-                    "  x = 42"//new_line('a')// &
-                    "end program test"
+            "  implicit none"//new_line('a')// &
+            "  integer :: x"//new_line('a')// &
+            "  x = 42"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -161,10 +161,10 @@ contains
         logical :: found_f002
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "      x = 1"//new_line('a')// &  ! 6 spaces: inconsistent with 4
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "      x = 1"//new_line('a')// & ! 6 spaces: inconsistent with 4
+            "end program test"
 
         linter = create_linter_engine()
 

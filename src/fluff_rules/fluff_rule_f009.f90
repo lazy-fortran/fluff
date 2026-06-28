@@ -5,7 +5,7 @@ module fluff_rule_f009
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, call_or_subscript_node, declaration_node, &
-                         identifier_node
+        identifier_node
     implicit none
     private
 
@@ -37,7 +37,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (n => ctx%arena%entries(i)%node)
-            type is (declaration_node)
+                type is (declaration_node)
                 call add_declaration_intents(ctx, i, intents)
             end select
         end do
@@ -45,7 +45,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (n => ctx%arena%entries(i)%node)
-            type is (assignment_node)
+                type is (assignment_node)
                 call handle_assignment_node(ctx, i, intents, tmp, violation_count)
             end select
         end do
@@ -70,7 +70,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (node => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             if (.not. node%has_intent) return
             intent_lc = to_lower_ascii(trim(node%intent))
 
@@ -78,12 +78,12 @@ contains
                 do i = 1, size(node%var_names)
                     name = to_lower_ascii(trim(node%var_names(i)))
                     call upsert_intent(intents, name, intent_lc, &
-                                       ctx%get_node_location(node_index))
+                        ctx%get_node_location(node_index))
                 end do
             else if (allocated(node%var_name)) then
                 name = to_lower_ascii(trim(node%var_name))
                 call upsert_intent(intents, name, intent_lc, &
-                                   ctx%get_node_location(node_index))
+                    ctx%get_node_location(node_index))
             end if
         end select
     end subroutine add_declaration_intents
@@ -99,7 +99,7 @@ contains
         character(len=:), allocatable :: target
 
         select type (a => ctx%arena%entries(node_index)%node)
-        type is (assignment_node)
+            type is (assignment_node)
             target_index = a%target_index
         class default
             target_index = 0
@@ -114,8 +114,8 @@ contains
 
         target = to_lower_ascii(trim(target))
         call handle_assignment_to_target(target, &
-                                         ctx%get_node_location(node_index), intents, &
-                                         tmp, violation_count)
+            ctx%get_node_location(node_index), intents, &
+            tmp, violation_count)
     end subroutine handle_assignment_node
 
     subroutine get_lhs_base_name(ctx, lhs_index, name)
@@ -128,15 +128,15 @@ contains
         if (.not. allocated(ctx%arena%entries(lhs_index)%node)) return
 
         select type (lhs => ctx%arena%entries(lhs_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (allocated(lhs%name)) name = lhs%name
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (allocated(lhs%name)) name = lhs%name
         end select
     end subroutine get_lhs_base_name
 
     subroutine handle_assignment_to_target(target, location, intents, tmp, &
-                                           violation_count)
+            violation_count)
         character(len=*), intent(in) :: target
         type(source_range_t), intent(in) :: location
         type(intent_var_t), allocatable, intent(inout) :: intents(:)
@@ -150,13 +150,13 @@ contains
                 intents(i)%was_assigned = .true.
                 if (intents(i)%intent == "in") then
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                        code="F009", &
-                                        message= &
-                                        "Do not assign to intent(in) dummy argument", &
-                                        file_path=current_filename, &
-                                        location=location, &
-                                        severity=SEVERITY_WARNING &
-                                        ))
+                        code="F009", &
+                        message= &
+                        "Do not assign to intent(in) dummy argument", &
+                        file_path=current_filename, &
+                        location=location, &
+                        severity=SEVERITY_WARNING &
+                        ))
                 end if
                 exit
             end if
@@ -173,13 +173,13 @@ contains
         do i = 1, size(intents)
             if (intents(i)%intent == "out" .and. .not. intents(i)%was_assigned) then
                 call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                    code="F009", &
-                                    message= &
-                                    "intent(out) dummy argument is never assigned", &
-                                    file_path=current_filename, &
-                                    location=intents(i)%decl_location, &
-                                    severity=SEVERITY_WARNING &
-                                    ))
+                    code="F009", &
+                    message= &
+                    "intent(out) dummy argument is never assigned", &
+                    file_path=current_filename, &
+                    location=intents(i)%decl_location, &
+                    severity=SEVERITY_WARNING &
+                    ))
             end if
         end do
     end subroutine add_unassigned_out
@@ -201,7 +201,7 @@ contains
         end do
 
         intents = [intents, intent_var_t(name=name, intent=intent, &
-                                         decl_location=decl_location)]
+            decl_location=decl_location)]
     end subroutine upsert_intent
 
 end module fluff_rule_f009

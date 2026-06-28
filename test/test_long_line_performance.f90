@@ -3,7 +3,7 @@ program test_long_line_performance
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing long line performance (fixes #206)..."
@@ -29,9 +29,9 @@ contains
         long_comment = "! " // repeat("x", 1500)
 
         test_code = "program test" // new_line('a') // &
-                    "    implicit none" // new_line('a') // &
-                    long_comment // new_line('a') // &
-                    "end program test"
+            "    implicit none" // new_line('a') // &
+            long_comment // new_line('a') // &
+            "end program test"
 
         call write_text_file(temp_path, test_code)
 
@@ -70,8 +70,8 @@ contains
         long_line = "    x = " // repeat("a + ", 200) // "b"
 
         test_code = "program test" // new_line('a') // &
-                    "    implicit none" // new_line('a') // &
-                    "    real :: x, a, b" // new_line('a')
+            "    implicit none" // new_line('a') // &
+            "    real :: x, a, b" // new_line('a')
 
         do i = 1, num_long_lines
             test_code = test_code // long_line // new_line('a')
@@ -105,7 +105,7 @@ contains
 
         print *, "[OK] Many long lines (", num_long_lines, " lines of 800+ chars)"
         print *, "     processed in", elapsed_seconds, "seconds with", &
-                 size(diagnostics), "diagnostics"
+            size(diagnostics), "diagnostics"
     end subroutine test_many_long_lines_completes_quickly
 
 end program test_long_line_performance

@@ -4,8 +4,8 @@ module fluff_rule_f008
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: declaration_node, function_def_node, identifier_node, &
-                         interface_block_node, parameter_declaration_node, &
-                         subroutine_def_node
+        interface_block_node, parameter_declaration_node, &
+        subroutine_def_node
     use ast_nodes_data, only: mixed_construct_container_node
     implicit none
     private
@@ -34,10 +34,10 @@ contains
         call get_traversal_roots(ctx, ctx%root_index, start_indices)
 
         call collect_interface_procedures_multi(ctx, start_indices, interface_procs, &
-                                                n_interface_procs)
+            n_interface_procs)
 
         call walk_procedures_multi(ctx, start_indices, interface_procs, &
-                                   n_interface_procs, tmp, violation_count)
+            n_interface_procs, tmp, violation_count)
 
         allocate (violations(violation_count))
         if (violation_count > 0) violations = tmp(1:violation_count)
@@ -58,7 +58,7 @@ contains
         end if
 
         select type (n => ctx%arena%entries(root_index)%node)
-        type is (mixed_construct_container_node)
+            type is (mixed_construct_container_node)
             if (allocated(n%explicit_program_indices)) then
                 start_indices = n%explicit_program_indices
             else
@@ -71,7 +71,7 @@ contains
     end subroutine get_traversal_roots
 
     subroutine collect_interface_procedures_multi(ctx, start_indices, interface_procs, &
-                                                  n_procs)
+            n_procs)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: start_indices(:)
         integer, allocatable, intent(inout) :: interface_procs(:)
@@ -82,12 +82,12 @@ contains
         do i = 1, size(start_indices)
             if (start_indices(i) <= 0) cycle
             call collect_interface_procedures(ctx, start_indices(i), interface_procs, &
-                                              n_procs)
+                n_procs)
         end do
     end subroutine collect_interface_procedures_multi
 
     subroutine walk_procedures_multi(ctx, start_indices, interface_procs, n_procs, &
-                                     tmp, violation_count)
+            tmp, violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: start_indices(:)
         integer, intent(in) :: interface_procs(:)
@@ -100,12 +100,12 @@ contains
         do i = 1, size(start_indices)
             if (start_indices(i) <= 0) cycle
             call walk_procedures(ctx, start_indices(i), interface_procs, n_procs, &
-                                 tmp, violation_count)
+                tmp, violation_count)
         end do
     end subroutine walk_procedures_multi
 
     recursive subroutine collect_interface_procedures(ctx, node_index, &
-                                                      interface_procs, n_procs)
+            interface_procs, n_procs)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         integer, allocatable, intent(inout) :: interface_procs(:)
@@ -119,14 +119,14 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (interface_block_node)
+            type is (interface_block_node)
             if (allocated(n%procedure_indices)) then
                 do j = 1, size(n%procedure_indices)
                     proc_idx = n%procedure_indices(j)
                     if (proc_idx <= 0) cycle
                     if (n_procs >= size(interface_procs)) then
                         allocate (new_procs(max(16, 2*size(interface_procs))))
-                      if (n_procs > 0) new_procs(1:n_procs) = interface_procs(1:n_procs)
+                        if (n_procs > 0) new_procs(1:n_procs) = interface_procs(1:n_procs)
                         call move_alloc(new_procs, interface_procs)
                     end if
                     n_procs = n_procs + 1
@@ -138,12 +138,12 @@ contains
         children = ctx%get_children(node_index)
         do i = 1, size(children)
             if (children(i) <= 0) cycle
-           call collect_interface_procedures(ctx, children(i), interface_procs, n_procs)
+            call collect_interface_procedures(ctx, children(i), interface_procs, n_procs)
         end do
     end subroutine collect_interface_procedures
 
     recursive subroutine walk_procedures(ctx, node_index, interface_procs, n_procs, &
-                                         tmp, violation_count)
+            tmp, violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         integer, intent(in) :: interface_procs(:)
@@ -168,9 +168,9 @@ contains
 
         if (.not. is_interface) then
             select type (n => ctx%arena%entries(node_index)%node)
-            type is (subroutine_def_node)
+                type is (subroutine_def_node)
                 call check_procedure(ctx, node_index, tmp, violation_count)
-            type is (function_def_node)
+                type is (function_def_node)
                 call check_procedure(ctx, node_index, tmp, violation_count)
             end select
         end if
@@ -179,7 +179,7 @@ contains
         do i = 1, size(children)
             if (children(i) <= 0) cycle
             call walk_procedures(ctx, children(i), interface_procs, n_procs, tmp, &
-                                 violation_count)
+                violation_count)
         end do
     end subroutine walk_procedures
 
@@ -203,7 +203,7 @@ contains
         has_intent = .false.
 
         call collect_param_intents(ctx, proc_index, proc_index, param_names, &
-                                   has_intent)
+            has_intent)
 
         missing_any = .false.
         do i = 1, n_params
@@ -216,11 +216,11 @@ contains
         if (.not. missing_any) return
 
         call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                             code="F008", &
-                         message="Missing intent declaration for procedure arguments", &
-                             file_path=current_filename, &
-                             location=ctx%get_node_location(proc_index), &
-                             severity=SEVERITY_WARNING))
+            code="F008", &
+            message="Missing intent declaration for procedure arguments", &
+            file_path=current_filename, &
+            location=ctx%get_node_location(proc_index), &
+            severity=SEVERITY_WARNING))
     end subroutine check_procedure
 
     subroutine get_procedure_param_names(ctx, proc_index, names)
@@ -239,13 +239,13 @@ contains
         end if
 
         select type (p => ctx%arena%entries(proc_index)%node)
-        type is (subroutine_def_node)
+            type is (subroutine_def_node)
             if (.not. allocated(p%param_indices)) then
                 allocate (names(0))
                 return
             end if
             param_indices = p%param_indices
-        type is (function_def_node)
+            type is (function_def_node)
             if (.not. allocated(p%param_indices)) then
                 allocate (names(0))
                 return
@@ -272,9 +272,9 @@ contains
             if (param_indices(i) > 0) then
                 if (allocated(ctx%arena%entries(param_indices(i))%node)) then
                     select type (n => ctx%arena%entries(param_indices(i))%node)
-                    type is (identifier_node)
+                        type is (identifier_node)
                         if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
-                    type is (parameter_declaration_node)
+                        type is (parameter_declaration_node)
                         if (allocated(n%name)) name = to_lower_ascii(trim(n%name))
                     end select
                 end if
@@ -285,7 +285,7 @@ contains
     end subroutine get_procedure_param_names
 
     recursive subroutine collect_param_intents(ctx, proc_index, node_index, &
-                                               param_names, has_intent)
+            param_names, has_intent)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: proc_index
         integer, intent(in) :: node_index
@@ -300,15 +300,15 @@ contains
 
         if (node_index /= proc_index) then
             select type (n => ctx%arena%entries(node_index)%node)
-            type is (subroutine_def_node)
+                type is (subroutine_def_node)
                 return
-            type is (function_def_node)
+                type is (function_def_node)
                 return
             end select
         end if
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (declaration_node)
+            type is (declaration_node)
             call mark_intents_from_declaration(n, param_names, has_intent)
         end select
 
@@ -316,7 +316,7 @@ contains
         do i = 1, size(children)
             if (children(i) <= 0) cycle
             call collect_param_intents(ctx, proc_index, children(i), param_names, &
-                                       has_intent)
+                has_intent)
         end do
         if (allocated(children)) deallocate (children)
     end subroutine collect_param_intents

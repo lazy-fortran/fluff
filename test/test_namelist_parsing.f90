@@ -27,12 +27,12 @@ contains
 
         ! Sample namelist content
         nml_content = '&fluff' // new_line('a') // &
-                      '  fix = .true.' // new_line('a') // &
-                      '  show_fixes = .true.' // new_line('a') // &
-                      '  line_length = 100' // new_line('a') // &
-                      '  target_version = "2018"' // new_line('a') // &
-                      '  output_format = "json"' // new_line('a') // &
-                      '/'
+            '  fix = .true.' // new_line('a') // &
+            '  show_fixes = .true.' // new_line('a') // &
+            '  line_length = 100' // new_line('a') // &
+            '  target_version = "2018"' // new_line('a') // &
+            '  output_format = "json"' // new_line('a') // &
+            '/'
 
         call config%from_namelist_string(nml_content, error_msg)
 
@@ -83,8 +83,8 @@ contains
 
         ! Invalid namelist content (wrong type for line_length)
         nml_content = '&fluff' // new_line('a') // &
-                      '  line_length = "not a number"' // new_line('a') // &
-                      '/'
+            '  line_length = "not a number"' // new_line('a') // &
+            '/'
 
         call config%from_namelist_string(nml_content, error_msg)
 

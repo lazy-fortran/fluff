@@ -4,10 +4,10 @@ module fluff_rule_p001
     use fluff_rule_diagnostic_utils, only: push_diagnostic, to_lower_ascii
     use fluff_rule_file_context, only: current_filename
     use fortfront, only: assignment_node, call_or_subscript_node, do_loop_node, &
-                         identifier_node, binary_op_node, if_node, &
-                         select_case_node, &
-                         case_block_node, case_default_node, where_node, &
-                         print_statement_node, subroutine_call_node
+        identifier_node, binary_op_node, if_node, &
+        select_case_node, &
+        case_block_node, case_default_node, where_node, &
+        print_statement_node, subroutine_call_node
     implicit none
     private
 
@@ -50,7 +50,7 @@ contains
         do i = 1, ctx%arena%size
             if (.not. allocated(ctx%arena%entries(i)%node)) cycle
             select type (outer_loop => ctx%arena%entries(i)%node)
-            type is (do_loop_node)
+                type is (do_loop_node)
                 if (.not. allocated(outer_loop%var_name)) cycle
                 if (.not. allocated(outer_loop%body_indices)) cycle
                 v_outer = to_lower_ascii(trim(outer_loop%var_name))
@@ -59,7 +59,7 @@ contains
                 do j = 1, size(outer_loop%body_indices)
                     if (outer_loop%body_indices(j) <= 0) cycle
                     call collect_inner_loops(ctx, outer_loop%body_indices(j), &
-                                             inner_loops, inner_count)
+                        inner_loops, inner_count)
                 end do
 
                 do j = 1, inner_count
@@ -67,13 +67,13 @@ contains
                     if (inner_index <= 0) cycle
                     if (.not. allocated(ctx%arena%entries(inner_index)%node)) cycle
                     select type (inner_loop => ctx%arena%entries(inner_index)%node)
-                    type is (do_loop_node)
+                        type is (do_loop_node)
                         if (.not. allocated(inner_loop%var_name)) cycle
                         v_inner = to_lower_ascii(trim(inner_loop%var_name))
                         call collect_inefficient_accesses(ctx, inner_index, v_outer, &
-                                                          v_inner, reported, &
-                                                          reported_count, tmp, &
-                                                          violation_count)
+                            v_inner, reported, &
+                            reported_count, tmp, &
+                            violation_count)
                     end select
                 end do
             end select
@@ -92,24 +92,24 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (do_loop_node)
+            type is (do_loop_node)
             call push_unique_index(inner_loops, inner_count, node_index)
             return
-        type is (if_node)
+            type is (if_node)
             call collect_from_if_node(ctx, n, inner_loops, inner_count)
             return
-        type is (select_case_node)
+            type is (select_case_node)
             call collect_from_select_case_node(ctx, n, inner_loops, inner_count)
             return
-        type is (case_block_node)
+            type is (case_block_node)
             call collect_from_body_indices(ctx, n%body_indices, inner_loops, &
-                                           inner_count)
+                inner_count)
             return
-        type is (case_default_node)
+            type is (case_default_node)
             call collect_from_body_indices(ctx, n%body_indices, inner_loops, &
-                                           inner_count)
+                inner_count)
             return
-        type is (where_node)
+            type is (where_node)
             call collect_from_where_node(ctx, n, inner_loops, inner_count)
             return
         end select
@@ -145,17 +145,17 @@ contains
         integer :: i
 
         call collect_from_body_indices(ctx, n%then_body_indices, inner_loops, &
-                                       inner_count)
+            inner_count)
 
         if (allocated(n%elseif_blocks)) then
             do i = 1, size(n%elseif_blocks)
                 call collect_from_body_indices(ctx, n%elseif_blocks(i)%body_indices, &
-                                               inner_loops, inner_count)
+                    inner_loops, inner_count)
             end do
         end if
 
         call collect_from_body_indices(ctx, n%else_body_indices, inner_loops, &
-                                       inner_count)
+            inner_count)
     end subroutine collect_from_if_node
 
     subroutine collect_from_select_case_node(ctx, n, inner_loops, inner_count)
@@ -169,7 +169,7 @@ contains
         if (allocated(n%case_indices)) then
             do i = 1, size(n%case_indices)
                 call collect_inner_loops(ctx, n%case_indices(i), inner_loops, &
-                                         inner_count)
+                    inner_count)
             end do
         end if
         if (n%default_index > 0) then
@@ -186,21 +186,21 @@ contains
         integer :: i
 
         call collect_from_body_indices(ctx, n%where_body_indices, inner_loops, &
-                                       inner_count)
+            inner_count)
 
         if (allocated(n%elsewhere_clauses)) then
             do i = 1, size(n%elsewhere_clauses)
                 call collect_from_body_indices(ctx, &
-                                               n%elsewhere_clauses(i)%body_indices, &
-                                               inner_loops, inner_count)
+                    n%elsewhere_clauses(i)%body_indices, &
+                    inner_loops, inner_count)
             end do
         end if
     end subroutine collect_from_where_node
 
     recursive subroutine collect_inefficient_accesses(ctx, node_index, outer_var, &
-                                                      inner_var, reported, &
-                                                      reported_count, tmp, &
-                                                      violation_count)
+            inner_var, reported, &
+            reported_count, tmp, &
+            violation_count)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         character(len=*), intent(in) :: outer_var
@@ -217,71 +217,71 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (.not. reported_contains(reported, reported_count, node_index)) then
                 if (is_inefficient_access(ctx, node_index, outer_var, inner_var)) then
                     call push_reported(reported, reported_count, node_index)
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                         code="P001", &
-                                         message= &
-                                         "Leftmost array index varies in an outer " &
-                                         //"loop; consider swapping loop order", &
-                                         file_path=current_filename, &
-                                         location=ctx%get_node_location(node_index), &
-                                         severity=SEVERITY_WARNING))
+                        code="P001", &
+                        message= &
+                        "Leftmost array index varies in an outer " &
+                        //"loop; consider swapping loop order", &
+                        file_path=current_filename, &
+                        location=ctx%get_node_location(node_index), &
+                        severity=SEVERITY_WARNING))
                 end if
             end if
 
             if (n%base_expr_index > 0) then
                 call collect_inefficient_accesses(ctx, n%base_expr_index, outer_var, &
-                                                  inner_var, reported, &
-                                                  reported_count, tmp, &
-                                                  violation_count)
+                    inner_var, reported, &
+                    reported_count, tmp, &
+                    violation_count)
             end if
             if (allocated(n%arg_indices)) then
                 do i = 1, size(n%arg_indices)
                     if (n%arg_indices(i) > 0) then
                         call collect_inefficient_accesses(ctx, n%arg_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, violation_count)
+                            outer_var, inner_var, &
+                            reported, reported_count, &
+                            tmp, violation_count)
                     end if
                 end do
             end if
             return
-        type is (do_loop_node)
+            type is (do_loop_node)
             if (allocated(n%body_indices)) then
                 do i = 1, size(n%body_indices)
                     if (n%body_indices(i) > 0) then
                         call collect_inefficient_accesses(ctx, n%body_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, &
-                                                          violation_count)
+                            outer_var, inner_var, &
+                            reported, reported_count, &
+                            tmp, &
+                            violation_count)
                     end if
                 end do
             end if
             return
-        type is (assignment_node)
+            type is (assignment_node)
             call collect_inefficient_accesses(ctx, n%target_index, outer_var, &
-                                              inner_var, &
-                                              reported, reported_count, tmp, &
-                                              violation_count)
+                inner_var, &
+                reported, reported_count, tmp, &
+                violation_count)
             call collect_inefficient_accesses(ctx, n%value_index, outer_var, &
-                                              inner_var, &
-                                              reported, reported_count, tmp, &
-                                              violation_count)
+                inner_var, &
+                reported, reported_count, tmp, &
+                violation_count)
             return
-        type is (binary_op_node)
+            type is (binary_op_node)
             call collect_inefficient_accesses(ctx, n%left_index, outer_var, inner_var, &
-                                              reported, reported_count, tmp, &
-                                              violation_count)
+                reported, reported_count, tmp, &
+                violation_count)
             call collect_inefficient_accesses(ctx, n%right_index, outer_var, &
-                                              inner_var, &
-                                              reported, reported_count, tmp, &
-                                              violation_count)
+                inner_var, &
+                reported, reported_count, tmp, &
+                violation_count)
             return
-        type is (print_statement_node)
+            type is (print_statement_node)
             if (allocated(n%expression_indices)) then
                 do i = 1, size(n%expression_indices)
                     if (n%expression_indices(i) > 0) then
@@ -292,31 +292,31 @@ contains
                 end do
             end if
             return
-        type is (subroutine_call_node)
+            type is (subroutine_call_node)
             if (allocated(n%arg_indices)) then
                 do i = 1, size(n%arg_indices)
                     if (n%arg_indices(i) > 0) then
                         call collect_inefficient_accesses(ctx, n%arg_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, violation_count)
+                            outer_var, inner_var, &
+                            reported, reported_count, &
+                            tmp, violation_count)
                     end if
                 end do
             end if
             return
-        type is (if_node)
+            type is (if_node)
             if (n%condition_index > 0) then
                 call collect_inefficient_accesses(ctx, n%condition_index, outer_var, &
-                                                  inner_var, reported, reported_count, &
-                                                  tmp, violation_count)
+                    inner_var, reported, reported_count, &
+                    tmp, violation_count)
             end if
             if (allocated(n%then_body_indices)) then
                 do i = 1, size(n%then_body_indices)
                     if (n%then_body_indices(i) > 0) then
                         call collect_inefficient_accesses(ctx, n%then_body_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, violation_count)
+                            outer_var, inner_var, &
+                            reported, reported_count, &
+                            tmp, violation_count)
                     end if
                 end do
             end if
@@ -324,9 +324,9 @@ contains
                 do i = 1, size(n%else_body_indices)
                     if (n%else_body_indices(i) > 0) then
                         call collect_inefficient_accesses(ctx, n%else_body_indices(i), &
-                                                          outer_var, inner_var, &
-                                                          reported, reported_count, &
-                                                          tmp, violation_count)
+                            outer_var, inner_var, &
+                            reported, reported_count, &
+                            tmp, violation_count)
                     end if
                 end do
             end if
@@ -337,15 +337,15 @@ contains
         do i = 1, size(children)
             if (children(i) > 0) then
                 call collect_inefficient_accesses(ctx, children(i), outer_var, &
-                                                  inner_var, reported, &
-                                                  reported_count, tmp, &
-                                                  violation_count)
+                    inner_var, reported, &
+                    reported_count, tmp, &
+                    violation_count)
             end if
         end do
     end subroutine collect_inefficient_accesses
 
     logical function is_inefficient_access(ctx, node_index, outer_var, inner_var) &
-        result(bad)
+            result(bad)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         character(len=*), intent(in) :: outer_var
@@ -358,7 +358,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (c => ctx%arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             if (.not. c%is_array_access) return
             if (.not. allocated(c%arg_indices)) return
             if (size(c%arg_indices) < 2) return
@@ -371,7 +371,7 @@ contains
         if (.not. first_uses_outer) return
 
         select type (c => ctx%arena%entries(node_index)%node)
-        type is (call_or_subscript_node)
+            type is (call_or_subscript_node)
             do i = 2, size(c%arg_indices)
                 if (expr_depends_on_var(ctx, c%arg_indices(i), inner_var)) then
                     bad = .true.
@@ -382,7 +382,7 @@ contains
     end function is_inefficient_access
 
     recursive logical function expr_depends_on_var(ctx, node_index, var_name) &
-        result(depends)
+            result(depends)
         type(fluff_ast_context_t), intent(in) :: ctx
         integer, intent(in) :: node_index
         character(len=*), intent(in) :: var_name
@@ -396,7 +396,7 @@ contains
         if (.not. allocated(ctx%arena%entries(node_index)%node)) return
 
         select type (n => ctx%arena%entries(node_index)%node)
-        type is (identifier_node)
+            type is (identifier_node)
             if (.not. allocated(n%name)) return
             name_lower = to_lower_ascii(trim(n%name))
             depends = (name_lower == var_name)

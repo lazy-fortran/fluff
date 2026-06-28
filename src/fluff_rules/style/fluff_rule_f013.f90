@@ -41,11 +41,11 @@ contains
                 if (.not. allocated(tokens(i)%text)) cycle
                 if (tokens(i)%text /= ";") cycle
                 call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                     code="F013", &
-                                     message="Multiple statements per line", &
-                                     file_path=current_filename, &
-                                     location=token_location_point(tokens(i)), &
-                                     severity=SEVERITY_WARNING))
+                    code="F013", &
+                    message="Multiple statements per line", &
+                    file_path=current_filename, &
+                    location=token_location_point(tokens(i)), &
+                    severity=SEVERITY_WARNING))
             end do
         end if
 

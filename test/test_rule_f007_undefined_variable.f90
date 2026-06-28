@@ -3,7 +3,7 @@ program test_rule_f007_undefined_variable
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F007: Undefined variable usage rule..."
@@ -35,11 +35,11 @@ contains
         call make_temp_fortran_path("fluff_test_f007", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = y + 10"//new_line('a')// &  ! y is undefined
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = y + 10"//new_line('a')// & ! y is undefined
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -80,12 +80,12 @@ contains
         call make_temp_fortran_path("fluff_test_f007_ok", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x, y"//new_line('a')// &
-                    "    y = 20"//new_line('a')// &
-                    "    x = y + 10"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x, y"//new_line('a')// &
+            "    y = 20"//new_line('a')// &
+            "    x = y + 10"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -126,11 +126,11 @@ contains
         call make_temp_fortran_path("fluff_test_f007_multi", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    x = y + z"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    x = y + z"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -166,17 +166,17 @@ contains
         call make_temp_fortran_path("fluff_test_f007_scope", tmpfile)
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &
-                    "    call sub()"//new_line('a')// &
-                    "    x = y"//new_line('a')// &
-                    "    print *, x"//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    "    subroutine sub()"//new_line('a')// &
-                    "        integer :: y"//new_line('a')// &
-                    "        y = 1"//new_line('a')// &
-                    "    end subroutine sub"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// &
+            "    call sub()"//new_line('a')// &
+            "    x = y"//new_line('a')// &
+            "    print *, x"//new_line('a')// &
+            "contains"//new_line('a')// &
+            "    subroutine sub()"//new_line('a')// &
+            "        integer :: y"//new_line('a')// &
+            "        y = 1"//new_line('a')// &
+            "    end subroutine sub"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 

@@ -1,7 +1,7 @@
 program test_lsp_document_sync
     use fluff_json, only: json_array_length, json_get_member_json, &
-                          json_get_string_member, &
-                          json_parse
+        json_get_string_member, &
+        json_parse
     use fluff_lsp_server, only: fluff_lsp_server_t
     use fluff_lsp_uri, only: uri_to_path
     use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -39,11 +39,11 @@ contains
 
         total_tests = total_tests + 1
         call server%handle_text_document_did_open("file:///test.f90", "fortran", 1, &
-                                                  "program test"//new_line('a')// &
-                                                  "  implicit none"//new_line('a')// &
-                                                  "  integer :: x"//new_line('a')// &
-                                                  "  x = 1"//new_line('a')// &
-                                                  "end program", success)
+            "program test"//new_line('a')// &
+            "  implicit none"//new_line('a')// &
+            "  integer :: x"//new_line('a')// &
+            "  x = 1"//new_line('a')// &
+            "end program", success)
 
         if (.not. success) then
             print *, "[FAIL] Document open"
@@ -78,11 +78,11 @@ contains
 
         total_tests = total_tests + 1
         call server%handle_text_document_did_change("file:///test.f90", 2, &
-                                                    "program test"//new_line('a')// &
-                                                    "  implicit none"//new_line('a')// &
-                                                    "  integer :: x"//new_line('a')// &
-                                                    "  x = 2"//new_line('a')// &
-                                                    "end program", success)
+            "program test"//new_line('a')// &
+            "  implicit none"//new_line('a')// &
+            "  integer :: x"//new_line('a')// &
+            "  x = 2"//new_line('a')// &
+            "end program", success)
 
         if (.not. success) then
             print *, "[FAIL] Document change"
@@ -136,9 +136,9 @@ contains
 
         total_tests = total_tests + 1
         call server%handle_text_document_did_open("file:///a.f90", "fortran", 1, &
-                                                  "program a"//new_line('a')// &
-                                                  "  implicit none"//new_line('a')// &
-                                                  "end program", success)
+            "program a"//new_line('a')// &
+            "  implicit none"//new_line('a')// &
+            "end program", success)
 
         if (.not. success) then
             print *, "[FAIL] Open first document"
@@ -146,9 +146,9 @@ contains
         end if
 
         call server%handle_text_document_did_open("file:///b.f90", "fortran", 1, &
-                                                  "program b"//new_line('a')// &
-                                                  "  implicit none"//new_line('a')// &
-                                                  "end program", success)
+            "program b"//new_line('a')// &
+            "  implicit none"//new_line('a')// &
+            "end program", success)
 
         if (.not. success) then
             print *, "[FAIL] Open second document"
@@ -246,7 +246,7 @@ contains
         if (uri /= expected_uri) return
 
         call json_get_member_json(params_json, "diagnostics", &
-                                  diagnostics_json, found, ok)
+            diagnostics_json, found, ok)
         if (.not. ok .or. .not. found) return
 
         call json_array_length(diagnostics_json, n, ok)

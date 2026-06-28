@@ -3,8 +3,8 @@ program test_rule_p007_mixed_precision
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, assert_has_diagnostic_code, &
-                            lint_file_checked
+        delete_file_if_exists, assert_has_diagnostic_code, &
+        lint_file_checked
     implicit none
 
     print *, "Testing P007: Mixed precision arithmetic rule..."
@@ -26,12 +26,12 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "real :: a"//new_line('a')// &
-                    "real(8) :: b"//new_line('a')// &
-                    "real(8) :: r"//new_line('a')// &
-                    "r = a + b"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "real :: a"//new_line('a')// &
+            "real(8) :: b"//new_line('a')// &
+            "real(8) :: r"//new_line('a')// &
+            "r = a + b"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_bad", path)
@@ -40,7 +40,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .true., &
-                                        "mixed precision binary op should be flagged")
+            "mixed precision binary op should be flagged")
         print *, "[OK] Mixed precision"
     end subroutine test_mixed_precision_triggers
 
@@ -51,12 +51,12 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "real(8) :: a"//new_line('a')// &
-                    "real(8) :: b"//new_line('a')// &
-                    "real(8) :: r"//new_line('a')// &
-                    "r = a + b"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "real(8) :: a"//new_line('a')// &
+            "real(8) :: b"//new_line('a')// &
+            "real(8) :: r"//new_line('a')// &
+            "r = a + b"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_ok", path)
@@ -65,7 +65,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .false., &
-                                        "consistent precision should not be flagged")
+            "consistent precision should not be flagged")
         print *, "[OK] Consistent precision"
     end subroutine test_consistent_precision_is_ok
 
@@ -76,12 +76,12 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "double precision :: a"//new_line('a')// &
-                    "double precision :: b"//new_line('a')// &
-                    "double precision :: r"//new_line('a')// &
-                    "r = a * b"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "double precision :: a"//new_line('a')// &
+            "double precision :: b"//new_line('a')// &
+            "double precision :: r"//new_line('a')// &
+            "r = a * b"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_dp", path)
@@ -90,7 +90,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .false., &
-                                   "double precision consistency should not be flagged")
+            "double precision consistency should not be flagged")
         print *, "[OK] Double precision consistency"
     end subroutine test_double_precision_consistency
 
@@ -101,11 +101,11 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "real :: a"//new_line('a')// &
-                    "real :: r"//new_line('a')// &
-                    "r = a + 1.0d0"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "real :: a"//new_line('a')// &
+            "real :: r"//new_line('a')// &
+            "r = a + 1.0d0"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_lit", path)
@@ -114,7 +114,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .true., &
-                                "d exponent literal mixing with real should be flagged")
+            "d exponent literal mixing with real should be flagged")
         print *, "[OK] Literal kind detection"
     end subroutine test_literal_kind_detection
 
@@ -125,11 +125,11 @@ contains
         character(len=:), allocatable :: path
 
         test_code = "program test"//new_line('a')// &
-                    "implicit none"//new_line('a')// &
-                    "real(8) :: a"//new_line('a')// &
-                    "real(8) :: r"//new_line('a')// &
-                    "r = sin(a) + cos(a)"//new_line('a')// &
-                    "end program test"
+            "implicit none"//new_line('a')// &
+            "real(8) :: a"//new_line('a')// &
+            "real(8) :: r"//new_line('a')// &
+            "r = sin(a) + cos(a)"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
         call make_temp_fortran_path("fluff_test_p007_intr", path)
@@ -138,7 +138,7 @@ contains
         call delete_file_if_exists(path)
 
         call assert_has_diagnostic_code(diagnostics, "P007", .false., &
-                                  "intrinsic with same kind args should not be flagged")
+            "intrinsic with same kind args should not be flagged")
         print *, "[OK] Intrinsic kind propagation"
     end subroutine test_intrinsic_kind_propagation
 

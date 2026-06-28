@@ -1,41 +1,41 @@
 program test_ast_debug
     use fortfront
     implicit none
-    
+
     type(ast_arena_t) :: arena
     type(token_t), allocatable :: tokens(:)
     character(len=:), allocatable :: source_code, error_msg
     integer :: root_index, i
     integer, allocatable :: children(:)
-    
+
     ! Test code
     source_code = "program test" // new_line('a') // &
-                 "    implicit none" // new_line('a') // &
-                 "    integer :: i,j,k" // new_line('a') // &
-                 "    i=1" // new_line('a') // &
-                 "    j=i+2" // new_line('a') // &
-                 "end program test"
-    
+        "    implicit none" // new_line('a') // &
+        "    integer :: i,j,k" // new_line('a') // &
+        "    i=1" // new_line('a') // &
+        "    j=i+2" // new_line('a') // &
+        "end program test"
+
     ! Lex
     call lex_source(source_code, tokens, error_msg)
     if (error_msg /= "") then
         print *, "Lex error:", error_msg
         stop 1
     end if
-    
-    ! Parse  
+
+    ! Parse
     arena = create_ast_arena()
     call parse_tokens(tokens, arena, root_index, error_msg)
     if (error_msg /= "") then
         print *, "Parse error:", error_msg
         stop 1
     end if
-    
+
     ! Debug AST structure
     print *, "Root index:", root_index
     print *, "Node type at root:", get_node_type(arena, root_index)
     print *, "NODE_PROGRAM constant:", NODE_PROGRAM
-    
+
     ! Check program node details
     block
         type(program_node), pointer :: prog_node
@@ -48,7 +48,7 @@ program test_ast_debug
                 print *, "No body indices allocated"
             end if
         end if
-        
+
         ! Check inner program (index 1)
         print *, ""
         print *, "Inner program (index 1):"
@@ -62,7 +62,7 @@ program test_ast_debug
             end if
         end if
     end block
-    
+
     ! Map node types
     print *, ""
     print *, "Node type constants:"
@@ -73,7 +73,7 @@ program test_ast_debug
     print *, "  NODE_IDENTIFIER:", NODE_IDENTIFIER
     print *, "  NODE_LITERAL:", NODE_LITERAL
     print *, "  NODE_DECLARATION:", NODE_DECLARATION
-    
+
     ! Explore all nodes in arena
     print *, ""
     print *, "[OK] All nodes in arena:"

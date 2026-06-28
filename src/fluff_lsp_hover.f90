@@ -4,7 +4,7 @@ module fluff_lsp_hover
     use fluff_linter
     use fluff_lsp_intrinsics, only: intrinsic_info_t, get_intrinsic_info
     use fortfront, only: symbol_info_t, mono_type_t, TINT, TREAL, TCHAR, &
-                         TLOGICAL, TFUN, TARRAY
+        TLOGICAL, TFUN, TARRAY
     implicit none
     private
 
@@ -55,7 +55,7 @@ contains
         if (allocated(info%signature) .and. len_trim(info%signature) > 0) then
             ! Format the hover message
             call format_hover_message(info%signature, info%documentation, &
-                                      hover_content, success)
+                hover_content, success)
         else
             success = .false.
             hover_content = ""
@@ -82,8 +82,8 @@ contains
 
         ! Format as markdown
         formatted = "```fortran"//new_line('a')// &
-                    trim(signature)//new_line('a')// &
-                    "```"
+            trim(signature)//new_line('a')// &
+            "```"
 
         if (len_trim(documentation) > 0) then
             ! Check if documentation has special formatting
@@ -239,9 +239,9 @@ contains
         character(len=1), intent(in) :: ch
 
         is_identifier_char = (ch >= 'a' .and. ch <= 'z') .or. &
-                             (ch >= 'A' .and. ch <= 'Z') .or. &
-                             (ch >= '0' .and. ch <= '9') .or. &
-                             ch == '_'
+            (ch >= 'A' .and. ch <= 'Z') .or. &
+            (ch >= '0' .and. ch <= '9') .or. &
+            ch == '_'
     end function is_identifier_char
 
     ! Semantic analysis using fluff_ast_context_t with lookup_symbol
@@ -288,9 +288,9 @@ contains
                     info%signature = trim(type_str)//", parameter :: "//trim(token)
                     info%kind = "parameter"
                 else if (allocated(sym_info%intent) .and. &
-                         len_trim(sym_info%intent) > 0) then
+                        len_trim(sym_info%intent) > 0) then
                     info%signature = trim(type_str)//", intent("// &
-                                     trim(sym_info%intent)//") :: "//trim(token)
+                        trim(sym_info%intent)//") :: "//trim(token)
                     info%kind = "variable"
                 else
                     info%signature = trim(type_str)//" :: "//trim(token)
@@ -546,7 +546,7 @@ contains
 
         ! Check for module declarations
         if (index(line, "module") > 0 .and. index(line, "module") < index(line, &
-                                                                          token)) then
+            token)) then
             ! This is a module declaration
             info%signature = trim(line)
             info%documentation = ""
@@ -581,7 +581,7 @@ contains
                 ! Check for array dimensions after variable name
                 if (index(line, token) + len_trim(token) <= len(line)) then
                     if (line(index(line, token) + len_trim(token):index(line, token) + &
-                             len_trim(token)) == "(") then
+                        len_trim(token)) == "(") then
                         ! Find matching closing parenthesis
                         i = index(line(index(line, token):), ")")
                         if (i > 0) then
@@ -598,13 +598,13 @@ contains
                         ! Array variable
                         i = index(line, token//"(")
                         info%signature = "real :: "//line(i:index(line, ")", &
-                                                                  back=.true.))
+                            back=.true.))
                     else
                         info%signature = "real :: "//token
                     end if
                     ! Check for parameter
                     if (index(line, "parameter") > 0 .and. index(line, &
-                                                                 "3.14159") > 0) then
+                        "3.14159") > 0) then
                         info%signature = "real, parameter :: "//token//" = 3.14159"
                         info%kind = "parameter"
                     else

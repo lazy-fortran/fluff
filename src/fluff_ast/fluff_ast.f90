@@ -76,7 +76,7 @@ module fluff_ast
     public :: NODE_READ_STATEMENT, NODE_ALLOCATE_STATEMENT, NODE_DEALLOCATE_STATEMENT
     public :: NODE_STOP, NODE_RETURN, NODE_GOTO, NODE_ERROR_STOP, NODE_CYCLE, NODE_EXIT
     public :: NODE_WHERE, NODE_INTERFACE_BLOCK, NODE_DERIVED_TYPE, &
-              NODE_POINTER_ASSIGNMENT
+        NODE_POINTER_ASSIGNMENT
     public :: NODE_FORALL, NODE_CASE_RANGE, NODE_CASE_DEFAULT, NODE_COMPLEX_LITERAL
     public :: NODE_INCLUDE_STATEMENT, NODE_CONTAINS, NODE_FORMAT_DESCRIPTOR
     public :: NODE_COMMENT, NODE_IMPLICIT_STATEMENT
@@ -105,7 +105,7 @@ contains
         this%is_initialized = .false.
 
         call tooling_load_ast_from_string(source_code, arena, root_index, error_msg, &
-                                          tooling_parse_options_t())
+            tooling_parse_options_t())
         if (len(error_msg) > 0) return
 
         call set_source_text(arena, source_code)
@@ -181,7 +181,7 @@ contains
         call get_node_location(this%arena, node_index, line, column)
         location%start%line = line
         location%start%column = column
-        location%end%line = line  ! For now, end = start (single point)
+        location%end%line = line ! For now, end = start (single point)
         location%end%column = column
 
     end function ast_get_node_location
@@ -221,7 +221,7 @@ contains
     end subroutine ast_get_source_line
 
     subroutine ast_get_source_range(this, start_line, start_col, end_line, end_col, &
-                                    text, found)
+            text, found)
         class(fluff_ast_context_t), intent(in) :: this
         integer, intent(in) :: start_line
         integer, intent(in) :: start_col
@@ -235,7 +235,7 @@ contains
         if (.not. this%is_initialized) return
 
         call get_source_range(this%arena, start_line, start_col, end_line, end_col, &
-                              text, found)
+            text, found)
     end subroutine ast_get_source_range
 
     subroutine ast_get_trivia_for_node(this, node_index, leading, trailing, found)
@@ -260,7 +260,7 @@ contains
         if (.not. found) return
 
         call get_trivia_for_ast_node(source, this%arena, node_index, leading_ff, &
-                                     trailing_ff, found)
+            trailing_ff, found)
         if (.not. found) return
 
         call convert_trivia_array(leading_ff, leading)
@@ -376,7 +376,7 @@ contains
         if (node_index <= 0) return
         if (.not. allocated(arena%entries(node_index)%node)) return
         select type (node => arena%entries(node_index)%node)
-        type is (use_statement_node)
+            type is (use_statement_node)
             if (allocated(node%module_name)) then
                 module_name = node%module_name
             end if

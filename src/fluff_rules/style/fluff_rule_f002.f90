@@ -55,11 +55,11 @@ contains
             if (indent_unit > 0 .and. indent_cols > 0) then
                 if (mod(indent_cols, indent_unit) /= 0) then
                     call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                                         code="F002", &
-                                   message="Inconsistent indentation levels detected", &
-                                         file_path=current_filename, &
-                                         location=line_location(line_num), &
-                                         severity=SEVERITY_WARNING))
+                        code="F002", &
+                        message="Inconsistent indentation levels detected", &
+                        file_path=current_filename, &
+                        location=line_location(line_num), &
+                        severity=SEVERITY_WARNING))
                     return
                 end if
             end if

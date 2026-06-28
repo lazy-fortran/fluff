@@ -59,7 +59,7 @@ contains
             if (tokens(i)%line /= current_line) then
                 if (first_idx > 0) then
                     call check_line_end_statement(tokens, first_idx, tmp, &
-                                                  violation_count)
+                        violation_count)
                 end if
                 current_line = tokens(i)%line
                 first_idx = i
@@ -129,12 +129,12 @@ contains
         if (has_name) return
 
         call push_diagnostic(tmp, violation_count, create_diagnostic( &
-                             code="F011", &
-                             message="Missing end label for "//trim(kind), &
-                             file_path=current_filename, &
-                             location=end_phrase_location(tokens(first_idx), &
-                                                          tokens(i)), &
-                             severity=SEVERITY_INFO))
+            code="F011", &
+            message="Missing end label for "//trim(kind), &
+            file_path=current_filename, &
+            location=end_phrase_location(tokens(first_idx), &
+            tokens(i)), &
+            severity=SEVERITY_INFO))
     end subroutine check_line_end_statement
 
     pure function end_phrase_location(end_tok, kind_tok) result(location)

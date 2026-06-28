@@ -4,7 +4,7 @@ module fluff_rule_f006
     use fluff_diagnostics, only: diagnostic_t, create_diagnostic, SEVERITY_WARNING
     use fluff_rule_file_context, only: current_filename
     use fluff_rule_symbol_collect, only: collect_declared_names, collect_used_names, &
-                                         name_in_list
+        name_in_list
     implicit none
     private
 
@@ -31,7 +31,7 @@ contains
         allocate (tmp(100))
 
         call collect_declared_names(ctx, node_index, declared, decl_lines, &
-                                    decl_columns, decl_is_parameter)
+            decl_columns, decl_is_parameter)
         call collect_used_names(ctx, node_index, used)
 
         do i = 1, size(declared)
@@ -43,12 +43,12 @@ contains
             is_intrinsic = .false.
             select case (trim(declared(i)))
             case ("sin", "cos", "tan", "sqrt", "exp", "log", "abs", &
-                  "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
-                  "int", "real", "nint", "floor", "ceiling", &
-                  "min", "max", "mod", "modulo", "sign", &
-                  "len", "len_trim", "trim", "adjustl", "adjustr", &
-                  "size", "shape", "sum", "product", "maxval", "minval", &
-                  "allocated", "present", "associated")
+                    "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh", &
+                    "int", "real", "nint", "floor", "ceiling", &
+                    "min", "max", "mod", "modulo", "sign", &
+                    "len", "len_trim", "trim", "adjustl", "adjustr", &
+                    "size", "shape", "sum", "product", "maxval", "minval", &
+                    "allocated", "present", "associated")
                 is_intrinsic = .true.
             end select
             if (is_intrinsic) cycle
@@ -61,11 +61,11 @@ contains
             location%end%column = decl_columns(i) + len_trim(declared(i)) - 1
 
             tmp(violation_count) = create_diagnostic( &
-                                   code="F006", &
-                                   message="Unused variable: "//trim(declared(i)), &
-                                   file_path=current_filename, &
-                                   location=location, &
-                                   severity=SEVERITY_WARNING)
+                code="F006", &
+                message="Unused variable: "//trim(declared(i)), &
+                file_path=current_filename, &
+                location=location, &
+                severity=SEVERITY_WARNING)
         end do
 
         if (violation_count == 0) then

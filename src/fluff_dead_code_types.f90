@@ -222,7 +222,7 @@ contains
     end function dc_is_only_self_assigned
 
     subroutine dc_add_unreachable_code(this, start_line, end_line, start_col, end_col, &
-                                       reason, snippet)
+            reason, snippet)
         class(dead_code_visitor_t), intent(inout) :: this
         integer, intent(in) :: start_line, end_line, start_col, end_col
         character(len=*), intent(in) :: reason, snippet
@@ -260,9 +260,9 @@ contains
                 if (.not. this%is_variable_used(this%declared_variables(i)) .or. &
                     this%is_only_self_assigned(this%declared_variables(i))) then
                     call add_unused_variable_to_visitor(this, &
-                                                        this%declared_variables(i), &
-                                                        "program", 1, 1, &
-                                                        .false., .false.)
+                        this%declared_variables(i), &
+                        "program", 1, 1, &
+                        .false., .false.)
                 end if
             end do
         end if
@@ -270,7 +270,7 @@ contains
     end subroutine dc_finalize_analysis
 
     subroutine add_unused_variable_to_visitor(visitor, var_name, scope, line, col, &
-                                              is_param, is_dummy)
+            is_param, is_dummy)
         type(dead_code_visitor_t), intent(inout) :: visitor
         character(len=*), intent(in) :: var_name, scope
         integer, intent(in) :: line, col

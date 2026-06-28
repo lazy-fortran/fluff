@@ -3,7 +3,7 @@ program test_rule_f008_missing_intent
     use fluff_diagnostics, only: diagnostic_t
     use fluff_linter, only: create_linter_engine, linter_engine_t
     use test_support, only: make_temp_fortran_path, write_text_file, &
-                            delete_file_if_exists, lint_file_checked
+        delete_file_if_exists, lint_file_checked
     implicit none
 
     print *, "Testing F008: Missing intent declarations rule..."
@@ -33,16 +33,16 @@ contains
         logical :: found_f008
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "    subroutine calc(x, y, result)"//new_line('a')// &
-                    "        real :: x, y, result"//new_line('a')// &  ! Missing intent
-                    "        result = x + y"//new_line('a')// &
-                    "    end subroutine calc"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            ""//new_line('a')// &
+            "contains"//new_line('a')// &
+            ""//new_line('a')// &
+            "    subroutine calc(x, y, result)"//new_line('a')// &
+            "        real :: x, y, result"//new_line('a')// & ! Missing intent
+            "        result = x + y"//new_line('a')// &
+            "    end subroutine calc"//new_line('a')// &
+            ""//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -82,17 +82,17 @@ contains
         logical :: found_f008
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "    subroutine calc(x, y, result)"//new_line('a')// &
-                    "        real, intent(in) :: x, y"//new_line('a')// &
-                    "        real, intent(out) :: result"//new_line('a')// &
-                    "        result = x + y"//new_line('a')// &
-                    "    end subroutine calc"//new_line('a')// &
-                    ""//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            ""//new_line('a')// &
+            "contains"//new_line('a')// &
+            ""//new_line('a')// &
+            "    subroutine calc(x, y, result)"//new_line('a')// &
+            "        real, intent(in) :: x, y"//new_line('a')// &
+            "        real, intent(out) :: result"//new_line('a')// &
+            "        result = x + y"//new_line('a')// &
+            "    end subroutine calc"//new_line('a')// &
+            ""//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -133,14 +133,14 @@ contains
         logical :: found_f008
 
         test_code = "program test"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "contains"//new_line('a')// &
-                    "    subroutine calc(x, y)"//new_line('a')// &
-                    "        real, intent(in) :: x"//new_line('a')// &
-                    "        real :: y"//new_line('a')// &  ! Missing intent
-                    "        y = x + 1.0"//new_line('a')// &
-                    "    end subroutine calc"//new_line('a')// &
-                    "end program test"
+            "    implicit none"//new_line('a')// &
+            "contains"//new_line('a')// &
+            "    subroutine calc(x, y)"//new_line('a')// &
+            "        real, intent(in) :: x"//new_line('a')// &
+            "        real :: y"//new_line('a')// & ! Missing intent
+            "        y = x + 1.0"//new_line('a')// &
+            "    end subroutine calc"//new_line('a')// &
+            "end program test"
 
         linter = create_linter_engine()
 
@@ -177,11 +177,11 @@ contains
         logical :: found_f008
 
         test_code = "integer function add_one(x) result(y)"//new_line('a')// &
-                    "    implicit none"//new_line('a')// &
-                    "    integer :: x"//new_line('a')// &  ! Missing intent
-                    "    integer :: y"//new_line('a')// &
-                    "    y = x + 1"//new_line('a')// &
-                    "end function add_one"
+            "    implicit none"//new_line('a')// &
+            "    integer :: x"//new_line('a')// & ! Missing intent
+            "    integer :: y"//new_line('a')// &
+            "    y = x + 1"//new_line('a')// &
+            "end function add_one"
 
         linter = create_linter_engine()
 
