@@ -28,6 +28,7 @@ module fluff_cli
         logical :: quiet = .false.
         logical :: verbose = .false.
         logical :: statistics = .false.
+        character(len=:), allocatable :: stdin_filename ! name for stdin input
         character(len=:), allocatable :: config_file
         character(len=:), allocatable :: output_format ! text, json, sarif
         character(len=:), allocatable :: error_msg ! Parse error message
@@ -76,6 +77,7 @@ contains
         ! Initialize
         this%command = "check" ! Default command
         this%error_msg = ""
+        this%stdin_filename = "stdin"
         expecting_value = .false.
         i = 1
 
@@ -87,6 +89,8 @@ contains
                     this%config_file = trim(argv(i))
                 case ("--output-format")
                     this%output_format = trim(argv(i))
+                case ("--stdin-filename")
+                    this%stdin_filename = trim(argv(i))
                 end select
                 expecting_value = .false.
 
@@ -119,7 +123,14 @@ contains
                 case ("--output-format")
                     current_flag = "--output-format"
                     expecting_value = .true.
+                case ("--stdin-filename")
+                    current_flag = "--stdin-filename"
+                    expecting_value = .true.
                 end select
+
+            else if (trim(argv(i)) == "-") then
+                ! Bare dash: read source from stdin
+                call add_file_to_list(this%files, "-")
 
             else if (len_trim(argv(i)) >= 1 .and. argv(i) (1:1) == "-") then
                 ! Short flags
@@ -174,6 +185,42 @@ contains
         end if
 
     end subroutine add_file_to_list
+
+    ! True when the request reads its single source from stdin ("-")
+    function args_use_stdin(args) result(use_stdin)
+        type(cli_args_t), intent(in) :: args
+        logical :: use_stdin
+
+        use_stdin = allocated(args%files)
+        if (use_stdin) use_stdin = size(args%files) == 1
+        if (use_stdin) use_stdin = trim(args%files(1)) == "-"
+
+    end function args_use_stdin
+
+    ! Read all of stdin verbatim, preserving trailing whitespace and newlines
+    subroutine read_stdin(content)
+        use, intrinsic :: iso_fortran_env, only: input_unit, iostat_end, &
+            iostat_eor
+        character(len=:), allocatable, intent(out) :: content
+
+        character(len=65536) :: buffer
+        integer :: nread, iostat_val
+
+        content = ""
+        do
+            read (input_unit, '(A)', advance="no", size=nread, &
+                iostat=iostat_val) buffer
+            if (nread > 0) content = content//buffer(1:nread)
+            if (iostat_val == iostat_eor) then
+                content = content//new_line('a')
+            else if (iostat_val == iostat_end) then
+                exit
+            else if (iostat_val /= 0) then
+                exit
+            end if
+        end do
+
+    end subroutine read_stdin
 
     ! Check if a path is a directory by attempting to list its contents
     function path_is_directory(path) result(is_dir)
@@ -379,6 +426,7 @@ contains
         type(diagnostic_t), allocatable :: all_diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: expanded_files(:)
+        character(len=:), allocatable :: stdin_source
         integer :: i, fixes_applied
 
         exit_code = 0
@@ -393,6 +441,29 @@ contains
         ! Initialize linter
         call app%linter%initialize()
         call app%linter%set_config(config)
+
+        if (args_use_stdin(app%args)) then
+            call read_stdin(stdin_source)
+            call app%linter%lint_source(stdin_source, app%args%stdin_filename, &
+                diagnostics, error_msg)
+            if (error_msg /= "") then
+                print *, "Error linting stdin: ", error_msg
+                exit_code = 1
+            else if (allocated(diagnostics)) then
+                if (size(diagnostics) > 0) exit_code = 1
+                all_diagnostics = diagnostics
+            end if
+            if (.not. app%args%quiet) then
+                if (app%args%statistics) then
+                    call print_statistics(all_diagnostics, 1)
+                else if (allocated(all_diagnostics)) then
+                    call print_diagnostics(all_diagnostics, app%args%output_format)
+                else
+                    call print_diagnostics([diagnostic_t::], app%args%output_format)
+                end if
+            end if
+            return
+        end if
 
         ! Expand directories to their Fortran files
         if (allocated(app%args%files)) then
@@ -457,12 +528,30 @@ contains
         character(len=:), allocatable :: original_code
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: expanded_files(:)
+        character(len=:), allocatable :: stdin_source
         integer :: i
 
         exit_code = 0
 
         ! Initialize formatter
         call app%formatter%initialize()
+
+        if (args_use_stdin(app%args)) then
+            call read_stdin(stdin_source)
+            call app%formatter%format_source(stdin_source, formatted_code, error_msg)
+            if (error_msg /= "") then
+                print *, "Error formatting stdin: ", error_msg
+                exit_code = 1
+            else if (app%args%check) then
+                if (formatted_code /= stdin_source) then
+                    print *, trim(app%args%stdin_filename), ": Would reformat"
+                    exit_code = 1
+                end if
+            else
+                write (*, '(A)', advance="no") formatted_code
+            end if
+            return
+        end if
 
         ! Expand directories to their Fortran files
         if (allocated(app%args%files)) then

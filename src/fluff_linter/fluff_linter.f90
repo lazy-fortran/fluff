@@ -54,6 +54,7 @@ module fluff_linter
         procedure :: initialize => linter_initialize
         procedure :: set_config => linter_set_config
         procedure :: lint_file => linter_lint_file
+        procedure :: lint_source => linter_lint_source
         procedure :: lint_ast => linter_lint_ast
     end type linter_engine_t
 
@@ -100,9 +101,7 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
         character(len=:), allocatable, intent(out) :: error_msg
 
-        type(fluff_ast_context_t) :: ast_ctx
         character(len=:), allocatable :: source_code
-        character(len=1000) :: line
         integer :: unit, iostat
 
         ! Read file contents preserving trailing whitespace
@@ -130,6 +129,21 @@ contains
         end if
         close (unit)
 
+        call this%lint_source(source_code, filename, diagnostics, error_msg)
+
+    end subroutine linter_lint_file
+
+    ! Lint source already in memory, reporting under a virtual filename
+    subroutine linter_lint_source(this, source_code, filename, diagnostics, &
+            error_msg)
+        class(linter_engine_t), intent(inout) :: this
+        character(len=*), intent(in) :: source_code
+        character(len=*), intent(in) :: filename
+        type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
+        character(len=:), allocatable, intent(out) :: error_msg
+
+        type(fluff_ast_context_t) :: ast_ctx
+
         ! Parse AST fresh each time to avoid memory safety issues
         ! Note: Caching disabled due to shallow copy issues with AST context
         ! containing fortfront arena and semantic context with pointer components
@@ -150,7 +164,7 @@ contains
 
         error_msg = ""
 
-    end subroutine linter_lint_file
+    end subroutine linter_lint_source
 
     ! Lint an AST
     subroutine linter_lint_ast(this, ast_ctx, diagnostics)
