@@ -19,6 +19,7 @@ module fluff_cli
         character(len=:), allocatable :: files(:)    ! Files to process
         logical :: fix = .false.
         logical :: diff = .false.
+        logical :: check = .false.
         logical :: version = .false.
         logical :: help = .false.
         logical :: help_requested = .false.         ! Alias for help
@@ -95,6 +96,8 @@ contains
                     this%fix = .true.
                 case ("--diff")
                     this%diff = .true.
+                case ("--check")
+                    this%check = .true.
                 case ("--version")
                     this%version = .true.
                     this%version_requested = .true.
@@ -343,6 +346,7 @@ contains
         print *, "  -v, --version      Show version"
         print *, "  --fix              Apply fixes automatically"
         print *, "  --diff             Show diffs instead of rewriting files"
+        print *, "  --check            Check if files are formatted (no write)"
         print *, "  --config FILE      Use configuration file"
         print *, "  --output-format    Output format (text, json, sarif)"
 
@@ -423,7 +427,7 @@ contains
 
     ! Run format command
     subroutine run_format_command(app, exit_code)
-        use fluff_fix_applicator, only: read_text_file, write_text_file
+        use fluff_fix_applicator, only: read_text_file
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
 
@@ -461,8 +465,19 @@ contains
                         call print_unified_diff(expanded_files(i), original_code, &
                                                 formatted_code)
                     end if
+                else if (app%args%check) then
+                    call read_raw_text_file(expanded_files(i), original_code, &
+                                            error_msg)
+                    if (error_msg /= "") then
+                        print *, "Error reading file: ", error_msg
+                        exit_code = 1
+                    else if (formatted_code /= original_code) then
+                        print *, trim(expanded_files(i)), ": Would reformat"
+                        exit_code = 1
+                    end if
                 else if (app%args%fix) then
-                    call write_text_file(expanded_files(i), formatted_code, error_msg)
+                    call write_raw_text_file(expanded_files(i), formatted_code, &
+                                             error_msg)
                     if (error_msg /= "") then
                         print *, "Error writing file: ", error_msg
                         exit_code = 1
@@ -477,6 +492,58 @@ contains
         end if
 
     end subroutine run_format_command
+
+    subroutine read_raw_text_file(file_path, content, error_msg)
+        character(len=*), intent(in) :: file_path
+        character(len=:), allocatable, intent(out) :: content
+        character(len=:), allocatable, intent(out) :: error_msg
+
+        integer :: unit, iostat_val, file_size
+
+        error_msg = ""
+        open (newunit=unit, file=file_path, status="old", action="read", &
+              access="stream", form="unformatted", iostat=iostat_val)
+        if (iostat_val /= 0) then
+            error_msg = "Could not open file"
+            return
+        end if
+
+        inquire (unit=unit, size=file_size, iostat=iostat_val)
+        if (iostat_val /= 0) then
+            close (unit)
+            error_msg = "Could not stat file"
+            return
+        end if
+
+        if (file_size <= 0) then
+            content = ""
+        else
+            allocate (character(len=file_size) :: content)
+            read (unit, iostat=iostat_val) content
+            if (iostat_val /= 0) error_msg = "Could not read file"
+        end if
+        close (unit)
+    end subroutine read_raw_text_file
+
+    subroutine write_raw_text_file(file_path, content, error_msg)
+        character(len=*), intent(in) :: file_path
+        character(len=*), intent(in) :: content
+        character(len=:), allocatable, intent(out) :: error_msg
+
+        integer :: unit, iostat_val
+
+        error_msg = ""
+        open (newunit=unit, file=file_path, status="replace", action="write", &
+              access="stream", form="unformatted", iostat=iostat_val)
+        if (iostat_val /= 0) then
+            error_msg = "Could not open file"
+            return
+        end if
+
+        write (unit, iostat=iostat_val) content
+        if (iostat_val /= 0) error_msg = "Could not write file"
+        close (unit)
+    end subroutine write_raw_text_file
 
     ! Run server command
     subroutine run_server_command(app, exit_code)
