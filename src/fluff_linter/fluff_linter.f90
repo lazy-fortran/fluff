@@ -173,7 +173,8 @@ contains
         type(diagnostic_t), allocatable, intent(out) :: diagnostics(:)
 
         ! Run enabled rules on AST
-        call this%rule_registry%execute_rules(ast_ctx, diagnostics=diagnostics)
+        call this%rule_registry%execute_rules(ast_ctx, this%config%rules, &
+            diagnostics=diagnostics)
 
     end subroutine linter_lint_ast
 

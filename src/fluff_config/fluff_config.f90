@@ -65,9 +65,6 @@ contains
         config%target_version = "2018"
         config%output_format = "text"
 
-        allocate (character(len=4) :: config%rules%select(1))
-        config%rules%select(1) = "F"
-
     end function create_default_config
 
     function load_config(config_file) result(config)
@@ -120,9 +117,11 @@ contains
         logical :: fix, show_fixes
         integer :: line_length, tab_width
         character(len=20) :: target_version, output_format
+        character(len=32) :: ignore(64), select(64)
+        character(len=:), allocatable :: ig_codes(:), sel_codes(:)
 
         namelist /fluff/ fix, show_fixes, line_length, tab_width, &
-            target_version, output_format
+            target_version, output_format, ignore, select
 
         if (present(error_msg)) error_msg = ""
 
@@ -134,6 +133,8 @@ contains
         output_format = ""
         if (allocated(this%target_version)) target_version = this%target_version
         if (allocated(this%output_format)) output_format = this%output_format
+        ignore = ''
+        select = ''
 
         open (newunit=unit, file=filename, status='old', action='read', &
             iostat=iostat)
@@ -156,6 +157,10 @@ contains
         this%tab_width = tab_width
         if (len_trim(target_version) > 0) this%target_version = trim(target_version)
         if (len_trim(output_format) > 0) this%output_format = trim(output_format)
+        ig_codes = collect_nonempty(ignore)
+        if (allocated(ig_codes)) this%rules%ignore = ig_codes
+        sel_codes = collect_nonempty(select)
+        if (allocated(sel_codes)) this%rules%select = sel_codes
 
     end subroutine config_from_file
 
@@ -168,9 +173,11 @@ contains
         logical :: fix, show_fixes
         integer :: line_length, tab_width
         character(len=20) :: target_version, output_format
+        character(len=32) :: ignore(64), select(64)
+        character(len=:), allocatable :: ig_codes(:), sel_codes(:)
 
         namelist /fluff/ fix, show_fixes, line_length, tab_width, &
-            target_version, output_format
+            target_version, output_format, ignore, select
 
         error_msg = ""
 
@@ -182,6 +189,8 @@ contains
         output_format = ""
         if (allocated(this%target_version)) target_version = this%target_version
         if (allocated(this%output_format)) output_format = this%output_format
+        ignore = ''
+        select = ''
 
         open (newunit=unit, status='scratch', form='formatted', action='readwrite')
         write (unit, '(A)') config_str
@@ -201,6 +210,10 @@ contains
         this%tab_width = tab_width
         if (len_trim(target_version) > 0) this%target_version = trim(target_version)
         if (len_trim(output_format) > 0) this%output_format = trim(output_format)
+        ig_codes = collect_nonempty(ignore)
+        if (allocated(ig_codes)) this%rules%ignore = ig_codes
+        sel_codes = collect_nonempty(select)
+        if (allocated(sel_codes)) this%rules%select = sel_codes
 
     end subroutine config_from_namelist_string
 
@@ -329,19 +342,26 @@ contains
         logical :: enabled
 
         integer :: i
+        logical :: have_select
 
-        enabled = .false.
-
+        have_select = .false.
         if (allocated(this%select)) then
+            if (size(this%select) > 0) have_select = .true.
+        end if
+
+        if (have_select) then
+            enabled = .false.
             do i = 1, size(this%select)
                 if (rule_matches_pattern(rule_code, this%select(i))) then
                     enabled = .true.
                     exit
                 end if
             end do
+        else
+            enabled = .true.
         end if
 
-        if (enabled .and. allocated(this%ignore)) then
+        if (allocated(this%ignore)) then
             do i = 1, size(this%ignore)
                 if (rule_matches_pattern(rule_code, this%ignore(i))) then
                     enabled = .false.
@@ -357,13 +377,37 @@ contains
         character(len=*), intent(in) :: pattern
         logical :: matches
 
-        if (len(pattern) <= len(rule_code)) then
-            matches = rule_code(1:len(pattern)) == pattern
+        integer :: plen
+        plen = len_trim(pattern)
+        if (plen > 0 .and. plen <= len_trim(rule_code)) then
+            matches = rule_code(1:plen) == pattern(1:plen)
         else
-            matches = .false.
+            matches = (plen == 0)
         end if
 
     end function rule_matches_pattern
+
+    function collect_nonempty(arr) result(codes)
+        character(len=*), intent(in) :: arr(:)
+        character(len=:), allocatable :: codes(:)
+        integer :: i, count, max_len
+
+        count = 0
+        max_len = 0
+        do i = 1, size(arr)
+            if (len_trim(arr(i)) == 0) exit
+            count = count + 1
+            if (len_trim(arr(i)) > max_len) max_len = len_trim(arr(i))
+        end do
+
+        if (count > 0) then
+            allocate (character(len=max_len) :: codes(count))
+            do i = 1, count
+                codes(i) = trim(arr(i))
+            end do
+        end if
+
+    end function collect_nonempty
 
     function validate_rule_codes(codes, invalid_code) result(valid)
         character(len=*), intent(in) :: codes(:)

@@ -1,6 +1,8 @@
 program test_config_schema
     ! Test configuration schema validation and documentation
     use fluff_config
+    use fluff_diagnostics, only: diagnostic_t
+    use fluff_linter, only: create_linter_engine, linter_engine_t
     implicit none
 
     print *, "Testing configuration schema validation..."
@@ -16,6 +18,9 @@ program test_config_schema
 
     ! Test 4: Schema documentation
     call test_schema_documentation()
+
+    ! Test 5: Config ignore applied to linting
+    call test_config_ignore_applied()
 
     print *, "[OK] All configuration schema tests passed!"
 
@@ -144,5 +149,62 @@ contains
 
         print *, "[OK] Schema documentation"
     end subroutine test_schema_documentation
+
+    subroutine test_config_ignore_applied()
+        type(linter_engine_t) :: linter
+        type(fluff_config_t) :: config
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: error_msg, source
+        integer :: i
+        logical :: found_f001
+
+        source = "program p"//new_line('a')//"  integer :: x"//new_line('a')//"end program p"
+
+        linter = create_linter_engine()
+        call linter%lint_source(source, "test.f90", diagnostics, error_msg)
+        if (error_msg /= "") then
+            print *, "FAIL: lint_source error: ", error_msg
+            stop 1
+        end if
+
+        found_f001 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F001") found_f001 = .true.
+            end do
+        end if
+        if (.not. found_f001) then
+            print *, "FAIL: expected F001 with default config"
+            stop 1
+        end if
+
+        config = create_default_config()
+        call config%from_namelist_string( &
+            "&fluff"//new_line('a')//"ignore = 'F001'"//new_line('a')//"/", error_msg)
+        if (error_msg /= "") then
+            print *, "FAIL: config_from_namelist_string error: ", error_msg
+            stop 1
+        end if
+        call linter%set_config(config)
+
+        call linter%lint_source(source, "test.f90", diagnostics, error_msg)
+        if (error_msg /= "") then
+            print *, "FAIL: lint_source error (2): ", error_msg
+            stop 1
+        end if
+
+        found_f001 = .false.
+        if (allocated(diagnostics)) then
+            do i = 1, size(diagnostics)
+                if (diagnostics(i)%code == "F001") found_f001 = .true.
+            end do
+        end if
+        if (found_f001) then
+            print *, "FAIL: F001 should be suppressed by ignore"
+            stop 1
+        end if
+
+        print *, "[OK] Config ignore applied"
+    end subroutine test_config_ignore_applied
 
 end program test_config_schema
