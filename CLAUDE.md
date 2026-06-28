@@ -72,9 +72,9 @@ use fortfront, only: &
 
 ### Testing Requirements
 
-- **Build**: `fpm build`
-- **Test**: `fpm test`
-- **Specific test**: `fpm test test_rule_f001`
+- **Build**: `fo build`
+- **Test**: `fo test`
+- **Specific test**: `fpm test test_rule_f001` (fpm only to isolate one named test)
 - **NEVER** compile test programs manually
 - Create tests in `test/` with names `test_*.f90`
 
