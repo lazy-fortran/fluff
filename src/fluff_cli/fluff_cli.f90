@@ -373,6 +373,7 @@ contains
 
         type(fluff_config_t) :: config
         type(diagnostic_t), allocatable :: diagnostics(:)
+        type(diagnostic_t), allocatable :: all_diagnostics(:)
         character(len=:), allocatable :: error_msg
         character(len=:), allocatable :: expanded_files(:)
         integer :: i, fixes_applied
@@ -417,9 +418,19 @@ contains
                         end if
                     end if
 
-                    call print_diagnostics(diagnostics, app%args%output_format)
+                    if (allocated(all_diagnostics)) then
+                        all_diagnostics = [all_diagnostics, diagnostics]
+                    else
+                        all_diagnostics = diagnostics
+                    end if
                 end if
             end do
+
+            if (allocated(all_diagnostics)) then
+                call print_diagnostics(all_diagnostics, app%args%output_format)
+            else
+                call print_diagnostics([diagnostic_t::], app%args%output_format)
+            end if
         else
             print *, "No files specified"
             exit_code = 1
@@ -1204,7 +1215,7 @@ contains
                 call collection%add(diagnostics(i))
             end do
             json_output = collection%to_json()
-            print *, json_output
+            write(*,'(A)') json_output
         case ("sarif")
             ! Create collection and output as SARIF
             call collection%clear()
@@ -1212,7 +1223,7 @@ contains
                 call collection%add(diagnostics(i))
             end do
             sarif_output = collection%to_sarif()
-            print *, sarif_output
+            write(*,'(A)') sarif_output
         end select
     end subroutine print_diagnostics
 
