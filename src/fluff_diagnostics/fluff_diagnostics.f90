@@ -187,6 +187,7 @@ contains
     function diagnostic_to_json(this) result(json)
         class(diagnostic_t), intent(in) :: this
         character(len=:), allocatable :: json
+        character(len=:), allocatable :: file_str
         character(len=20) :: line_str, col_str, end_line_str, end_col_str
 
         ! Convert integers to strings to avoid format issues
@@ -195,11 +196,19 @@ contains
         write(end_line_str, '(I0)') this%location%end%line
         write(end_col_str, '(I0)') this%location%end%column
 
+        ! Handle file_path - empty string if unallocated
+        if (allocated(this%file_path)) then
+            file_str = escape_json_value(this%file_path)
+        else
+            file_str = ""
+        end if
+
         json = '{' // new_line('a') // &
             '  "code": "' // this%code // '",' // new_line('a') // &
             '  "message": "' // this%message // '",' // new_line('a') // &
             '  "severity": "' // severity_to_string(this%severity) // '",' // new_line('a') // &
             '  "category": "' // this%category // '",' // new_line('a') // &
+            '  "file": "' // file_str // '",' // new_line('a') // &
             '  "location": {' // new_line('a') // &
             '    "start": {"line": ' // trim(line_str) // ', "column": ' // trim(col_str) // '},' // new_line('a') // &
             '    "end": {"line": ' // trim(end_line_str) // ', "column": ' // trim(end_col_str) // '}' // new_line('a') // &
@@ -894,5 +903,38 @@ contains
             end if
         end if
     end function should_swap_diagnostics
+
+    ! Escape special characters for JSON without adding quotes
+    function escape_json_value(value) result(escaped)
+        character(len=*), intent(in) :: value
+        character(len=:), allocatable :: escaped
+
+        character(len=len(value)*2) :: buffer
+        integer :: i, j
+
+        j = 1
+        do i = 1, len_trim(value)
+            select case (value(i:i))
+            case ('"')
+                buffer(j:j+1) = '\"'
+                j = j + 2
+            case ('\')
+                buffer(j:j+1) = '\\'
+                j = j + 2
+            case (char(10))
+                buffer(j:j+1) = '\n'
+                j = j + 2
+            case (char(9))
+                buffer(j:j+1) = '\t'
+                j = j + 2
+            case default
+                buffer(j:j) = value(i:i)
+                j = j + 1
+            end select
+        end do
+
+        escaped = buffer(1:j-1)
+
+    end function escape_json_value
 
 end module fluff_diagnostics
