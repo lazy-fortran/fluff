@@ -22,7 +22,10 @@ program test_cli_argument_parsing
     
     ! Test 5: Parse output format
     call test_output_format()
-    
+
+    ! Test 6: Parse format --check
+    call test_format_check_flag()
+
     print *, "[OK] All CLI argument parsing tests passed!"
     
 contains
@@ -145,5 +148,35 @@ contains
         print *, "[OK] Output format parsing"
         
     end subroutine test_output_format
+
+    subroutine test_format_check_flag()
+        type(cli_args_t) :: args
+        character(len=10) :: argv(3)
+
+        argv(1) = "format"
+        argv(2) = "--check"
+        argv(3) = "test.f90"
+
+        call args%parse(3, argv)
+
+        if (args%command /= "format") then
+            error stop "Failed: command should be 'format'"
+        end if
+
+        if (.not. args%check) then
+            error stop "Failed: check should be true"
+        end if
+
+        if (args%diff) then
+            error stop "Failed: diff should be false"
+        end if
+
+        if (args%fix) then
+            error stop "Failed: fix should be false"
+        end if
+
+        print *, "[OK] Format --check flag parsing"
+
+    end subroutine test_format_check_flag
     
 end program test_cli_argument_parsing
