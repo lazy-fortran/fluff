@@ -134,7 +134,7 @@ contains
             else if (i == 1) then
                 ! First non-flag argument is the command
                 select case (trim(argv(i)))
-                case ("check", "format", "server")
+                case ("check", "format", "server", "rules")
                     this%command = trim(argv(i))
                 case default
                     ! If not a valid command, treat as file
@@ -279,7 +279,7 @@ contains
         ! Check if command is valid
         if (allocated(this%command)) then
             select case (this%command)
-            case ("check", "format", "server")
+            case ("check", "format", "server", "rules")
                 ! Valid commands
             case default
                 valid = .false.
@@ -321,6 +321,8 @@ contains
             call run_format_command(this, exit_code)
         case ("server")
             call run_server_command(this, exit_code)
+        case ("rules")
+            call run_rules_command(this, exit_code)
         case default
             print *, "Error: Unknown command '", this%args%command, "'"
             exit_code = 1
@@ -544,6 +546,29 @@ contains
         if (iostat_val /= 0) error_msg = "Could not write file"
         close (unit)
     end subroutine write_raw_text_file
+
+    ! Run rules command
+    subroutine run_rules_command(app, exit_code)
+        use fluff_rules, only: get_all_builtin_rules
+        use fluff_rule_types, only: rule_info_t
+        type(cli_app_t), intent(in) :: app
+        integer, intent(out) :: exit_code
+
+        type(rule_info_t), allocatable :: rules(:)
+        integer :: i
+
+        exit_code = 0
+
+        write(*, '(A)') "Available lint rules:"
+        write(*, '(A)') ""
+
+        rules = get_all_builtin_rules()
+        do i = 1, size(rules)
+            write(*, '(A,A,A,A,A,A)') trim(rules(i)%code), "  ", &
+                trim(rules(i)%name), "  -  ", trim(rules(i)%description)
+        end do
+
+    end subroutine run_rules_command
 
     ! Run server command
     subroutine run_server_command(app, exit_code)
