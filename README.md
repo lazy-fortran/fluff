@@ -7,6 +7,34 @@ The project is useful as a FortFront-based tool prototype, but it is not yet a
 Ruff-equivalent production tool. Several CLI and formatter features are still
 tracked as open issues.
 
+## Role in the toolchain
+
+`fluff` is the deep static-analysis half of a two-tool split, in the shape Go
+uses for `go vet` and staticcheck, Rust uses for cargo and clippy, and C and
+C++ use for compiler warnings and clang-tidy.
+
+`fo` owns the cheap tier: checks that need no parse tree, run on every
+invocation, and work with nothing else installed. Today that is unused imports,
+short-circuit reliance, and gfortran's own warnings.
+
+`fluff` owns every rule that needs an abstract syntax tree, because it is built
+on FortFront and `fo` is not. Type-aware rules, dead-code analysis, and
+column-major access patterns belong here. `fo lint --deep` reaches them by
+running `fluff check --output-format json` as a subprocess and merging the
+findings (lazy-fortran/fo#59).
+
+Two consequences worth stating explicitly:
+
+- Do not reimplement `fo`'s native rules here. They must keep working when
+  `fluff` is not installed.
+- The subprocess boundary is deliberate. It keeps `fo`'s dependency closure
+  free of FortFront, so `fo build` and `fo test` stay available during
+  bootstrap.
+
+Before `fo lint --deep` can rely on this repository, #260, #261, #262, and #263
+need to close. The test suite currently cannot fail (#262), so no claim made by
+a passing run here should be trusted yet.
+
 ## Current Scope
 
 Implemented or partially implemented:
