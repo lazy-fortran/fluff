@@ -1,7 +1,5 @@
 program test_format_validation
-    use fluff_formatter
-    use fluff_core
-    use fluff_ast
+    use fluff_formatter, only: formatter_engine_t
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -27,11 +25,11 @@ program test_format_validation
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests)/real(total_tests)*100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All format validation tests passed."
-    else
-        print *, "[FAIL] Some validation tests failed."
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "format validation: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "format validation: some assertions failed"
 
 contains
 
@@ -490,9 +488,22 @@ contains
             return
         end if
 
+        if (len_trim(formatted_code) == 0) then
+            print *, "[FAIL] ", test_name, " - Empty output"
+            return
+        end if
+
         call formatter%validate_format(input, formatted_code, is_valid)
 
-        ! For interface testing, we just check that the validation runs
+        ! The formatter's own validator has to accept the formatter's own
+        ! output. Crediting the case for merely reaching this line, as it did
+        ! before, meant is_valid was never read.
+        if (.not. is_valid) then
+            print *, "[FAIL] ", test_name, " - validator rejected the "// &
+                "formatter's own output"
+            return
+        end if
+
         print *, "[OK] ", test_name, " - Validation result: ", is_valid
         passed_tests = passed_tests + 1
 

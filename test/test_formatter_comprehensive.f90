@@ -1,6 +1,5 @@
 program test_formatter_comprehensive
-    use fluff_formatter
-    use fluff_core
+    use fluff_formatter, only: formatter_engine_t
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -29,11 +28,11 @@ program test_formatter_comprehensive
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All comprehensive formatter tests passed!"
-    else
-        print *, "[WARN] Some tests failed"
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "comprehensive formatter: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "comprehensive formatter: some assertions failed"
 
 contains
 
@@ -313,10 +312,6 @@ contains
             print *, "[FAIL] ", test_name
             print *, "    Expected structure elements from: ", expected
             print *, "    Actual: ", actual
-            ! Still count as passed if basic structure is correct
-            if (index(actual, "program test") > 0 .and. index(actual, "end program") > 0) then
-                passed_tests = passed_tests + 1
-            end if
         end if
 
     end subroutine run_format_test
@@ -345,25 +340,55 @@ contains
 
     end subroutine run_format_test_flexible
 
+    ! Every non-blank line of `expected` has to appear in `actual`, compared
+    ! with whitespace removed: this suite is about which statements survive
+    ! formatting, and spacing inside a line is the subject of
+    ! test_enhanced_style_rules. The previous version tested only for the
+    ! words program, implicit none, integer and real, so an output that kept
+    ! those four tokens and dropped every statement still matched.
     function contains_key_elements(actual, expected) result(match)
         character(len=*), intent(in) :: actual, expected
         logical :: match
 
-        ! Check for presence of key structural elements
+        character(len=:), allocatable :: packed_actual
+        integer :: line_start, line_end
+
+        packed_actual = without_spaces(actual)
         match = .true.
-
-        if (index(expected, "program") > 0 .and. index(actual, "program") == 0) match = .false.
-        if (index(expected, "implicit none") > 0 .and. index(actual, "implicit none") == 0) match = .false.
-        if (index(expected, "end program") > 0 .and. index(actual, "end program") == 0) match = .false.
-        if (index(expected, "integer") > 0 .and. index(actual, "integer") == 0) match = .false.
-        if (index(expected, "real") > 0 .and. index(actual, "real") == 0) match = .false.
-
-        ! Check basic indentation (look for some indented content)
-        if (index(expected, "    ") > 0 .and. index(actual, "    ") == 0 .and. &
-            index(actual, "  ") == 0 .and. index(actual, char(9)) == 0) then
-            match = .false.
-        end if
+        line_start = 1
+        do while (line_start <= len(expected))
+            line_end = index(expected(line_start:), new_line('a'))
+            if (line_end == 0) then
+                line_end = len(expected)
+            else
+                line_end = line_start + line_end - 2
+            end if
+            if (line_end >= line_start) then
+                if (len_trim(expected(line_start:line_end)) > 0) then
+                    if (index(packed_actual, &
+                        without_spaces(expected(line_start:line_end))) == 0) then
+                        match = .false.
+                        return
+                    end if
+                end if
+            end if
+            line_start = line_end + 2
+        end do
 
     end function contains_key_elements
+
+    function without_spaces(text) result(packed)
+        character(len=*), intent(in) :: text
+        character(len=:), allocatable :: packed
+
+        integer :: i
+
+        packed = ""
+        do i = 1, len(text)
+            if (text(i:i) == " " .or. text(i:i) == achar(9)) cycle
+            packed = packed//text(i:i)
+        end do
+
+    end function without_spaces
 
 end program test_formatter_comprehensive

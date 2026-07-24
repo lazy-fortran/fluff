@@ -1,7 +1,5 @@
 program test_dead_code_detection
-    use fluff_core
-    use fluff_diagnostics
-    use fluff_dead_code_detection
+    use fluff_dead_code_detection, only: dead_code_detector_t
     implicit none
 
     integer :: total_tests, passed_tests
@@ -25,11 +23,11 @@ program test_dead_code_detection
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All dead code detection tests passed!"
-    else
-        print *, "[FAIL] Some tests failed"
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "dead code detection: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "dead code detection: some assertions failed"
 
 contains
 
@@ -187,29 +185,12 @@ contains
         print *, ""
         print *, "Testing cross-module dead code analysis..."
 
-        ! Test 1: Unused public procedure
-        call run_dead_code_test("Unused public procedure", &
-            test_unused_public_procedure, .true.)
-
-        ! Test 2: Used across modules
-        call run_dead_code_test("Cross-module usage analysis", &
-            test_cross_module_usage, .false.)
-
-        ! Test 3: Unused module variables
+        ! Cross-module reachability is not implemented. The five cases that
+        ! stood here returned a hard-coded .true./.false. without ever calling
+        ! the detector, so they graded their own constant. Only the case that
+        ! actually runs the detector is kept.
         call run_dead_code_test("Unused module variables", &
             test_unused_module_variables, .true.)
-
-        ! Test 4: Interface usage analysis
-        call run_dead_code_test("Interface usage analysis", &
-            test_interface_usage, .false.)
-
-        ! Test 5: Generic interface resolution
-        call run_dead_code_test("Generic interface resolution", &
-            test_generic_interface_resolution, .false.)
-
-        ! Test 6: Module dependency analysis
-        call run_dead_code_test("Module dependency analysis", &
-            test_module_dependency_analysis, .false.)
 
     end subroutine test_cross_module_analysis
 
@@ -645,19 +626,7 @@ contains
     end function test_early_return_patterns
 
     ! Cross-Module Analysis Tests
-    function test_unused_public_procedure() result(found_dead_code)
-        logical :: found_dead_code
-        type(dead_code_detector_t) :: detector
-        ! Requires cross-module analysis - simplified for GREEN phase
-        found_dead_code = .true. ! GREEN phase - placeholder for unused public procedure detection
-    end function test_unused_public_procedure
 
-    function test_cross_module_usage() result(found_dead_code)
-        logical :: found_dead_code
-        type(dead_code_detector_t) :: detector
-        ! Requires cross-module analysis - simplified for test
-        found_dead_code = .false. ! RED phase - not implemented yet
-    end function test_cross_module_usage
 
     function test_unused_module_variables() result(found_dead_code)
         logical :: found_dead_code
@@ -674,25 +643,7 @@ contains
         found_dead_code = detector%analyze_source_code(code, "test.f90")
     end function test_unused_module_variables
 
-    function test_interface_usage() result(found_dead_code)
-        logical :: found_dead_code
-        type(dead_code_detector_t) :: detector
-        ! Requires interface analysis - simplified for test
-        found_dead_code = .false. ! RED phase - not implemented yet
-    end function test_interface_usage
 
-    function test_generic_interface_resolution() result(found_dead_code)
-        logical :: found_dead_code
-        type(dead_code_detector_t) :: detector
-        ! Requires generic interface analysis - simplified for test
-        found_dead_code = .false. ! RED phase - not implemented yet
-    end function test_generic_interface_resolution
 
-    function test_module_dependency_analysis() result(found_dead_code)
-        logical :: found_dead_code
-        type(dead_code_detector_t) :: detector
-        ! Requires dependency analysis - simplified for test
-        found_dead_code = .false. ! RED phase - not implemented yet
-    end function test_module_dependency_analysis
 
 end program test_dead_code_detection
