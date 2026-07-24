@@ -13,6 +13,7 @@ module test_support
     public :: assert_has_diagnostic_code
     public :: assert_diagnostic_location
     public :: assert_equal_int
+    public :: resolve_fluff_binary
 
     integer(int64), parameter :: temp_path_clock_mod = 1000000000_int64
     integer(int64), save :: temp_path_last_clock = -1_int64
@@ -206,5 +207,55 @@ contains
             error stop 1
         end if
     end subroutine assert_equal_int
+
+    ! Locate the fluff executable belonging to the build that produced this
+    ! test program. The path is derived from the running test binary, so the
+    ! tool that compiled the test also supplies the binary under test. No
+    ! build layout is globbed and nothing found elsewhere on disk is accepted
+    ! as a substitute: an unresolvable binary aborts the caller instead of
+    ! letting it grade a foreign artifact.
+    subroutine resolve_fluff_binary(path)
+        character(len=:), allocatable, intent(out) :: path
+
+        character(len=4096) :: arg0
+        character(len=:), allocatable :: bin_dir
+        integer :: arg_len, arg_stat, slash
+        logical :: exists
+
+        call get_command_argument(0, arg0, length=arg_len, status=arg_stat)
+        if (arg_stat /= 0) call fail_binary_lookup("cannot read own argv[0]")
+        if (arg_len <= 0) call fail_binary_lookup("own argv[0] is empty")
+        if (arg_len > len(arg0)) call fail_binary_lookup("own argv[0] is too long")
+
+        slash = index(arg0(1:arg_len), "/", back=.true.)
+        if (slash <= 1) then
+            call fail_binary_lookup("test binary was invoked without a "// &
+                "directory: "//arg0(1:arg_len))
+        end if
+        bin_dir = arg0(1:slash - 1)
+
+        ! Executables and test programs share a directory under some backends
+        ! and sit in sibling directories under others; both candidates stay
+        ! inside the same build tree as this test program.
+        path = bin_dir//"/fluff"
+        inquire (file=path, exist=exists)
+        if (exists) return
+
+        path = bin_dir//"/../app/fluff"
+        inquire (file=path, exist=exists)
+        if (exists) return
+
+        call fail_binary_lookup("no fluff executable in the build that "// &
+            "produced this test, searched next to "//bin_dir)
+    end subroutine resolve_fluff_binary
+
+    subroutine fail_binary_lookup(reason)
+        character(len=*), intent(in) :: reason
+
+        write (error_unit, '(A)') "Failed: fluff binary under test not found: "// &
+            trim(reason)
+        flush (error_unit)
+        error stop 1
+    end subroutine fail_binary_lookup
 
 end module test_support
