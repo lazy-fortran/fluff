@@ -1,25 +1,13 @@
 program test_quiet_flag
+    use test_support, only: resolve_fluff_binary
     implicit none
 
     character(len=:), allocatable :: bin_path, tmpdir, tmpfile, tmpfile_clean, tmpout
-    character(len=1024) :: bin_buf, line
+    character(len=1024) :: line
     integer :: u, stat, ios, exitstat
     logical :: file_exists
 
-    call execute_command_line("ls build/gfortran_*/app/fluff > /tmp/fluff242_bin.txt 2>/dev/null", &
-        wait=.true.)
-    open(newunit=u, file="/tmp/fluff242_bin.txt", status="old", action="read", iostat=stat)
-    if (stat /= 0) then
-        print *, "FAIL: binary not found"
-        stop 1
-    end if
-    read(u, '(A)', iostat=stat) bin_buf
-    close(u)
-    if (stat /= 0 .or. len_trim(bin_buf) == 0) then
-        print *, "FAIL: binary not found"
-        stop 1
-    end if
-    bin_path = trim(bin_buf)
+    call resolve_fluff_binary(bin_path)
 
     tmpdir = "/tmp/fluff242_test_quiet"
     call execute_command_line("rm -rf " // tmpdir // " && mkdir -p " // tmpdir, wait=.true.)

@@ -1,25 +1,14 @@
 program test_combined_json
+    use test_support, only: resolve_fluff_binary
     implicit none
 
     character(len=:), allocatable :: bin_path, tmpdir, tmpout, output
-    character(len=1024) :: bin_buf, line
+    character(len=1024) :: line
     integer :: u, stat, ios, i, j
     integer :: extra_arrays
     logical :: has_file1, has_file2, in_string
 
-    call execute_command_line("ls build/gfortran_*/app/fluff > /tmp/fluff245_bin.txt 2>/dev/null", wait=.true.)
-    open(newunit=u, file="/tmp/fluff245_bin.txt", status="old", action="read", iostat=stat)
-    if (stat /= 0) then
-        print *, "FAIL: binary not found"
-        stop 1
-    end if
-    read(u, '(A)', iostat=stat) bin_buf
-    close(u)
-    if (stat /= 0 .or. len_trim(bin_buf) == 0) then
-        print *, "FAIL: binary not found"
-        stop 1
-    end if
-    bin_path = trim(bin_buf)
+    call resolve_fluff_binary(bin_path)
 
     tmpdir = "/tmp/fluff245_test_combined"
     call execute_command_line("rm -rf " // tmpdir // " && mkdir -p " // tmpdir, wait=.true.)
