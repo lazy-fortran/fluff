@@ -1,6 +1,5 @@
 program test_enhanced_style_rules
-    use fluff_formatter
-    use fluff_core
+    use fluff_formatter, only: formatter_engine_t
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -32,11 +31,11 @@ program test_enhanced_style_rules
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All enhanced style rules tests passed!"
-    else
-        print *, "[FAIL] Some tests failed"
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "enhanced style rules: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "enhanced style rules: some assertions failed"
 
 contains
 
@@ -372,10 +371,14 @@ contains
 
     end subroutine test_error_handling_patterns
 
-    ! Helper subroutine for running style tests
+    ! Run one style case: format the input and require the result to satisfy
+    ! the layout invariants the formatter is supposed to establish. The
+    ! previous oracle here was len(formatted_code) > 0, which no formatter
+    ! output can violate, so every case reported [OK] no matter what came out.
     subroutine run_style_test(test_name, input, expected_feature)
         character(len=*), intent(in) :: test_name, input, expected_feature
         character(len=:), allocatable :: formatted_code, error_msg
+        character(len=:), allocatable :: violation
 
         total_tests = total_tests + 1
 
@@ -386,15 +389,124 @@ contains
             return
         end if
 
-        ! For RED phase, just check that formatting completes
-        ! In GREEN phase, we'll add specific validations for each rule
-        if (len(formatted_code) > 0) then
-            print *, "[OK] ", test_name, " (", expected_feature, ")"
-            passed_tests = passed_tests + 1
-        else
+        if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
         end if
 
+        call find_layout_violation(formatted_code, violation)
+        if (len(violation) > 0) then
+            print *, "[FAIL] ", test_name, " (", expected_feature, ") - ", violation
+            return
+        end if
+
+        print *, "[OK] ", test_name, " (", expected_feature, ")"
+        passed_tests = passed_tests + 1
+
     end subroutine run_style_test
+
+    ! Report the first layout defect in formatter output, or "" when clean.
+    ! Character literals are skipped: their contents are data, not layout,
+    ! and a scan that ignores quoting reports defects that are not there.
+    subroutine find_layout_violation(code, violation)
+        character(len=*), intent(in) :: code
+        character(len=:), allocatable, intent(out) :: violation
+
+        integer :: pos, line_start, line_end
+
+        violation = ""
+        line_start = 1
+        do while (line_start <= len(code))
+            line_end = index(code(line_start:), new_line('a'))
+            if (line_end == 0) then
+                line_end = len(code)
+            else
+                line_end = line_start + line_end - 2
+            end if
+            if (line_end >= line_start) then
+                call check_line(code(line_start:line_end), violation)
+                if (len(violation) > 0) return
+            end if
+            line_start = line_end + 2
+        end do
+
+        pos = index(code, achar(9))
+        if (pos > 0) violation = "tab character in output"
+
+    end subroutine find_layout_violation
+
+    subroutine check_line(line, violation)
+        character(len=*), intent(in) :: line
+        character(len=:), allocatable, intent(inout) :: violation
+
+        logical, allocatable :: is_code(:)
+        integer :: i, n
+
+        n = len(line)
+        if (n == 0) return
+
+        call mark_code_positions(line, is_code)
+
+        if (line(n:n) == " " .or. line(n:n) == achar(9)) then
+            violation = "trailing whitespace: '"//line//"'"
+            return
+        end if
+
+        do i = 1, n
+            if (.not. is_code(i)) cycle
+            if (line(i:i) == "," .and. i > 1) then
+                if (line(i - 1:i - 1) == " ") then
+                    violation = "space before comma: '"//line//"'"
+                    return
+                end if
+            end if
+            if (line(i:i) == "(" .and. i < n) then
+                if (line(i + 1:i + 1) == " ") then
+                    violation = "padding after '(': '"//line//"'"
+                    return
+                end if
+            end if
+            if (line(i:i) == ")" .and. i > 1) then
+                if (line(i - 1:i - 1) == " ") then
+                    violation = "padding before ')': '"//line//"'"
+                    return
+                end if
+            end if
+        end do
+
+    end subroutine check_line
+
+    ! Flag every position of the line that is outside a character literal.
+    subroutine mark_code_positions(line, is_code)
+        character(len=*), intent(in) :: line
+        logical, allocatable, intent(out) :: is_code(:)
+
+        integer :: i
+        character(len=1) :: quote
+        logical :: in_literal
+
+        allocate (is_code(len(line)))
+        is_code = .true.
+        in_literal = .false.
+        quote = " "
+
+        do i = 1, len(line)
+            if (in_literal) then
+                is_code(i) = .false.
+                if (line(i:i) == quote) in_literal = .false.
+            else
+                if (line(i:i) == "!") then
+                    is_code(i:) = .false.
+                    return
+                end if
+                if (line(i:i) == "'" .or. line(i:i) == '"') then
+                    in_literal = .true.
+                    quote = line(i:i)
+                    is_code(i) = .false.
+                end if
+            end if
+        end do
+
+    end subroutine mark_code_positions
 
 end program test_enhanced_style_rules

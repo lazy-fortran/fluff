@@ -1,6 +1,5 @@
 program test_fortran_specific_style
-    use fluff_formatter
-    use fluff_core
+    use fluff_formatter, only: formatter_engine_t
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -28,11 +27,11 @@ program test_fortran_specific_style
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All Fortran-specific style tests passed!"
-    else
-        print *, "[FAIL] Some tests failed"
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "Fortran-specific style: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "Fortran-specific style: some assertions failed"
 
 contains
 
@@ -383,9 +382,15 @@ contains
     end subroutine test_code_simplicity_principles
 
     ! Helper subroutine for running style tests
+    ! Format `input` and require the result to obey the two layout limits the
+    ! formatter is configured with: no line wider than options%line_length and
+    ! every indent a whole number of options%indent_size columns. The former
+    ! oracle was len(formatted_code) > 0, which nothing the formatter can emit
+    ! violates, so every case here reported [OK] unconditionally.
     subroutine run_style_test(test_name, input, expected_feature)
         character(len=*), intent(in) :: test_name, input, expected_feature
         character(len=:), allocatable :: formatted_code, error_msg
+        character(len=:), allocatable :: violation
 
         total_tests = total_tests + 1
 
@@ -396,15 +401,60 @@ contains
             return
         end if
 
-        ! For RED phase, just check that formatting completes
-        ! In GREEN phase, we'll add specific validations for each principle
-        if (len(formatted_code) > 0) then
-            print *, "[OK] ", test_name, " (", expected_feature, ")"
-            passed_tests = passed_tests + 1
-        else
+        if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
         end if
 
+        call find_layout_breach(formatted_code, violation)
+        if (len(violation) > 0) then
+            print *, "[FAIL] ", test_name, " (", expected_feature, ") - ", violation
+            return
+        end if
+
+        print *, "[OK] ", test_name, " (", expected_feature, ")"
+        passed_tests = passed_tests + 1
+
     end subroutine run_style_test
+
+    ! First line of `code` that breaks a configured layout limit, or "".
+    subroutine find_layout_breach(code, violation)
+        character(len=*), intent(in) :: code
+        character(len=:), allocatable, intent(out) :: violation
+
+        integer :: line_start, line_end, lead
+        character(len=32) :: number
+
+        violation = ""
+        line_start = 1
+        do while (line_start <= len(code))
+            line_end = index(code(line_start:), new_line('a'))
+            if (line_end == 0) then
+                line_end = len(code)
+            else
+                line_end = line_start + line_end - 2
+            end if
+            if (line_end >= line_start) then
+                if (len_trim(code(line_start:line_end)) > 0) then
+                    if (len_trim(code(line_start:line_end)) > &
+                        formatter%options%line_length) then
+                        write (number, '(I0)') len_trim(code(line_start:line_end))
+                        violation = "line of "//trim(number)//" columns: '"// &
+                            trim(code(line_start:line_end))//"'"
+                        return
+                    end if
+                    lead = verify(code(line_start:line_end), " ") - 1
+                    if (modulo(lead, formatter%options%indent_size) /= 0) then
+                        write (number, '(I0)') lead
+                        violation = "indent of "//trim(number)//" columns: '"// &
+                            trim(code(line_start:line_end))//"'"
+                        return
+                    end if
+                end if
+            end if
+            line_start = line_end + 2
+        end do
+
+    end subroutine find_layout_breach
 
 end program test_fortran_specific_style

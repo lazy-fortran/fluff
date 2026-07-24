@@ -1,6 +1,5 @@
 program test_style_guides
-    use fluff_formatter
-    use fluff_core
+    use fluff_formatter, only: formatter_engine_t
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -26,11 +25,11 @@ program test_style_guides
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All style guide tests passed!"
-    else
-        print *, "[FAIL] Some style guide tests failed"
-    end if
+    ! A tally that is only printed cannot fail the build, and a tally of
+    ! zero means no assertion ran at all.
+    if (total_tests == 0) error stop "style guides: no assertions ran"
+    if (passed_tests /= total_tests) &
+        error stop "style guides: some assertions failed"
 
 contains
 
@@ -262,14 +261,9 @@ contains
 
         call formatter%initialize()
 
-        ! Test 1: Detect from file patterns
-        call run_detection_test("Detection: legacy Fortran", &
-            "C     This is old Fortran" // new_line('a') // &
-            "      PROGRAM TEST" // new_line('a') // &
-            "      IMPLICIT NONE" // new_line('a') // &
-            "      END", &
-            "fortran77")
-
+        ! A "fortran77" detection case stood here. fluff has no fortran77
+        ! style guide, so no output of detect_style_guide could ever have
+        ! satisfied it; it only ever asserted that some string came back.
         ! Test 2: Detect from modern syntax
         call run_detection_test("Detection: modern Fortran", &
             "program test" // new_line('a') // &
@@ -332,9 +326,14 @@ contains
     end subroutine test_style_inheritance
 
     ! Helper subroutines for testing
+    ! Format `input` under the style guide named `style_name` and require the
+    ! result to carry that style guide's indentation. The former oracle was
+    ! len(formatted_code) > 0, which holds for any output whatsoever, so the
+    ! style guide could have been ignored entirely without a case failing.
     subroutine run_style_test(test_name, input, style_name)
         character(len=*), intent(in) :: test_name, input, style_name
         character(len=:), allocatable :: formatted_code, error_msg
+        integer :: smallest_indent
 
         total_tests = total_tests + 1
 
@@ -345,17 +344,57 @@ contains
             return
         end if
 
-        ! For now, just check that formatting completed without error
-        ! In the GREEN phase, we'll implement proper style validation
-        if (len(formatted_code) > 0) then
-            print *, "[OK] ", test_name, " (", style_name, " style)"
-            passed_tests = passed_tests + 1
-        else
+        if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
         end if
+
+        smallest_indent = smallest_positive_indent(formatted_code)
+        if (smallest_indent /= formatter%options%indent_size) then
+            print *, "[FAIL] ", test_name, " - ", style_name, &
+                " style indents by ", smallest_indent, &
+                " but its indent_size is ", formatter%options%indent_size
+            return
+        end if
+
+        print *, "[OK] ", test_name, " (", style_name, " style)"
+        passed_tests = passed_tests + 1
 
     end subroutine run_style_test
 
+    ! Width of the shallowest non-zero indent in `code`, or 0 when every line
+    ! starts in column 1.
+    function smallest_positive_indent(code) result(width)
+        character(len=*), intent(in) :: code
+        integer :: width
+
+        integer :: line_start, line_end, lead
+
+        width = 0
+        line_start = 1
+        do while (line_start <= len(code))
+            line_end = index(code(line_start:), new_line('a'))
+            if (line_end == 0) then
+                line_end = len(code)
+            else
+                line_end = line_start + line_end - 2
+            end if
+            if (line_end >= line_start) then
+                if (len_trim(code(line_start:line_end)) > 0) then
+                    lead = verify(code(line_start:line_end), " ") - 1
+                    if (lead > 0) then
+                        if (width == 0 .or. lead < width) width = lead
+                    end if
+                end if
+            end if
+            line_start = line_end + 2
+        end do
+
+    end function smallest_positive_indent
+
+    ! Style-guide detection has to name the style the source is written in.
+    ! The former oracle only required a non-empty string, so expected_style
+    ! was an unused dummy argument and any answer counted as the right one.
     subroutine run_detection_test(test_name, input, expected_style)
         character(len=*), intent(in) :: test_name, input, expected_style
         character(len=:), allocatable :: detected_style
@@ -364,14 +403,14 @@ contains
 
         call formatter%detect_style_guide(input, detected_style)
 
-        ! For now, just check that detection completes
-        ! In the GREEN phase, we'll implement actual detection logic
-        if (len(detected_style) > 0) then
-            print *, "[OK] ", test_name, " - Detected: ", detected_style
-            passed_tests = passed_tests + 1
-        else
-            print *, "[FAIL] ", test_name, " - No style detected"
+        if (detected_style /= expected_style) then
+            print *, "[FAIL] ", test_name, " - expected ", expected_style, &
+                " but detected ", detected_style
+            return
         end if
+
+        print *, "[OK] ", test_name, " - Detected: ", detected_style
+        passed_tests = passed_tests + 1
 
     end subroutine run_detection_test
 
