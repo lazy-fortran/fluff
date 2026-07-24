@@ -140,9 +140,14 @@ contains
                 cycle
             end if
 
-            if (eq_pos < len(result) .and. result(eq_pos+1:eq_pos+1) == "=") then
-                search_pos = eq_pos + 2
-                cycle
+            if (eq_pos < len(result)) then
+                ! "==" is a comparison and "=>" is a single token (rename or
+                ! pointer assignment); neither may be split by a space.
+                if (result(eq_pos + 1:eq_pos + 1) == "=" .or. &
+                    result(eq_pos + 1:eq_pos + 1) == ">") then
+                    search_pos = eq_pos + 2
+                    cycle
+                end if
             end if
 
             if (eq_pos > 1 .and. result(eq_pos-1:eq_pos-1) /= " ") then
@@ -183,19 +188,26 @@ contains
 
             select case (op)
             case ("+", "-", "*", "/")
-                if (op == "*" .and. pos < len(result) .and. &
-                    result(pos+1:pos+1) == "*") then
-                    pos = pos + 1
-                    cycle
+                if (op == "*") then
+                    if (pos < len(result)) then
+                        if (result(pos + 1:pos + 1) == "*") then
+                            pos = pos + 1
+                            cycle
+                        end if
+                    end if
                 end if
 
-                if (pos > 1 .and. result(pos-1:pos-1) /= " ") then
-                    result = result(1:pos-1) // " " // result(pos:)
-                    pos = pos + 1
+                if (pos > 1) then
+                    if (needs_space_before(result(pos - 1:pos - 1))) then
+                        result = result(1:pos - 1)//" "//result(pos:)
+                        pos = pos + 1
+                    end if
                 end if
 
-                if (pos < len(result) .and. result(pos+1:pos+1) /= " ") then
-                    result = result(1:pos) // " " // result(pos+1:)
+                if (pos < len(result)) then
+                    if (needs_space_after(result(pos + 1:pos + 1))) then
+                        result = result(1:pos)//" "//result(pos + 1:)
+                    end if
                 end if
             end select
 
@@ -205,6 +217,28 @@ contains
         code = result
 
     end subroutine improve_operator_spacing
+
+    ! A "+-*/" only needs padding on its left when a left operand actually ends
+    ! there. After "(", "," or a line start the character is not a binary
+    ! operator at all - "write(*", "print *" - and padding it corrupts the
+    ! statement. A space means the padding is already present.
+    logical function needs_space_before(ch) result(needs_space)
+        character, intent(in) :: ch
+
+        needs_space = .not. (ch == " " .or. ch == "(" .or. ch == "," .or. &
+            ch == new_line("a"))
+
+    end function needs_space_before
+
+    ! Likewise on the right: before ")", "," or a line end no operand follows,
+    ! so padding would emit "print * ," or leave trailing whitespace.
+    logical function needs_space_after(ch) result(needs_space)
+        character, intent(in) :: ch
+
+        needs_space = .not. (ch == " " .or. ch == ")" .or. ch == "," .or. &
+            ch == new_line("a"))
+
+    end function needs_space_after
 
     subroutine optimize_line_breaks(code, max_length)
         character(len=:), allocatable, intent(inout) :: code

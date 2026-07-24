@@ -1,6 +1,8 @@
 program test_quality_improvements
     use fluff_formatter
     use fluff_format_quality
+    use, intrinsic :: iso_fortran_env, only: dp => real64
+    use test_support, only: test_suite_exit
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -28,15 +30,14 @@ program test_quality_improvements
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All quality improvement tests passed!"
-    else
-        print *, "[WARN]  Some tests need attention"
-    end if
+    call test_suite_exit(passed_tests, total_tests, "format quality improvements")
+    print *, "[OK] All quality improvement tests passed!"
 
 contains
 
     subroutine test_basic_quality_assessment()
+        real(dp) :: basic_score
+
         print *, ""
         print *, "Testing basic quality assessment..."
 
@@ -46,7 +47,7 @@ contains
             "integer::x,y,z" // new_line('a') // &
             "x=1;y=2;z=x+y" // new_line('a') // &
             "print*,z" // new_line('a') // &
-            "end program")
+            "end program", basic_score)
 
     end subroutine test_basic_quality_assessment
 
@@ -86,6 +87,8 @@ contains
     end subroutine test_aesthetic_improvements
 
     subroutine test_quality_metrics()
+        real(dp) :: clean_score, messy_score
+
         print *, ""
         print *, "Testing quality metrics..."
 
@@ -105,7 +108,7 @@ contains
             "        print *, 'Average:', average" // new_line('a') // &
             "    end if" // new_line('a') // &
             "    " // new_line('a') // &
-            "end program clean_example")
+            "end program clean_example", clean_score)
 
         ! Test quality metrics on poorly formatted code
         call test_quality_for_code("Poorly-formatted code metrics", &
@@ -113,7 +116,18 @@ contains
             "integer::a,b,c,really_long_variable_name_that_exceeds_reasonable_length,another_very_long_name" // new_line('a') // &
             "a=1;b=2;c=a+b*really_long_variable_name_that_exceeds_reasonable_length+another_very_long_name" // new_line('a') // &
             "if(c>0)then;print*,c;endif" // new_line('a') // &
-            "end program messy")
+            "end program messy", messy_score)
+
+        ! A quality metric that does not rank clean code above messy code is
+        ! not measuring quality.
+        total_tests = total_tests + 1
+        if (clean_score > messy_score) then
+            passed_tests = passed_tests + 1
+            print *, "[OK] Clean code scores above messy code"
+        else
+            print *, "[FAIL] Clean code scored ", clean_score, &
+                " but messy code scored ", messy_score
+        end if
 
     end subroutine test_quality_metrics
 
@@ -150,13 +164,15 @@ contains
     end subroutine test_readability_enhancements
 
     ! Helper subroutines
-    subroutine test_quality_for_code(test_name, input_code)
+    subroutine test_quality_for_code(test_name, input_code, overall_score)
         character(len=*), intent(in) :: test_name, input_code
+        real(dp), intent(out) :: overall_score
         integer :: i
 
         total_tests = total_tests + 1
 
         call formatter%assess_quality(input_code, quality_before)
+        overall_score = quality_before%overall_score
 
         print *, "  ", test_name, ":"
         print *, "    Overall Score: ", quality_before%overall_score, "/10"
@@ -174,8 +190,44 @@ contains
             end do
         end if
 
+        if (.not. in_score_range(quality_before%indentation_score) .or. &
+            .not. in_score_range(quality_before%spacing_score) .or. &
+            .not. in_score_range(quality_before%readability_score) .or. &
+            .not. in_score_range(quality_before%structure_score) .or. &
+            .not. in_score_range(quality_before%consistency_score) .or. &
+            .not. in_score_range(quality_before%line_length_score) .or. &
+            .not. in_score_range(quality_before%overall_score)) then
+            print *, "[FAIL] ", test_name, " - score outside 0..10"
+            return
+        end if
+
+        if (quality_before%total_lines /= count_source_lines(input_code)) then
+            print *, "[FAIL] ", test_name, " - counted ", &
+                quality_before%total_lines, " lines, source has ", &
+                count_source_lines(input_code)
+            return
+        end if
+
         passed_tests = passed_tests + 1
     end subroutine test_quality_for_code
+
+    logical function in_score_range(score) result(ok)
+        real(dp), intent(in) :: score
+
+        ok = score >= 0.0_dp .and. score <= 10.0_dp
+
+    end function in_score_range
+
+    integer function count_source_lines(code) result(lines)
+        character(len=*), intent(in) :: code
+        integer :: i
+
+        lines = 1
+        do i = 1, len(code)
+            if (code(i:i) == new_line('a')) lines = lines + 1
+        end do
+
+    end function count_source_lines
 
     subroutine test_improvement(test_name, input_code)
         character(len=*), intent(in) :: test_name, input_code

@@ -13,6 +13,7 @@ module test_support
     public :: assert_has_diagnostic_code
     public :: assert_diagnostic_location
     public :: assert_equal_int
+    public :: test_suite_exit
 
     integer(int64), parameter :: temp_path_clock_mod = 1000000000_int64
     integer(int64), save :: temp_path_last_clock = -1_int64
@@ -206,5 +207,28 @@ contains
             error stop 1
         end if
     end subroutine assert_equal_int
+
+    ! Terminate a tally-style suite. Suites that count their own passes must
+    ! call this last so that a shortfall aborts the run instead of being
+    ! printed and forgotten.
+    subroutine test_suite_exit(passed, total, suite_name)
+        integer, intent(in) :: passed
+        integer, intent(in) :: total
+        character(len=*), intent(in) :: suite_name
+
+        if (total <= 0) then
+            write (error_unit, '(A)') "Failed: "//trim(suite_name)// &
+                " ran no assertions"
+            flush (error_unit)
+            error stop 1
+        end if
+
+        if (passed /= total) then
+            write (error_unit, '(A,I0,A,I0,A)') "Failed: "//trim(suite_name)// &
+                " passed ", passed, " of ", total, " assertions"
+            flush (error_unit)
+            error stop 1
+        end if
+    end subroutine test_suite_exit
 
 end module test_support

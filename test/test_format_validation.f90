@@ -2,6 +2,7 @@ program test_format_validation
     use fluff_formatter
     use fluff_core
     use fluff_ast
+    use test_support, only: test_suite_exit
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -27,11 +28,8 @@ program test_format_validation
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests)/real(total_tests)*100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All format validation tests passed."
-    else
-        print *, "[FAIL] Some validation tests failed."
-    end if
+    call test_suite_exit(passed_tests, total_tests, "format validation")
+    print *, "[OK] All format validation tests passed."
 
 contains
 
@@ -492,9 +490,15 @@ contains
 
         call formatter%validate_format(input, formatted_code, is_valid)
 
-        ! For interface testing, we just check that the validation runs
-        print *, "[OK] ", test_name, " - Validation result: ", is_valid
-        passed_tests = passed_tests + 1
+        ! Formatting a well-formed unit must produce non-empty output that the
+        ! validator accepts; anything else is a defect, not an interface quirk.
+        if (len_trim(formatted_code) > 0 .and. is_valid) then
+            print *, "[OK] ", test_name, " - Validation result: ", is_valid
+            passed_tests = passed_tests + 1
+        else
+            print *, "[FAIL] ", test_name, " - Validation result: ", is_valid, &
+                ", output length: ", len_trim(formatted_code)
+        end if
 
     end subroutine run_interface_test
 

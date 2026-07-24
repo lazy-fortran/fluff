@@ -79,6 +79,59 @@ program test_formatter_basic
 
     call delete_file_if_exists(temp_path)
 
+    ! Test 4: list-directed I/O keeps "*," together (no "print * ,")
+    source_code = "program p"//new_line('a')// &
+        "implicit none"//new_line('a')// &
+        "integer :: i"//new_line('a')// &
+        "i = 1"//new_line('a')// &
+        "print *, i"//new_line('a')// &
+        "end program p"
+
+    call formatter%format_source(source_code, formatted_code, error_msg)
+
+    if (error_msg /= "") then
+        print *, "ERROR: "//error_msg
+        error stop
+    end if
+
+    if (index(formatted_code, "print * ,") > 0) then
+        print *, "Output:"
+        print *, formatted_code
+        error stop "Formatter split the list-directed format marker: print * ,"
+    end if
+
+    if (index(formatted_code, "print *, i") == 0) then
+        print *, "Output:"
+        print *, formatted_code
+        error stop "Formatter did not emit 'print *, i'"
+    end if
+
+    ! Test 5: a use-rename arrow stays a single token (no "dp = > real64")
+    source_code = "module m"//new_line('a')// &
+        "use iso_fortran_env, only: dp => real64"//new_line('a')// &
+        "implicit none"//new_line('a')// &
+        "real(dp) :: x"//new_line('a')// &
+        "end module m"
+
+    call formatter%format_source(source_code, formatted_code, error_msg)
+
+    if (error_msg /= "") then
+        print *, "ERROR: "//error_msg
+        error stop
+    end if
+
+    if (index(formatted_code, "= >") > 0) then
+        print *, "Output:"
+        print *, formatted_code
+        error stop "Formatter split the rename arrow into '= >'"
+    end if
+
+    if (index(formatted_code, "=> real64") == 0) then
+        print *, "Output:"
+        print *, formatted_code
+        error stop "Formatter did not preserve '=> real64'"
+    end if
+
     print *, ""
     print *, "Basic formatter tests completed successfully!"
 

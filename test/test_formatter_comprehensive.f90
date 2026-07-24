@@ -1,6 +1,7 @@
 program test_formatter_comprehensive
     use fluff_formatter
     use fluff_core
+    use test_support, only: test_suite_exit
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -29,11 +30,8 @@ program test_formatter_comprehensive
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All comprehensive formatter tests passed!"
-    else
-        print *, "[WARN] Some tests failed"
-    end if
+    call test_suite_exit(passed_tests, total_tests, "comprehensive formatter")
+    print *, "[OK] All comprehensive formatter tests passed!"
 
 contains
 
@@ -313,10 +311,6 @@ contains
             print *, "[FAIL] ", test_name
             print *, "    Expected structure elements from: ", expected
             print *, "    Actual: ", actual
-            ! Still count as passed if basic structure is correct
-            if (index(actual, "program test") > 0 .and. index(actual, "end program") > 0) then
-                passed_tests = passed_tests + 1
-            end if
         end if
 
     end subroutine run_format_test

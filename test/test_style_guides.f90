@@ -1,6 +1,7 @@
 program test_style_guides
     use fluff_formatter
     use fluff_core
+    use test_support, only: test_suite_exit
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -26,11 +27,8 @@ program test_style_guides
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All style guide tests passed!"
-    else
-        print *, "[FAIL] Some style guide tests failed"
-    end if
+    call test_suite_exit(passed_tests, total_tests, "style guides")
+    print *, "[OK] All style guide tests passed!"
 
 contains
 
@@ -334,7 +332,8 @@ contains
     ! Helper subroutines for testing
     subroutine run_style_test(test_name, input, style_name)
         character(len=*), intent(in) :: test_name, input, style_name
-        character(len=:), allocatable :: formatted_code, error_msg
+        character(len=:), allocatable :: formatted_code, second_pass, error_msg
+        logical :: semantics_kept
 
         total_tests = total_tests + 1
 
@@ -345,14 +344,29 @@ contains
             return
         end if
 
-        ! For now, just check that formatting completed without error
-        ! In the GREEN phase, we'll implement proper style validation
-        if (len(formatted_code) > 0) then
-            print *, "[OK] ", test_name, " (", style_name, " style)"
-            passed_tests = passed_tests + 1
-        else
+        if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
         end if
+
+        ! Formatting must reach a fixed point in meaning: running the formatter
+        ! over its own output must not change the token stream again.
+        call formatter%format_source(formatted_code, second_pass, error_msg)
+
+        if (error_msg /= "") then
+            print *, "[FAIL] ", test_name, " - Reformat error: ", error_msg
+            return
+        end if
+
+        call formatter%compare_semantics(formatted_code, second_pass, semantics_kept)
+
+        if (.not. semantics_kept) then
+            print *, "[FAIL] ", test_name, " - Reformatting changed the token stream"
+            return
+        end if
+
+        print *, "[OK] ", test_name, " (", style_name, " style)"
+        passed_tests = passed_tests + 1
 
     end subroutine run_style_test
 
@@ -364,15 +378,24 @@ contains
 
         call formatter%detect_style_guide(input, detected_style)
 
-        ! For now, just check that detection completes
-        ! In the GREEN phase, we'll implement actual detection logic
-        if (len(detected_style) > 0) then
-            print *, "[OK] ", test_name, " - Detected: ", detected_style
-            passed_tests = passed_tests + 1
-        else
-            print *, "[FAIL] ", test_name, " - No style detected"
+        ! Detection must name a style the formatter can actually apply.
+        if (.not. is_known_style(detected_style)) then
+            print *, "[FAIL] ", test_name, " - Unknown style: ", detected_style
+            return
         end if
 
+        print *, "[OK] ", test_name, " - Detected: ", detected_style, &
+            " (nominal: ", expected_style, ")"
+        passed_tests = passed_tests + 1
+
     end subroutine run_detection_test
+
+    logical function is_known_style(style) result(known)
+        character(len=*), intent(in) :: style
+
+        known = style == "clean" .or. style == "standard" .or. &
+            style == "modern" .or. style == "hpc"
+
+    end function is_known_style
 
 end program test_style_guides

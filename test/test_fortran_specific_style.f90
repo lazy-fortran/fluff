@@ -1,6 +1,7 @@
 program test_fortran_specific_style
     use fluff_formatter
     use fluff_core
+    use test_support, only: test_suite_exit
     implicit none
 
     type(formatter_engine_t) :: formatter
@@ -28,11 +29,8 @@ program test_fortran_specific_style
     print *, "Passed tests: ", passed_tests
     print *, "Success rate: ", real(passed_tests) / real(total_tests) * 100.0, "%"
 
-    if (passed_tests == total_tests) then
-        print *, "[OK] All Fortran-specific style tests passed!"
-    else
-        print *, "[FAIL] Some tests failed"
-    end if
+    call test_suite_exit(passed_tests, total_tests, "Fortran-specific style")
+    print *, "[OK] All Fortran-specific style tests passed!"
 
 contains
 
@@ -385,7 +383,9 @@ contains
     ! Helper subroutine for running style tests
     subroutine run_style_test(test_name, input, expected_feature)
         character(len=*), intent(in) :: test_name, input, expected_feature
-        character(len=:), allocatable :: formatted_code, error_msg
+        character(len=:), allocatable :: formatted_code, second_pass
+        character(len=:), allocatable :: error_msg
+        logical :: semantics_kept
 
         total_tests = total_tests + 1
 
@@ -396,14 +396,29 @@ contains
             return
         end if
 
-        ! For RED phase, just check that formatting completes
-        ! In GREEN phase, we'll add specific validations for each principle
-        if (len(formatted_code) > 0) then
-            print *, "[OK] ", test_name, " (", expected_feature, ")"
-            passed_tests = passed_tests + 1
-        else
+        if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
         end if
+
+        ! Formatting must reach a fixed point in meaning: running the formatter
+        ! over its own output must not change the token stream again.
+        call formatter%format_source(formatted_code, second_pass, error_msg)
+
+        if (error_msg /= "") then
+            print *, "[FAIL] ", test_name, " - Reformat error: ", error_msg
+            return
+        end if
+
+        call formatter%compare_semantics(formatted_code, second_pass, semantics_kept)
+
+        if (.not. semantics_kept) then
+            print *, "[FAIL] ", test_name, " - Reformatting changed the token stream"
+            return
+        end if
+
+        print *, "[OK] ", test_name, " (", expected_feature, ")"
+        passed_tests = passed_tests + 1
 
     end subroutine run_style_test
 
