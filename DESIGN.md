@@ -423,15 +423,21 @@ end module
 
 ## Success Metrics
 
+These are design targets, not measured results. None of them is currently met,
+and nothing in the repository verifies them.
+
 ### Quality Metrics
-- **Zero false positives**: All diagnostics must be accurate
+- **Zero false positives**: All diagnostics must be accurate. Not met: #261
+  reports a false positive in F006 on subscripted array reads.
 - **Performance**: <1s analysis for 10K LOC
 - **Memory**: <100MB for typical projects
 
 ### Coverage Metrics
 - **Rule coverage**: 100% of documented rules
-- **Language coverage**: Full Fortran 2018 support
-- **Test coverage**: >90% line coverage
+- **Language coverage**: full support through the newest standard the
+  toolchain targets, which is Fortran 2023, not 2018
+- **Test coverage**: >90% line coverage. Not measured, and not currently
+  meaningful: 19 test programs cannot fail the build at all (#262).
 
 ---
 
