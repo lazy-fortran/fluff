@@ -32,8 +32,9 @@ Two consequences worth stating explicitly:
   bootstrap.
 
 Before `fo lint --deep` can rely on this repository, #260, #261, #262, and #263
-need to close. The test suite currently cannot fail (#262), so no claim made by
-a passing run here should be trusted yet.
+need to close. Take #262 first: while 28 test programs exit zero regardless of
+what they find, a passing run here is not evidence that the other three were
+fixed.
 
 ## Current Scope
 
@@ -45,16 +46,25 @@ Implemented or partially implemented:
 - formatter built on FortFront `emit_fortran`
 - basic LSP components
 - JSON/SARIF/GitHub-style output code paths
+- CLI: `--select`, `--ignore`, `--exclude`, `--statistics`, `--quiet`,
+  `--show-fixes`, the `rules` listing, and stdin input via `-`
 
 Known limits:
 
+- `fluff format` is not idempotent: it prepends a space to the first line and
+  writes `print * , i` for `print *, i` (#260)
+- `F006` reports an array as unused when it is only read through a subscript
+  (#261)
+- the test suite cannot detect either of the above, because 28 of its 94
+  programs exit zero no matter what they find (#262), and two more resolve the
+  binary under test by globbing fpm's build layout, so they can exercise a
+  stale artifact instead of the current tree (#265)
+- formatter can still move inline comments in unsafe ways (#244)
 - configuration support has open regressions
-- formatter can still move inline comments in unsafe ways
-- rule selection/ignore CLI parity with Ruff is incomplete
-- stdin, quiet mode, statistics, rule listing, and show-fixes UX are tracked as
-  open issues
 - AST caching is disabled in the linter path because FortFront arena/context
   copies are not yet safe enough
+  (`src/fluff_linter/fluff_linter.f90:83`), which leaves
+  `fluff_analysis_cache.f90` compiled but unreachable
 
 ## Install
 
