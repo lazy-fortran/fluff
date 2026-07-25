@@ -19,6 +19,7 @@ program test_formatter_indent_size
     call check_width(4)
     call check_width(8)
     call check_tab_indent()
+    call check_continuation_width()
 
     if (failures /= 0) error stop "formatter ignores the configured indent size"
 
@@ -55,6 +56,87 @@ contains
             "nested statements are not indented with the configured tab", 1, &
             formatted)
     end subroutine check_tab_indent
+
+    subroutine check_continuation_width()
+        !! The line breaker's continuation indent must come from the caller's
+        !! configuration, not a constant.
+        !!
+        !! test_optimize_line_breaks already passes a width to
+        !! optimize_line_breaks directly, so it verifies the function and not
+        !! the wiring that supplies it. Review of this change showed the gap:
+        !! replacing `settings%indent_size = this%options%indent_size` with a
+        !! literal 4 left the whole suite green while demonstrably changing
+        !! output. This goes through format_source so that assignment is on the
+        !! path under test.
+        character(len=:), allocatable :: formatted, error_msg
+        type(formatter_engine_t) :: formatter
+        integer :: line_start, line_end, indent, stmt_indent
+        logical :: saw_continuation
+
+        call formatter%initialize()
+        formatter%options%indent_size = 2
+        formatter%options%indent_char = ' '
+        formatter%options%line_length = 60
+
+        call formatter%format_source(long_declaration_source(), formatted, &
+            error_msg)
+        if (error_msg /= "") return
+        if (len_trim(formatted) == 0) return
+
+        ! A continuation is any line after the first whose predecessor ends in
+        ! '&'. Its indent must be a multiple of the configured width.
+        ! Assert the DELTA between the broken statement and its continuation
+        ! equals the configured width. A "multiple of the width" check is too
+        ! weak: at width 2 a four-column continuation satisfies it, which is
+        ! exactly the neutralized behaviour this test has to catch.
+        saw_continuation = .false.
+        line_start = 1
+        do
+            call next_line(formatted, line_start, line_end)
+            if (line_start > len(formatted)) exit
+            if (line_end >= line_start) then
+                if (index(formatted(line_start:line_end), '&') > 0) then
+                    stmt_indent = blanks_at_start(formatted(line_start:line_end))
+                    line_start = line_end + 2
+                    call next_line(formatted, line_start, line_end)
+                    if (line_start > len(formatted)) exit
+                    indent = blanks_at_start(formatted(line_start:line_end))
+                    if (indent > stmt_indent) then
+                        saw_continuation = .true.
+                        call expect(indent - stmt_indent == 2, &
+                            'continuation is indented by exactly the '// &
+                            'configured width past its statement', 2, formatted)
+                    end if
+                end if
+            end if
+            line_start = line_end + 2
+            if (line_start > len(formatted)) exit
+        end do
+
+        call expect(saw_continuation, &
+            'the sample actually produced a continuation to measure', 2, &
+            formatted)
+    end subroutine check_continuation_width
+
+    function long_declaration_source() result(source)
+        character(len=:), allocatable :: source
+
+        source = 'program p'//new_line('a')// &
+            '  implicit none'//new_line('a')// &
+            '  integer :: very_long_var_name_one, very_long_var_name_two, '// &
+            'very_long_var_name_three, very_long_var_name_four'// &
+            new_line('a')//'end program p'//new_line('a')
+    end function long_declaration_source
+
+    integer function blanks_at_start(line) result(n)
+        character(len=*), intent(in) :: line
+
+        n = 0
+        do while (n < len(line))
+            if (line(n + 1:n + 1) /= ' ') exit
+            n = n + 1
+        end do
+    end function blanks_at_start
 
     subroutine format_sample(width, indent_char, formatted)
         integer, intent(in) :: width
