@@ -183,10 +183,24 @@ contains
 
             select case (op)
             case ("+", "-", "*", "/")
-                if (op == "*" .and. pos < len(result) .and. &
-                    result(pos+1:pos+1) == "*") then
-                    pos = pos + 1
-                    cycle
+                ! Three Fortran operators begin with a character this routine
+                ! also treats as a complete operator: ** (power), // (concat)
+                ! and /= (not equal). Splitting one of them produces source
+                ! that does not compile and, worse, may mean something else:
+                ! `a /= b` became `a / = b` and `x**2` became `x* * 2`.
+                !
+                ! Skip past BOTH characters. The previous guard advanced by one,
+                ! landing on the second `*` of `**` and spacing that instead,
+                ! which is why the ** case was corrupted despite being guarded.
+                !
+                ! Note .and. does not short-circuit in Fortran, so the bounds
+                ! test cannot guard the substring reference in the same
+                ! expression; it is a separate statement.
+                if (pos < len(result)) then
+                    if (is_two_char_operator(op, result(pos + 1:pos + 1))) then
+                        pos = pos + 2
+                        cycle
+                    end if
                 end if
 
                 if (pos > 1 .and. result(pos-1:pos-1) /= " ") then
@@ -205,6 +219,22 @@ contains
         code = result
 
     end subroutine improve_operator_spacing
+
+    logical function is_two_char_operator(first, second)
+        !! True when first//second is a Fortran operator whose first character
+        !! is itself an operator: ** (power), // (concatenation), /= (not
+        !! equal). These must be stepped over whole, never spaced apart.
+        !!
+        !! <=, >=, ==, and => are not listed because their first character is
+        !! not one of the characters this routine spaces, so they never reach
+        !! here.
+        character, intent(in) :: first, second
+
+        is_two_char_operator = .false.
+        if (first == "*" .and. second == "*") is_two_char_operator = .true.
+        if (first == "/" .and. second == "/") is_two_char_operator = .true.
+        if (first == "/" .and. second == "=") is_two_char_operator = .true.
+    end function is_two_char_operator
 
     subroutine optimize_line_breaks(code, max_length)
         character(len=:), allocatable, intent(inout) :: code
