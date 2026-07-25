@@ -7,8 +7,7 @@ license = "MIT"
 copyright = "Copyright 2025, Christopher Albert"
 
 [dependencies]
-fortfront = { git = "https://github.com/lazy-fortran/fortfront.git", branch = "main" }
-stdlib = "*"
+fortfront = { git = "https://github.com/lazy-fortran/fortfront.git", rev = "b22d5654e9e457fad724040a290523a5f6b47c9a" }
 
 [dev-dependencies]
 test-drive = { git = "https://github.com/fortran-lang/test-drive.git" }
