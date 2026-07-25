@@ -9,15 +9,26 @@ program test_cli_format_stdout
     !!
     !! These tests drive the built binary, so they fail if the command stops
     !! calling the helper, whatever the helper itself does.
+    !!
+    !! The binary comes from resolve_fluff_binary in test_support, which derives
+    !! it from the running test's own executable. Hardcoding a build layout is
+    !! what #265 was filed for, and the first version of this file did exactly
+    !! that in the other direction: it looked in fo's build tree and found
+    !! nothing under fpm, which is what CI runs.
+    use test_support, only: resolve_fluff_binary
     implicit none
 
     integer :: n_pass, n_fail
-    character(len=512) :: bin
+    character(len=:), allocatable :: bin
 
     n_pass = 0
     n_fail = 0
 
-    call locate_binary(bin)
+    call resolve_fluff_binary(bin)
+    if (.not. allocated(bin)) then
+        write (*, '(a)') 'FAIL: could not locate the fluff binary this build produced'
+        error stop 1
+    end if
     if (len_trim(bin) == 0) then
         write (*, '(a)') 'FAIL: could not locate the fluff binary this build produced'
         error stop 1
@@ -44,26 +55,6 @@ contains
         end if
     end subroutine assert
 
-    subroutine locate_binary(path)
-        !! Resolve the binary this build produced. Deliberately not a glob over
-        !! one build tool's layout: #265 was filed because two tests did that
-        !! and ended up grading a stale artifact.
-        character(len=*), intent(out) :: path
-        character(len=512) :: candidate(2)
-        logical :: found
-        integer :: i
-
-        candidate(1) = 'build/fo/app/fluff'
-        candidate(2) = 'build/fo/bin/fluff'
-        path = ''
-        do i = 1, size(candidate)
-            inquire (file=trim(candidate(i)), exist=found)
-            if (found) then
-                path = candidate(i)
-                return
-            end if
-        end do
-    end subroutine locate_binary
 
     subroutine write_fixture(path)
         character(len=*), intent(in) :: path
