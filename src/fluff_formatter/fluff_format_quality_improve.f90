@@ -207,6 +207,17 @@ contains
                     end if
                 end if
 
+                ! `+ - * /` are only binary operators when an operand stands on
+                ! each side. In `print *, i` the `*` is a format specifier, in
+                ! `write (*, fmt)` a unit specifier, in `character(len=*)` an
+                ! assumed length; spacing those produced `print * , i`, which
+                ! no style guide writes and which #260 reported. Requiring a
+                ! real operand on both sides leaves them alone.
+                if (.not. has_operands_on_both_sides(result, pos)) then
+                    pos = pos + 1
+                    cycle
+                end if
+
                 if (pos > 1 .and. result(pos-1:pos-1) /= " ") then
                     result = result(1:pos-1) // " " // result(pos:)
                     pos = pos + 1
@@ -223,6 +234,82 @@ contains
         code = result
 
     end subroutine improve_operator_spacing
+
+    logical function has_operands_on_both_sides(text, pos) result(is_binary)
+        !! True when the character at pos is flanked, on the same line, by
+        !! something that can end an operand on the left and something that can
+        !! start one on the right. Anything else (a comma, an opening or
+        !! closing parenthesis to the left, an `=`, the line edge) means the
+        !! character is punctuation or a specifier rather than a binary
+        !! operator, and must not be spaced.
+        character(len=*), intent(in) :: text
+        integer, intent(in) :: pos
+
+        integer :: left, right
+
+        is_binary = .false.
+
+        left = neighbour_index(text, pos, -1)
+        if (left == 0) return
+        if (.not. can_end_operand(text(left:left))) return
+
+        right = neighbour_index(text, pos, 1)
+        if (right == 0) return
+        if (.not. can_start_operand(text(right:right))) return
+
+        is_binary = .true.
+
+    end function has_operands_on_both_sides
+
+    integer function neighbour_index(text, pos, step) result(idx)
+        !! Index of the nearest non-blank character from pos in direction step,
+        !! stopping at a line break. Zero when the line ends first.
+        character(len=*), intent(in) :: text
+        integer, intent(in) :: pos, step
+        integer :: probe
+
+        idx = 0
+        probe = pos + step
+        do while (probe >= 1 .and. probe <= len(text))
+            if (text(probe:probe) == new_line("a")) return
+            if (text(probe:probe) /= " ") then
+                idx = probe
+                return
+            end if
+            probe = probe + step
+        end do
+
+    end function neighbour_index
+
+    logical function can_end_operand(c) result(can_end)
+        !! Characters that can terminate an operand: a name or number, a closing
+        !! bracket, a string delimiter, or the `.` of a real literal or of a
+        !! named operator such as `.true.`.
+        character, intent(in) :: c
+
+        can_end = is_name_char(c) .or. c == ")" .or. c == "]" .or. &
+            c == "'" .or. c == '"' .or. c == "." .or. c == "%"
+
+    end function can_end_operand
+
+    logical function can_start_operand(c) result(can_start)
+        !! Characters that can begin an operand. `(` and `[` appear here but not
+        !! in can_end_operand: `a*(b + c)` is multiplication, while `(*` in
+        !! `write (*, fmt)` has no left operand at all.
+        character, intent(in) :: c
+
+        can_start = is_name_char(c) .or. c == "(" .or. c == "[" .or. &
+            c == "'" .or. c == '"' .or. c == "." .or. c == "%"
+
+    end function can_start_operand
+
+    logical function is_name_char(c) result(is_name)
+        character, intent(in) :: c
+
+        is_name = (c >= "a" .and. c <= "z") .or. (c >= "A" .and. c <= "Z") .or. &
+            (c >= "0" .and. c <= "9") .or. c == "_"
+
+    end function is_name_char
 
     logical function is_two_char_operator(first, second)
         !! True when first//second is a Fortran operator whose first character

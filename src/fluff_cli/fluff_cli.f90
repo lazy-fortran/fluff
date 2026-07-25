@@ -57,6 +57,7 @@ module fluff_cli
     public :: expand_file_arguments
     public :: path_matches_pattern
     public :: glob_match
+    public :: write_formatted_output
 
 contains
 
@@ -722,6 +723,7 @@ contains
     ! Run format command
     subroutine run_format_command(app, exit_code)
         use fluff_fix_applicator, only: read_text_file
+        use, intrinsic :: iso_fortran_env, only: output_unit
         type(cli_app_t), intent(inout) :: app
         integer, intent(out) :: exit_code
 
@@ -795,7 +797,7 @@ contains
                         exit_code = 1
                     end if
                 else
-                    print *, formatted_code
+                    call write_formatted_output(output_unit, formatted_code)
                 end if
             end do
         else
@@ -804,6 +806,23 @@ contains
         end if
 
     end subroutine run_format_command
+
+    subroutine write_formatted_output(unit, formatted_code)
+        !! Emit formatted source verbatim, followed by a single record
+        !! terminator.
+        !!
+        !! This used to be `print *, formatted_code`. List-directed output
+        !! prepends a blank to the record, so every formatted file came back
+        !! with a space in column 1 of its first line: `program p` became
+        !! ` program p`. Feeding that output back to the formatter is what
+        !! broke idempotence (issue #260). An explicit edit descriptor writes
+        !! the characters and nothing else.
+        integer, intent(in) :: unit
+        character(len=*), intent(in) :: formatted_code
+
+        write (unit, '(a)') formatted_code
+
+    end subroutine write_formatted_output
 
     subroutine read_raw_text_file(file_path, content, error_msg)
         character(len=*), intent(in) :: file_path
