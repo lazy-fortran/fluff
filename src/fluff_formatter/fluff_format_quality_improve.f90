@@ -8,6 +8,9 @@ module fluff_format_quality_improve
     public :: optimize_line_breaks
     public :: combine_short_lines
 
+    ! Continuation indent used when the caller does not state one.
+    integer, parameter :: default_continuation_indent = 4
+
 contains
 
     subroutine apply_aesthetic_improvements(input_code, output_code, settings)
@@ -40,7 +43,8 @@ contains
         end if
 
         if (settings%optimize_line_breaks) then
-            call optimize_line_breaks(temp_code, settings%max_line_length)
+            call optimize_line_breaks(temp_code, settings%max_line_length, &
+                settings%indent_size)
         end if
 
         output_code = temp_code
@@ -323,11 +327,17 @@ contains
         if (first == "/" .and. second == "=") is_two_char_operator = .true.
     end function is_two_char_operator
 
-    subroutine optimize_line_breaks(code, max_length)
+    subroutine optimize_line_breaks(code, max_length, continuation_indent)
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
+        integer, intent(in), optional :: continuation_indent
 
         type(aesthetic_settings_t) :: settings
+        integer :: indent
+
+        indent = default_continuation_indent
+        if (present(continuation_indent)) indent = continuation_indent
+        if (indent < 1) indent = default_continuation_indent
 
         settings = create_aesthetic_settings()
 
@@ -335,13 +345,14 @@ contains
             call combine_short_lines(code, max_length)
         end if
 
-        call break_long_lines(code, max_length)
+        call break_long_lines(code, max_length, indent)
 
     end subroutine optimize_line_breaks
 
-    subroutine break_long_lines(code, max_length)
+    subroutine break_long_lines(code, max_length, continuation_indent)
         character(len=:), allocatable, intent(inout) :: code
         integer, intent(in) :: max_length
+        integer, intent(in) :: continuation_indent
 
         character(len=:), allocatable :: result
         character(len=:), allocatable :: line
@@ -377,7 +388,8 @@ contains
 
             if (len_trim(line) > max_length .and. .not. skip_line_breaking) then
                 if (.not. first_line) result = result // new_line("a")
-                call break_fortran_line(line(1:len_trim(line)), result, max_length)
+                call break_fortran_line(line(1:len_trim(line)), result, &
+                    max_length, continuation_indent)
                 first_line = .false.
             else
                 if (.not. first_line) result = result // new_line("a")
@@ -584,10 +596,11 @@ contains
 
     end function is_simple_statement
 
-    subroutine break_fortran_line(line, result, max_length)
+    subroutine break_fortran_line(line, result, max_length, continuation_indent)
         character(len=*), intent(in) :: line
         character(len=:), allocatable, intent(inout) :: result
         integer, intent(in) :: max_length
+        integer, intent(in) :: continuation_indent
 
         character(len=:), allocatable :: remaining, current_segment
         integer :: break_pos, break_next_start, leading_spaces, trimmed_len
@@ -614,7 +627,8 @@ contains
             current_segment = remaining(1:break_pos) // " &"
             result = result // trim(current_segment)
 
-            call prepare_continuation_line(remaining, break_next_start, leading_spaces)
+            call prepare_continuation_line(remaining, break_next_start, &
+                leading_spaces, continuation_indent)
             if (len_trim(remaining) > 0) then
                 result = result // new_line("a")
             end if
@@ -716,10 +730,12 @@ contains
 
     end subroutine find_break_location
 
-    subroutine prepare_continuation_line(remaining, break_next_start, leading_spaces)
+    subroutine prepare_continuation_line(remaining, break_next_start, &
+            leading_spaces, continuation_indent)
         character(len=:), allocatable, intent(inout) :: remaining
         integer, intent(in) :: break_next_start
         integer, intent(in) :: leading_spaces
+        integer, intent(in) :: continuation_indent
 
         character(len=:), allocatable :: tail
         integer :: trimmed_len
@@ -727,7 +743,8 @@ contains
         trimmed_len = len_trim(remaining)
         if (break_next_start <= trimmed_len) then
             tail = remaining(break_next_start:trimmed_len)
-            remaining = repeat(" ", leading_spaces + 4) // trim(adjustl(tail))
+            remaining = repeat(" ", leading_spaces + continuation_indent) // &
+                trim(adjustl(tail))
         else
             remaining = ""
         end if

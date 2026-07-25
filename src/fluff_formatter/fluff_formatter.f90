@@ -7,6 +7,7 @@ module fluff_formatter
         create_quality_metrics, format_quality_t
     use fluff_format_continuation, only: has_leading_ampersand_continuations, &
         preserve_leading_ampersand_lines
+    use fluff_format_indent, only: emitted_indent_width, rescale_indentation
     use fluff_user_feedback, only: collect_interactive_feedback, create_user_feedback, &
         user_feedback_t
     use fluff_formatter_style, only: detect_style_guide_from_source, &
@@ -135,6 +136,7 @@ contains
         character(len=:), allocatable :: temp_code
         character(len=:), allocatable :: improved_code
         character(len=:), allocatable :: next_code
+        type(aesthetic_settings_t) :: settings
         integer :: saved_indent_size
         integer :: saved_line_length
         character(len=1) :: saved_indent_char
@@ -148,7 +150,11 @@ contains
             call get_line_length_config(saved_line_length)
             call get_type_standardization(saved_standardize_types)
 
-            call set_indent_config(this%options%indent_size, this%options%indent_char)
+            ! fortfront only honours a requested indent width for the
+            ! statement nesting it indents through get_indent(); its program
+            ! and module body emitters hardcode four columns. Emit at the one
+            ! width it is self-consistent about, then rescale.
+            call set_indent_config(emitted_indent_width, ' ')
             call set_line_length_config(this%options%line_length)
             call set_type_standardization(this%options%standardize_types)
 
@@ -158,11 +164,16 @@ contains
             call set_line_length_config(saved_line_length)
             call set_type_standardization(saved_standardize_types)
 
+            temp_code = rescale_indentation(temp_code, this%options%indent_size, &
+                this%options%indent_char)
+
             if (this%enable_quality_improvements) then
+                settings = this%aesthetic_settings
+                settings%indent_size = this%options%indent_size
                 improved_code = temp_code
                 do iter = 1, 2
                     call apply_aesthetic_improvements(improved_code, next_code, &
-                        this%aesthetic_settings)
+                        settings)
                     changed = next_code /= improved_code
                     improved_code = next_code
                     if (.not. changed) exit
@@ -252,7 +263,8 @@ contains
             call get_line_length_config(saved_line_length)
             call get_type_standardization(saved_standardize_types)
 
-            call set_indent_config(this%options%indent_size, this%options%indent_char)
+            ! Emit at the width fortfront indents consistently, then rescale.
+            call set_indent_config(emitted_indent_width, ' ')
             call set_line_length_config(this%options%line_length)
             call set_type_standardization(this%options%standardize_types)
 
@@ -261,6 +273,9 @@ contains
             call set_indent_config(saved_indent_size, saved_indent_char)
             call set_line_length_config(saved_line_length)
             call set_type_standardization(saved_standardize_types)
+
+            full_formatted = rescale_indentation(full_formatted, &
+                this%options%indent_size, this%options%indent_char)
 
             call split_lines_dynamic(full_formatted, lines, num_lines)
 

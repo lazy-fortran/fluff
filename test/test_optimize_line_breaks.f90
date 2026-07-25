@@ -127,6 +127,27 @@ program test_optimize_line_breaks
         print *, "  Got:      '", actual_output, "'"
     end if
 
+    ! Test 7: continuation lines follow the requested indent width
+    ! A file formatted with a two-column indent must not get four-column
+    ! continuations; the width used here is the caller's, not a constant.
+    test_count = test_count + 1
+    input_code = "  integer :: very_long_var_name_one, very_long_var_name_two, " // &
+        "very_long_var_name_three, very_long_var_name_four"
+    expected_output = "  integer :: very_long_var_name_one, very_long_var_name_two, " // &
+        "very_long_var_name_three, &" // new_line('a') // &
+        "    very_long_var_name_four"
+    actual_output = input_code
+    call optimize_line_breaks(actual_output, 88, 2)
+    test_passed = (actual_output == expected_output)
+    if (test_passed) then
+        pass_count = pass_count + 1
+        print *, "Test 7 PASSED: Continuation indent follows the requested width"
+    else
+        print *, "Test 7 FAILED: Continuation indent ignored the requested width"
+        print *, "  Expected: '", expected_output, "'"
+        print *, "  Got:      '", actual_output, "'"
+    end if
+
     ! Summary
     print *, ""
     print *, "=== Test Summary ==="
