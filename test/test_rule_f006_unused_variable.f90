@@ -23,9 +23,116 @@ program test_rule_f006_unused_variable
     ! Test 5: Loop control variables should not trigger F006
     call test_loop_control_variables()
 
+    ! Issue #261 specification table, one fixture per row.
+    call test_declared_never_mentioned()
+    call test_declared_only_initialized()
+    call test_subscripted_read_never_written()
+    call test_array_written_then_read()
+
     print *, "[OK] All F006 tests passed!"
 
 contains
+
+    integer function f006_count_for(test_code, name_hint) result(count)
+        character(len=*), intent(in) :: test_code
+        character(len=*), intent(in) :: name_hint
+
+        type(linter_engine_t) :: linter
+        type(diagnostic_t), allocatable :: diagnostics(:)
+        character(len=:), allocatable :: tmpfile
+        integer :: k
+
+        call make_temp_fortran_path(name_hint, tmpfile)
+        linter = create_linter_engine()
+        call write_text_file(tmpfile, test_code)
+        call lint_file_checked(linter, tmpfile, diagnostics)
+
+        count = 0
+        if (allocated(diagnostics)) then
+            do k = 1, size(diagnostics)
+                if (diagnostics(k)%code == "F006") count = count + 1
+            end do
+        end if
+
+        call delete_file_if_exists(tmpfile)
+    end function f006_count_for
+
+    ! Row 1: declared, never mentioned -> flagged.
+    subroutine test_declared_never_mentioned()
+        character(len=:), allocatable :: test_code
+
+        test_code = "program test"//new_line('a')// &
+            "    implicit none"//new_line('a')// &
+            "    integer :: vec(4), y"//new_line('a')// &
+            "    y = 1"//new_line('a')// &
+            "    print *, y"//new_line('a')// &
+            "end program test"
+
+        if (f006_count_for(test_code, "fluff_test_f006_silent") /= 1) then
+            error stop "Failed: F006 should flag an array that is never mentioned"
+        end if
+
+        print *, "[OK] Declared but never mentioned"
+    end subroutine test_declared_never_mentioned
+
+    ! Row 2: declared with an initializer and never referenced -> flagged.
+    subroutine test_declared_only_initialized()
+        character(len=:), allocatable :: test_code
+
+        test_code = "program test"//new_line('a')// &
+            "    implicit none"//new_line('a')// &
+            "    integer :: x = 5"//new_line('a')// &
+            "    print *, 'hello'"//new_line('a')// &
+            "end program test"
+
+        if (f006_count_for(test_code, "fluff_test_f006_init") /= 1) then
+            error stop "Failed: F006 should flag a variable that is only initialized"
+        end if
+
+        print *, "[OK] Declared and only initialized"
+    end subroutine test_declared_only_initialized
+
+    ! Row 3: read through a subscript, never written -> not flagged.
+    ! Covers rank 1, 2 and 3, plain reads, reads inside an expression, reads in
+    ! a condition, and reads passed as an actual argument.
+    subroutine test_subscripted_read_never_written()
+        character(len=:), allocatable :: test_code
+
+        test_code = "program test"//new_line('a')// &
+            "    implicit none"//new_line('a')// &
+            "    integer :: vec(4), mat(2, 2), cube(2, 2, 2), idx"//new_line('a')// &
+            "    idx = 1"//new_line('a')// &
+            "    print *, vec(idx)"//new_line('a')// &
+            "    print *, vec(idx) + mat(idx, idx)"//new_line('a')// &
+            "    if (mat(idx, idx) > 0) print *, 'positive'"//new_line('a')// &
+            "    print *, abs(cube(idx, idx, idx))"//new_line('a')// &
+            "end program test"
+
+        if (f006_count_for(test_code, "fluff_test_f006_subread") /= 0) then
+            error stop "Failed: a subscripted read must count as a use of the array"
+        end if
+
+        print *, "[OK] Subscripted read without a write"
+    end subroutine test_subscripted_read_never_written
+
+    ! Row 4: written through a subscript and then read -> not flagged.
+    subroutine test_array_written_then_read()
+        character(len=:), allocatable :: test_code
+
+        test_code = "program test"//new_line('a')// &
+            "    implicit none"//new_line('a')// &
+            "    integer :: vec(4), idx"//new_line('a')// &
+            "    idx = 2"//new_line('a')// &
+            "    vec(idx) = 7"//new_line('a')// &
+            "    print *, vec(idx)"//new_line('a')// &
+            "end program test"
+
+        if (f006_count_for(test_code, "fluff_test_f006_rw") /= 0) then
+            error stop "Failed: F006 should not flag an array that is written and read"
+        end if
+
+        print *, "[OK] Array written then read"
+    end subroutine test_array_written_then_read
 
     subroutine test_unused_variable()
         type(linter_engine_t) :: linter
