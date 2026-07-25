@@ -1,7 +1,7 @@
 module fluff_rule_symbol_collect
     use fluff_ast, only: fluff_ast_context_t
-    use fortfront, only: ast_arena_t, declaration_node, do_loop_node, &
-        function_def_node, get_children, identifier_node, &
+    use fortfront, only: ast_arena_t, call_or_subscript_node, declaration_node, &
+        do_loop_node, function_def_node, get_children, identifier_node, &
         parameter_declaration_node, program_node, &
         subroutine_def_node
     implicit none
@@ -246,6 +246,11 @@ contains
             var_name = ""
             select type (node => ctx%arena%entries(i)%node)
                 type is (identifier_node)
+                if (allocated(node%name)) var_name = node%name
+                type is (call_or_subscript_node)
+                ! arr(i) parses as a call-or-subscript, so the subscripted name
+                ! never reaches an identifier_node. Counting it here makes a
+                ! read of an array element a use of the array.
                 if (allocated(node%name)) var_name = node%name
             end select
 
