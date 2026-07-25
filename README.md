@@ -53,8 +53,6 @@ Known limits:
 
 - `fluff format` is not idempotent: it prepends a space to the first line and
   writes `print * , i` for `print *, i` (#260)
-- `F006` reports an array as unused when it is only read through a subscript
-  (#261)
 - the test suite cannot detect either of the above, because 28 of its 94
   programs exit zero no matter what they find (#262), and two more resolve the
   binary under test by globbing fpm's build layout, so they can exercise a
