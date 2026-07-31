@@ -16,6 +16,7 @@ program test_formatter_quality
     call test_semantic_preservation()
     call test_format_stability()
     call test_whitespace_normalization()
+    call test_inline_comment_preservation()
 
     print *, "[OK] All formatter quality tests passed!"
 
@@ -167,6 +168,124 @@ contains
         end if
 
     end subroutine test_format_stability
+
+    subroutine test_inline_comment_preservation()
+        !! An inline comment documents the statement it sits on. Formatting may
+        !! normalize the spacing before the bang, but detaching the comment from
+        !! its statement destroys that documentation, so every trailing comment
+        !! below must come back on a line that still carries its own statement.
+        print *, ""
+        print *, "Testing inline comment preservation..."
+
+        source_code = "program p"//new_line('a')// &
+            "    implicit none"//new_line('a')// &
+            "    integer :: x  ! count"//new_line('a')// &
+            "    integer :: y = 2  ! init"//new_line('a')// &
+            "    ! standalone"//new_line('a')// &
+            "    x = 1  ! set"//new_line('a')// &
+            "    if (x > 0) then  ! guard"//new_line('a')// &
+            "        print *, x  ! show"//new_line('a')// &
+            "    end if  ! done"//new_line('a')// &
+            "end program p  ! tail"//new_line('a')
+
+        call formatter%format_source(source_code, formatted_code, error_msg)
+        if (error_msg /= "") then
+            error stop "Formatting failed: "//error_msg
+        end if
+
+        call assert_inline_comment(formatted_code, "integer :: x", "! count")
+        call assert_inline_comment(formatted_code, "integer :: y", "! init")
+        call assert_inline_comment(formatted_code, "x = 1", "! set")
+        call assert_inline_comment(formatted_code, "if (x > 0) then", "! guard")
+        call assert_inline_comment(formatted_code, "print *, x", "! show")
+        call assert_inline_comment(formatted_code, "end if", "! done")
+        call assert_inline_comment(formatted_code, "end program p", "! tail")
+
+        ! A standalone comment stays standalone: it must not be glued onto the
+        ! statement that follows it.
+        call assert_standalone_comment(formatted_code, "! standalone")
+
+        print *, "[OK] Inline comments stay on their statements"
+
+    end subroutine test_inline_comment_preservation
+
+    subroutine assert_inline_comment(text, code_fragment, comment)
+        character(len=*), intent(in) :: text, code_fragment, comment
+        character(len=:), allocatable :: line
+        integer :: i, code_pos, comment_pos
+        logical :: found
+
+        found = .false.
+        do i = 1, count_lines(text)
+            line = get_line(text, i)
+            code_pos = index(line, code_fragment)
+            comment_pos = index(line, comment)
+            if (code_pos <= 0) cycle
+            if (comment_pos <= code_pos) cycle
+            found = .true.
+            exit
+        end do
+
+        if (.not. found) then
+            print *, "  Missing inline comment for: ", code_fragment
+            print *, "  Formatted output:"
+            print *, text
+            error stop "Inline comment detached from its statement"
+        end if
+
+    end subroutine assert_inline_comment
+
+    subroutine assert_standalone_comment(text, comment)
+        character(len=*), intent(in) :: text, comment
+        character(len=:), allocatable :: line
+        integer :: i, comment_pos
+        logical :: found
+
+        found = .false.
+        do i = 1, count_lines(text)
+            line = get_line(text, i)
+            comment_pos = index(line, comment)
+            if (comment_pos <= 0) cycle
+            if (len_trim(line(1:comment_pos - 1)) /= 0) then
+                print *, "  Standalone comment merged into a statement: ", line
+                error stop "Standalone comment must not join a statement"
+            end if
+            found = .true.
+        end do
+
+        if (.not. found) then
+            print *, "  Formatted output:"
+            print *, text
+            error stop "Standalone comment lost during formatting"
+        end if
+
+    end subroutine assert_standalone_comment
+
+    function get_line(text, line_number) result(line)
+        character(len=*), intent(in) :: text
+        integer, intent(in) :: line_number
+        character(len=:), allocatable :: line
+        integer :: i, current, start_pos
+
+        current = 1
+        start_pos = 1
+        line = ""
+
+        do i = 1, len(text)
+            if (text(i:i) /= new_line('a')) cycle
+            if (current == line_number) then
+                line = text(start_pos:i - 1)
+                return
+            end if
+            current = current + 1
+            start_pos = i + 1
+        end do
+
+        if (current == line_number .and. start_pos <= len(text)) then
+            line = text(start_pos:)
+        end if
+
+    end function get_line
 
     subroutine test_whitespace_normalization()
         integer :: trailing_spaces, inconsistent_spacing
