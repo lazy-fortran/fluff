@@ -5,6 +5,7 @@ module fluff_formatter
         apply_aesthetic_improvements, &
         assess_format_quality, create_aesthetic_settings, &
         create_quality_metrics, format_quality_t
+    use fluff_format_comments, only: preserve_inline_comments
     use fluff_format_continuation, only: has_leading_ampersand_continuations, &
         preserve_leading_ampersand_lines
     use fluff_format_indent, only: emitted_indent_width, rescale_indentation
@@ -200,6 +201,7 @@ contains
         character(len=:), allocatable :: next_code
         character(len=:), allocatable :: prev_code
         character(len=:), allocatable :: preserved_code
+        character(len=:), allocatable :: commented_code
         integer :: iter
         logical :: should_preserve
 
@@ -227,6 +229,9 @@ contains
             prev_code = current_code
             current_code = next_code
         end do
+
+        call preserve_inline_comments(source_code, current_code, commented_code)
+        current_code = commented_code
 
         if (should_preserve) then
             call preserve_leading_ampersand_lines(source_code, current_code, &
