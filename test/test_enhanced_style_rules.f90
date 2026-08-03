@@ -378,7 +378,8 @@ contains
     subroutine run_style_test(test_name, input, expected_feature)
         character(len=*), intent(in) :: test_name, input, expected_feature
         character(len=:), allocatable :: formatted_code, error_msg
-        character(len=:), allocatable :: violation
+        character(len=:), allocatable :: violation, input_violation
+        logical :: semantics_kept, format_valid
 
         total_tests = total_tests + 1
 
@@ -391,6 +392,30 @@ contains
 
         if (len_trim(formatted_code) == 0) then
             print *, "[FAIL] ", test_name, " - Empty output"
+            return
+        end if
+
+        ! Formatting must preserve the token stream. This is independent of
+        ! the layout checks below and catches an output that merely looks
+        ! non-empty or clean while dropping a declaration or expression.
+        call formatter%compare_semantics(input, formatted_code, semantics_kept)
+        if (.not. semantics_kept) then
+            print *, "[FAIL] ", test_name, " - Formatting changed the token stream"
+            return
+        end if
+
+        call formatter%validate_format(input, formatted_code, format_valid)
+        if (.not. format_valid) then
+            print *, "[FAIL] ", test_name, " - Formatted output is not valid"
+            return
+        end if
+
+        ! Inputs deliberately containing a layout defect must not be returned
+        ! byte-for-byte unchanged; otherwise this case would not exercise the
+        ! formatter at all.
+        call find_layout_violation(input, input_violation)
+        if (len(input_violation) > 0 .and. formatted_code == input) then
+            print *, "[FAIL] ", test_name, " - Input layout was not normalized"
             return
         end if
 

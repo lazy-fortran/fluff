@@ -8,7 +8,8 @@ program test_quality_improvements
     type(format_quality_t) :: quality_before, quality_after
     character(len=:), allocatable :: formatted_code, error_msg
     integer :: total_tests, passed_tests
-    real(dp) :: last_score, clean_score, messy_score
+    real(dp) :: clean_score, messy_score
+    logical :: clean_ok, messy_ok
 
     print *, "=== Format Quality Improvements Test Suite ==="
 
@@ -106,8 +107,7 @@ contains
             "        print *, 'Average:', average" // new_line('a') // &
             "    end if" // new_line('a') // &
             "    " // new_line('a') // &
-            "end program clean_example")
-        clean_score = last_score
+            "end program clean_example", clean_score, clean_ok)
 
         ! Test quality metrics on poorly formatted code
         call test_quality_for_code("Poorly-formatted code metrics", &
@@ -115,13 +115,12 @@ contains
             "integer::a,b,c,really_long_variable_name_that_exceeds_reasonable_length,another_very_long_name" // new_line('a') // &
             "a=1;b=2;c=a+b*really_long_variable_name_that_exceeds_reasonable_length+another_very_long_name" // new_line('a') // &
             "if(c>0)then;print*,c;endif" // new_line('a') // &
-            "end program messy")
-        messy_score = last_score
+            "end program messy", messy_score, messy_ok)
 
         ! An assessment that cannot separate these two sources is not
         ! measuring formatting quality at all.
         total_tests = total_tests + 1
-        if (clean_score > messy_score) then
+        if (clean_ok .and. messy_ok .and. clean_score > messy_score) then
             passed_tests = passed_tests + 1
             print *, "[OK] Clean code outscores messy code"
         else
@@ -164,11 +163,15 @@ contains
     end subroutine test_readability_enhancements
 
     ! Helper subroutines
-    subroutine test_quality_for_code(test_name, input_code)
+    subroutine test_quality_for_code(test_name, input_code, score, ok)
         character(len=*), intent(in) :: test_name, input_code
+        real(dp), intent(out), optional :: score
+        logical, intent(out), optional :: ok
         integer :: i
 
         total_tests = total_tests + 1
+        if (present(score)) score = -1.0_dp
+        if (present(ok)) ok = .false.
 
         call formatter%assess_quality(input_code, quality_before)
 
@@ -202,7 +205,8 @@ contains
             return
         end if
 
-        last_score = quality_before%overall_score
+        if (present(score)) score = quality_before%overall_score
+        if (present(ok)) ok = .true.
         passed_tests = passed_tests + 1
     end subroutine test_quality_for_code
 
