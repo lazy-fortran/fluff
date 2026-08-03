@@ -84,7 +84,7 @@ These should wait until formatter safety, config, and CLI basics are stable.
 
 ## Current handoff (2026-08-03)
 
-- `main` is `b7fdd2a6cfc682eb9eb4b1421924a4d321875dba`.
+- `main` is `74425cc` (formatter implementation baseline `b7fdd2a`).
 - [#262](https://github.com/lazy-fortran/fluff/issues/262) remains open and
   [PR #269](https://github.com/lazy-fortran/fluff/pull/269) is the active
   repair branch. Its rebased head is `39045fc`; the branch is pushed but is
