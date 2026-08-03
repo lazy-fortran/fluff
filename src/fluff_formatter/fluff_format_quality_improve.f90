@@ -149,6 +149,13 @@ contains
                 cycle
             end if
 
+            ! Pointer association is a two-character operator, not an
+            ! assignment followed by a greater-than sign.
+            if (eq_pos < len(result) .and. result(eq_pos+1:eq_pos+1) == ">") then
+                search_pos = eq_pos + 2
+                cycle
+            end if
+
             if (eq_pos > 1 .and. result(eq_pos-1:eq_pos-1) /= " ") then
                 result = result(1:eq_pos-1) // " " // result(eq_pos:)
                 eq_pos = eq_pos + 1

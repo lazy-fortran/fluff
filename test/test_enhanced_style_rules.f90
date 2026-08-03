@@ -309,13 +309,14 @@ contains
 
         ! Test 2: Use associate constructs for complex expressions
         call run_style_test("Associate constructs", &
-            "subroutine complex_calculation(data)" // new_line('a') // &
-            "    real, intent(inout) :: data(:)" // new_line('a') // &
+            "subroutine complex_calculation(values)" // new_line('a') // &
+            "    real, intent(inout) :: values(:)" // new_line('a') // &
             "    real :: norm, max_val" // new_line('a') // &
-            "    ! Simple associate example" // new_line('a') // &
             "    norm = 1.0" // new_line('a') // &
             "    max_val = 2.0" // new_line('a') // &
-            "    data = data * norm / max_val" // new_line('a') // &
+            "    associate (scaled => values * norm / max_val)" // new_line('a') // &
+            "        values = scaled" // new_line('a') // &
+            "    end associate" // new_line('a') // &
             "end subroutine", &
             "associate_constructs")
 

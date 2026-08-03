@@ -85,6 +85,17 @@ contains
         do code_index = 1, len(code) - 2
             select case (code(code_index:code_index))
             case ("=")
+                ! Do not score the equals sign inside a compound operator.
+                if (code_index < len(code)) then
+                    if (code(code_index + 1:code_index + 1) == ">" .or. &
+                        code(code_index + 1:code_index + 1) == "=") cycle
+                end if
+                if (code_index > 1) then
+                    if (code(code_index - 1:code_index - 1) == "/" .or. &
+                        code(code_index - 1:code_index - 1) == "<" .or. &
+                        code(code_index - 1:code_index - 1) == ">" .or. &
+                        code(code_index - 1:code_index - 1) == "=") cycle
+                end if
                 total_operators = total_operators + 1
                 if (code_index > 1 .and. code_index < len(code)) then
                     if (code(code_index-1:code_index-1) == " " .and. &
@@ -93,9 +104,18 @@ contains
                     end if
                 end if
             case ("+", "-", "*", "/")
-                if (code(code_index:code_index) == "*" .and. &
-                    code_index < len(code)) then
-                    if (code(code_index+1:code_index+1) == "*") cycle
+                if (code_index < len(code)) then
+                    if (code(code_index:code_index) == "*" .and. &
+                        code(code_index + 1:code_index + 1) == "*") cycle
+                    if (code(code_index:code_index) == "/" .and. &
+                        (code(code_index + 1:code_index + 1) == "/" .or. &
+                        code(code_index + 1:code_index + 1) == "=")) cycle
+                end if
+                if (code_index > 1) then
+                    if (code(code_index:code_index) == "*" .and. &
+                        code(code_index - 1:code_index - 1) == "*") cycle
+                    if (code(code_index:code_index) == "/" .and. &
+                        code(code_index - 1:code_index - 1) == "/") cycle
                 end if
 
                 total_operators = total_operators + 1
