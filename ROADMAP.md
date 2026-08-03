@@ -20,10 +20,9 @@ issues are resolved.
 
 ## Priority 0: Formatter Safety
 
-Open issue:
-
-- [#244](https://github.com/lazy-fortran/fluff/issues/244): inline comments can
-  be moved to separate lines.
+The inline-comment issue [#244](https://github.com/lazy-fortran/fluff/issues/244)
+is closed on `main` by the current formatter work. Preserve its regression
+coverage when touching formatter attachment rules.
 
 Required outcome:
 
@@ -82,3 +81,18 @@ used by the CLI.
 - broad migration tooling from other linters
 
 These should wait until formatter safety, config, and CLI basics are stable.
+
+## Current handoff (2026-08-03)
+
+- `main` is `b7fdd2a6cfc682eb9eb4b1421924a4d321875dba`.
+- [#262](https://github.com/lazy-fortran/fluff/issues/262) remains open and
+  [PR #269](https://github.com/lazy-fortran/fluff/pull/269) is the active
+  repair branch. Its rebased head is `39045fc`; the branch is pushed but is
+  not merge-ready while the enhanced-style and quality-improvement behavioral
+  tests remain red in the full pipeline.
+- fo [#59](https://github.com/lazy-fortran/fo/issues/59) depends on stable
+  combined JSON. Do not hide a failing test or weaken its independent oracle
+  to make the JSON consumer green.
+
+The delivery gate is the focused suite plus the full `FO_JOBS=1 fo` pipeline;
+all test programs must be able to fail the build for a real behavioral reason.
