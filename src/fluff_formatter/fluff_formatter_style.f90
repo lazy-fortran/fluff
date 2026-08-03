@@ -4,6 +4,7 @@ module fluff_formatter_style
     use fortfront, only: lex_source, parse_tokens, create_ast_arena, token_t, &
         ast_arena_t, get_node_type_id_from_arena, get_children, &
         format_options_t
+    use lexer_api, only: to_lower
     implicit none
     private
 
@@ -29,6 +30,7 @@ contains
         logical :: has_mpi
         logical :: has_openmp
         logical :: has_iso_env
+        integer :: i
 
         call lex_source(source_code, tokens, error_msg)
         if (error_msg /= "") then
@@ -49,6 +51,17 @@ contains
         has_mpi = .false.
         has_openmp = .false.
         has_iso_env = .false.
+
+        ! A polymorphic declaration is a modern-language indicator, but the
+        ! AST currently exposes its type specifier only as a declaration node.
+        ! Keep detection at the token level until that AST detail is public.
+        do i = 1, size(tokens) - 1
+            if (trim(to_lower(tokens(i)%text)) == "class" .and. &
+                trim(tokens(i + 1)%text) == "(") then
+                has_class_types = .true.
+                exit
+            end if
+        end do
 
         call scan_style_indicators_recursive(arena, prog_index, 0, has_class_types, &
             has_modules, has_interfaces, has_mpi, &
