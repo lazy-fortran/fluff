@@ -162,26 +162,21 @@ contains
 
             select case (node_type)
             case (NODE_RETURN)
-                if (this%is_unconditional_terminator(i)) then
-                    call this%mark_subsequent_unreachable(i)
-                end if
+                call this%mark_subsequent_unreachable(i)
             case (NODE_STOP)
-                if (this%is_unconditional_terminator(i)) then
-                    call this%mark_subsequent_unreachable(i)
-                end if
+                call this%mark_subsequent_unreachable(i)
             case (NODE_ERROR_STOP)
-                if (this%is_unconditional_terminator(i)) then
-                    call this%mark_subsequent_unreachable(i)
-                end if
+                call this%mark_subsequent_unreachable(i)
             case (NODE_CYCLE, NODE_EXIT)
-                if (this%is_unconditional_terminator(i)) then
-                    call this%mark_subsequent_unreachable(i)
-                end if
+                call this%mark_subsequent_unreachable(i)
             end select
 
             select type (node => this%arena%entries(i)%node)
                 type is (if_node)
                 call this%check_impossible_condition(i)
+                if (detector_if_always_terminates(this, node)) then
+                    call this%mark_subsequent_unreachable(i)
+                end if
                 type is (select_case_node)
                 call detector_check_unreachable_select_case(this, i)
             end select
@@ -256,6 +251,12 @@ contains
                         if (cond%literal_kind == LITERAL_LOGICAL .and. &
                             detector_is_false_literal(cond%value)) then
                             call this%mark_if_block_unreachable(if_idx, .true.)
+                        else if (cond%literal_kind == LITERAL_LOGICAL .and. &
+                                 detector_is_true_literal(cond%value)) then
+                            if (detector_body_always_terminates(this, &
+                                    node%then_body_indices)) then
+                                call this%mark_subsequent_unreachable(if_idx)
+                            end if
                         end if
                     end select
                 end if
@@ -269,6 +270,76 @@ contains
 
         is_false = trim(value) == ".false." .or. trim(value) == ".FALSE."
     end function detector_is_false_literal
+
+    logical function detector_is_true_literal(value) result(is_true)
+        character(len=*), intent(in) :: value
+
+        is_true = trim(value) == ".true." .or. trim(value) == ".TRUE."
+    end function detector_is_true_literal
+
+    recursive logical function detector_body_always_terminates(this, indices) &
+            result(terminates)
+        class(dead_code_detector_t), intent(in) :: this
+        integer, intent(in) :: indices(:)
+        integer :: i, node_index
+
+        terminates = .false.
+        do i = size(indices), 1, -1
+            node_index = indices(i)
+            if (node_index <= 0 .or. node_index > this%arena%size) cycle
+            if (.not. allocated(this%arena%entries(node_index)%node)) cycle
+            terminates = detector_node_always_terminates(this, node_index)
+            return
+        end do
+    end function detector_body_always_terminates
+
+    recursive logical function detector_node_always_terminates(this, node_index) &
+            result(terminates)
+        class(dead_code_detector_t), intent(in) :: this
+        integer, intent(in) :: node_index
+        integer :: node_type
+
+        terminates = .false.
+        if (node_index <= 0 .or. node_index > this%arena%size) return
+        if (.not. allocated(this%arena%entries(node_index)%node)) return
+
+        node_type = get_node_type_id_from_arena(this%arena, node_index)
+        select case (node_type)
+        case (NODE_RETURN, NODE_STOP, NODE_ERROR_STOP, NODE_CYCLE, NODE_EXIT)
+            terminates = .true.
+        case default
+            select type (node => this%arena%entries(node_index)%node)
+                type is (if_node)
+                terminates = detector_if_always_terminates(this, node)
+            end select
+        end select
+    end function detector_node_always_terminates
+
+    recursive logical function detector_if_always_terminates(this, node) &
+            result(terminates)
+        class(dead_code_detector_t), intent(in) :: this
+        type(if_node), intent(in) :: node
+        integer :: i
+
+        terminates = .false.
+        if (.not. allocated(node%then_body_indices)) return
+        if (.not. detector_body_always_terminates(this, node%then_body_indices)) then
+            return
+        end if
+        if (allocated(node%elseif_blocks)) then
+            do i = 1, size(node%elseif_blocks)
+                if (.not. allocated(node%elseif_blocks(i)%body_indices)) return
+                if (.not. detector_body_always_terminates(this, &
+                        node%elseif_blocks(i)%body_indices)) then
+                    return
+                end if
+            end do
+        end if
+        if (.not. allocated(node%else_body_indices)) then
+            return
+        end if
+        terminates = detector_body_always_terminates(this, node%else_body_indices)
+    end function detector_if_always_terminates
 
     subroutine detector_mark_if_block_unreachable(this, if_idx, is_then_block)
         class(dead_code_detector_t), intent(inout) :: this
