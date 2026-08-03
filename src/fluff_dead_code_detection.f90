@@ -3,6 +3,8 @@ module fluff_dead_code_detection
     use fluff_diagnostics
     use fluff_ast
     use fluff_dead_code_types
+    use ast_nodes_associate, only: associate_node
+    use ast_nodes_bounds, only: array_bounds_node, range_expression_node
     use ast_nodes_misc, only: module_procedure_node, visibility_statement_node
     use ast_nodes_transfer, only: goto_node
     use fortfront, only: ast_arena_t, semantic_context_t, &
@@ -15,11 +17,14 @@ module fluff_dead_code_detection
         call_or_subscript_node, subroutine_call_node, &
         literal_node, print_statement_node, do_loop_node, &
         do_while_node, select_case_node, derived_type_node, &
+        case_block_node, case_range_node, case_default_node, &
         interface_block_node, module_node, use_statement_node, &
         include_statement_node, parameter_declaration_node, &
-        LITERAL_LOGICAL, get_node_type_id_from_arena, &
+        allocate_statement_node, deallocate_statement_node, &
+        contains_node, &
+        LITERAL_INTEGER, LITERAL_LOGICAL, get_node_type_id_from_arena, &
         symbol_reference_t, &
-        NODE_RETURN, NODE_STOP, NODE_CYCLE, NODE_EXIT, &
+        NODE_RETURN, NODE_STOP, NODE_ERROR_STOP, NODE_CYCLE, NODE_EXIT, &
         visit_node_at, get_node_type_id, &
         call_graph_t, build_call_graph_from_arena, is_procedure_used
 
@@ -164,6 +169,10 @@ contains
                 if (this%is_unconditional_terminator(i)) then
                     call this%mark_subsequent_unreachable(i)
                 end if
+            case (NODE_ERROR_STOP)
+                if (this%is_unconditional_terminator(i)) then
+                    call this%mark_subsequent_unreachable(i)
+                end if
             case (NODE_CYCLE, NODE_EXIT)
                 if (this%is_unconditional_terminator(i)) then
                     call this%mark_subsequent_unreachable(i)
@@ -173,6 +182,8 @@ contains
             select type (node => this%arena%entries(i)%node)
                 type is (if_node)
                 call this%check_impossible_condition(i)
+                type is (select_case_node)
+                call detector_check_unreachable_select_case(this, i)
             end select
         end do
 
@@ -243,7 +254,7 @@ contains
                     select type (cond => this%arena%entries(cond_idx)%node)
                         type is (literal_node)
                         if (cond%literal_kind == LITERAL_LOGICAL .and. &
-                            (cond%value == ".false." .or. cond%value == ".FALSE.")) then
+                            detector_is_false_literal(cond%value)) then
                             call this%mark_if_block_unreachable(if_idx, .true.)
                         end if
                     end select
@@ -253,36 +264,207 @@ contains
 
     end subroutine detector_check_impossible_condition
 
+    logical function detector_is_false_literal(value) result(is_false)
+        character(len=*), intent(in) :: value
+
+        is_false = trim(value) == ".false." .or. trim(value) == ".FALSE."
+    end function detector_is_false_literal
+
     subroutine detector_mark_if_block_unreachable(this, if_idx, is_then_block)
         class(dead_code_detector_t), intent(inout) :: this
         integer, intent(in) :: if_idx
         logical, intent(in) :: is_then_block
-        integer :: i, if_depth
-        logical :: in_target_block
 
-        if_depth = this%arena%entries(if_idx)%depth
-        in_target_block = .false.
 
-        do i = if_idx + 1, this%arena%size
-            if (.not. allocated(this%arena%entries(i)%node)) cycle
-
-            if (this%arena%entries(i)%depth <= if_depth) exit
-
-            if (this%arena%entries(i)%depth == if_depth + 1) then
-                in_target_block = is_then_block
-            end if
-
-            if (in_target_block) then
-                select type (node => this%arena%entries(i)%node)
-                class is (ast_node)
-                    call this%visitor%add_unreachable_code( &
-                        node%line, node%line, node%column, node%column + 10, &
+        select type (node => this%arena%entries(if_idx)%node)
+            type is (if_node)
+            if (is_then_block) then
+                if (allocated(node%then_body_indices)) then
+                    call detector_mark_indices_unreachable(this, node%then_body_indices, &
                         "impossible_condition", "code in always-false condition")
-                end select
+                end if
+            else if (allocated(node%else_body_indices)) then
+                call detector_mark_indices_unreachable(this, node%else_body_indices, &
+                    "impossible_condition", "code in unreachable condition")
             end if
-        end do
+        end select
 
     end subroutine detector_mark_if_block_unreachable
+
+    subroutine detector_mark_indices_unreachable(this, indices, reason, snippet)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: indices(:)
+        character(len=*), intent(in) :: reason, snippet
+        integer :: i, node_index
+
+        do i = 1, size(indices)
+            node_index = indices(i)
+            if (node_index <= 0 .or. node_index > this%arena%size) cycle
+            if (.not. allocated(this%arena%entries(node_index)%node)) cycle
+
+            select type (node => this%arena%entries(node_index)%node)
+                class is (ast_node)
+                call this%visitor%add_unreachable_code( &
+                    node%line, node%line, node%column, node%column + 10, &
+                    reason, snippet)
+            end select
+        end do
+
+    end subroutine detector_mark_indices_unreachable
+
+    subroutine detector_check_unreachable_select_case(this, select_idx)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: select_idx
+        integer :: selector_value, case_index, value_index, i, j
+        logical :: selector_known, block_known, block_matches, matched_case
+
+        select type (select_node => this%arena%entries(select_idx)%node)
+            type is (select_case_node)
+            selector_known = detector_get_static_integer(this, &
+                select_node%selector_index, selector_value)
+            if (.not. selector_known) return
+
+            matched_case = .false.
+            if (.not. allocated(select_node%case_indices)) return
+
+            do i = 1, size(select_node%case_indices)
+                case_index = select_node%case_indices(i)
+                if (case_index <= 0 .or. case_index > this%arena%size) cycle
+                if (.not. allocated(this%arena%entries(case_index)%node)) cycle
+
+                select type (case_node => this%arena%entries(case_index)%node)
+                    type is (case_block_node)
+                    block_known = .true.
+                    block_matches = .false.
+                    if (.not. allocated(case_node%value_indices)) then
+                        block_known = .false.
+                    else
+                        do j = 1, size(case_node%value_indices)
+                            value_index = case_node%value_indices(j)
+                            if (value_index <= 0 .or. value_index > this%arena%size) then
+                                block_known = .false.
+                                cycle
+                            end if
+                            if (.not. allocated(this%arena%entries(value_index)%node)) then
+                                block_known = .false.
+                                cycle
+                            end if
+
+                            select type (value_node => &
+                                    this%arena%entries(value_index)%node)
+                                type is (literal_node)
+                                if (.not. detector_literal_matches_integer(value_node, &
+                                        selector_value)) then
+                                    if (.not. detector_literal_is_integer(value_node)) then
+                                        block_known = .false.
+                                    end if
+                                else
+                                    block_matches = .true.
+                                end if
+                                type is (case_range_node)
+                                if (selector_value >= value_node%start_value .and. &
+                                    selector_value <= value_node%end_value) then
+                                    block_matches = .true.
+                                end if
+                                class default
+                                block_known = .false.
+                            end select
+                        end do
+                    end if
+
+                    if (.not. block_known) cycle
+                    if (block_matches) then
+                        matched_case = .true.
+                    else if (allocated(case_node%body_indices)) then
+                        call detector_mark_indices_unreachable(this, &
+                            case_node%body_indices, "unreachable_case", &
+                            "Code in unreachable SELECT CASE branch")
+                    end if
+                end select
+            end do
+
+            if (matched_case .and. select_node%default_index > 0 .and. &
+                select_node%default_index <= this%arena%size) then
+                if (allocated(this%arena%entries(select_node%default_index)%node)) then
+                    select type (default_node => &
+                            this%arena%entries(select_node%default_index)%node)
+                        type is (case_default_node)
+                        if (allocated(default_node%body_indices)) then
+                            call detector_mark_indices_unreachable(this, &
+                                default_node%body_indices, "unreachable_case", &
+                                "Code in unreachable SELECT CASE default branch")
+                        end if
+                    end select
+                end if
+            end if
+        end select
+
+    end subroutine detector_check_unreachable_select_case
+
+    logical function detector_literal_is_integer(node) result(is_integer)
+        type(literal_node), intent(in) :: node
+
+        is_integer = node%literal_kind == LITERAL_INTEGER .and. &
+            allocated(node%value)
+    end function detector_literal_is_integer
+
+    logical function detector_literal_matches_integer(node, value) result(matches)
+        type(literal_node), intent(in) :: node
+        integer, intent(in) :: value
+        integer :: literal_value, ios
+
+        matches = .false.
+        if (.not. detector_literal_is_integer(node)) return
+        read(node%value, *, iostat=ios) literal_value
+        if (ios == 0) matches = literal_value == value
+    end function detector_literal_matches_integer
+
+    recursive logical function detector_get_static_integer(this, node_index, value) &
+            result(found)
+        class(dead_code_detector_t), intent(in) :: this
+        integer, intent(in) :: node_index
+        integer, intent(out) :: value
+        integer :: i, j, ios
+        character(len=:), allocatable :: identifier_name
+
+        found = .false.
+        value = 0
+        if (node_index <= 0 .or. node_index > this%arena%size) return
+        if (.not. allocated(this%arena%entries(node_index)%node)) return
+
+        select type (node => this%arena%entries(node_index)%node)
+            type is (literal_node)
+            if (.not. detector_literal_is_integer(node)) return
+            read(node%value, *, iostat=ios) value
+            found = ios == 0
+            type is (identifier_node)
+            if (.not. allocated(node%name)) return
+            identifier_name = node%name
+            do i = 1, this%arena%size
+                if (.not. allocated(this%arena%entries(i)%node)) cycle
+                select type (declaration => this%arena%entries(i)%node)
+                    type is (declaration_node)
+                    if (.not. declaration%has_initializer) cycle
+                    if (allocated(declaration%var_name) .and. &
+                        trim(declaration%var_name) == trim(identifier_name)) then
+                        found = detector_get_static_integer(this, &
+                            declaration%initializer_index, value)
+                        if (found) return
+                    end if
+                    if (allocated(declaration%var_names)) then
+                        do j = 1, size(declaration%var_names)
+                            if (trim(declaration%var_names(j)) == trim(identifier_name)) then
+                                found = detector_get_static_integer(this, &
+                                    declaration%initializer_index, value)
+                                if (found) return
+                            end if
+                        end do
+                    end if
+                end select
+            end do
+        end select
+
+    end function detector_get_static_integer
 
     subroutine detector_process_node(this, node_index)
         class(dead_code_detector_t), intent(inout) :: this
@@ -313,6 +495,20 @@ contains
             end if
         end do
     end subroutine detector_process_indices
+
+    recursive subroutine detector_process_enhanced_indices(this, indices)
+        class(dead_code_detector_t), intent(inout) :: this
+        integer, intent(in) :: indices(:)
+        integer :: i, node_index
+
+        do i = 1, size(indices)
+            node_index = indices(i)
+            if (node_index <= 0 .or. node_index > this%arena%size) cycle
+            if (.not. allocated(this%arena%entries(node_index)%node)) cycle
+            call this%process_node_enhanced(node_index)
+        end do
+
+    end subroutine detector_process_enhanced_indices
 
     subroutine detector_process_parameter_declarations(this, param_indices)
         class(dead_code_detector_t), intent(inout) :: this
@@ -356,6 +552,12 @@ contains
                 do i = 1, size(var_names)
                     call this%visitor%add_declared_variable(var_names(i))
                 end do
+            end if
+            if (node%has_initializer) then
+                call this%process_node_enhanced(node%initializer_index)
+            end if
+            if (allocated(node%dimension_indices)) then
+                call detector_process_enhanced_indices(this, node%dimension_indices)
             end if
 
             type is (identifier_node)
@@ -414,8 +616,14 @@ contains
             end if
 
             type is (subroutine_call_node)
+            if (allocated(node%arg_indices)) then
+                call detector_process_enhanced_indices(this, node%arg_indices)
+            end if
 
             type is (print_statement_node)
+            if (allocated(node%expression_indices)) then
+                call detector_process_enhanced_indices(this, node%expression_indices)
+            end if
 
             type is (if_node)
             if (node%condition_index > 0) then
@@ -423,6 +631,60 @@ contains
             end if
 
             type is (do_loop_node)
+            call this%process_node_enhanced(node%start_expr_index)
+            call this%process_node_enhanced(node%end_expr_index)
+            call this%process_node_enhanced(node%step_expr_index)
+
+            type is (do_while_node)
+            call this%process_node_enhanced(node%condition_index)
+
+            type is (select_case_node)
+            call this%process_node_enhanced(node%selector_index)
+            if (allocated(node%case_indices)) then
+                call detector_process_enhanced_indices(this, node%case_indices)
+            end if
+            call this%process_node_enhanced(node%default_index)
+
+            type is (case_block_node)
+            if (allocated(node%value_indices)) then
+                call detector_process_enhanced_indices(this, node%value_indices)
+            end if
+
+            type is (associate_node)
+            if (allocated(node%associations)) then
+                do i = 1, size(node%associations)
+                    call this%process_node_enhanced(node%associations(i)%expr_index)
+                end do
+            end if
+
+            type is (array_bounds_node)
+            call this%process_node_enhanced(node%lower_bound_index)
+            call this%process_node_enhanced(node%upper_bound_index)
+            call this%process_node_enhanced(node%stride_index)
+
+            type is (range_expression_node)
+            call this%process_node_enhanced(node%start_index)
+            call this%process_node_enhanced(node%end_index)
+            call this%process_node_enhanced(node%stride_index)
+
+            type is (allocate_statement_node)
+            if (allocated(node%var_indices)) then
+                call detector_process_enhanced_indices(this, node%var_indices)
+            end if
+            if (allocated(node%shape_indices)) then
+                call detector_process_enhanced_indices(this, node%shape_indices)
+            end if
+            call this%process_node_enhanced(node%stat_var_index)
+            call this%process_node_enhanced(node%errmsg_var_index)
+            call this%process_node_enhanced(node%source_expr_index)
+            call this%process_node_enhanced(node%mold_expr_index)
+
+            type is (deallocate_statement_node)
+            if (allocated(node%var_indices)) then
+                call detector_process_enhanced_indices(this, node%var_indices)
+            end if
+            call this%process_node_enhanced(node%stat_var_index)
+            call this%process_node_enhanced(node%errmsg_var_index)
 
             type is (literal_node)
 
@@ -441,7 +703,8 @@ contains
             end if
 
             type is (function_def_node)
-            if (allocated(node%name)) then
+            if (allocated(node%result_variable)) then
+                call this%visitor%add_used_variable(node%result_variable)
             end if
 
             type is (module_node)
@@ -451,6 +714,9 @@ contains
             type is (stop_node)
 
             type is (parameter_declaration_node)
+            if (allocated(node%dimension_indices)) then
+                call detector_process_enhanced_indices(this, node%dimension_indices)
+            end if
 
         class default
         end select
@@ -534,6 +800,7 @@ contains
             end select
 
             if (len_trim(proc_name) == 0) cycle
+            if (detector_is_external_procedure(this, i)) cycle
             if (is_procedure_used(this%call_graph, trim(proc_name))) cycle
             if (name_in_list(public_names, proc_name)) cycle
             if (name_in_list(interface_names, proc_name)) cycle
@@ -544,6 +811,67 @@ contains
         end do
 
     end subroutine detector_analyze_unused_procedures
+
+    logical function detector_is_external_procedure(this, proc_idx) result(is_external)
+        class(dead_code_detector_t), intent(in) :: this
+        integer, intent(in) :: proc_idx
+        integer :: current_idx
+
+        is_external = .true.
+        if (proc_idx <= 0 .or. proc_idx > this%arena%size) return
+
+        current_idx = this%arena%entries(proc_idx)%parent_index
+        do while (current_idx > 0 .and. current_idx <= this%arena%size)
+            if (allocated(this%arena%entries(current_idx)%node)) then
+                select type (parent => this%arena%entries(current_idx)%node)
+                    type is (module_node)
+                    is_external = .false.
+                    return
+                    type is (function_def_node)
+                    is_external = .false.
+                    return
+                    type is (subroutine_def_node)
+                    is_external = .false.
+                    return
+                    type is (program_node)
+                    is_external = .false.
+                    if (allocated(parent%name) .and. trim(parent%name) == "main") then
+                        is_external = .not. detector_program_has_contains(this, &
+                            current_idx)
+                    end if
+                    return
+                end select
+            end if
+            current_idx = this%arena%entries(current_idx)%parent_index
+        end do
+
+    end function detector_is_external_procedure
+
+    logical function detector_program_has_contains(this, program_idx) result(found)
+        class(dead_code_detector_t), intent(in) :: this
+        integer, intent(in) :: program_idx
+        integer :: i, child_idx
+
+        found = .false.
+        if (program_idx <= 0 .or. program_idx > this%arena%size) return
+        if (.not. allocated(this%arena%entries(program_idx)%node)) return
+
+        select type (program => this%arena%entries(program_idx)%node)
+            type is (program_node)
+            if (.not. allocated(program%body_indices)) return
+            do i = 1, size(program%body_indices)
+                child_idx = program%body_indices(i)
+                if (child_idx <= 0 .or. child_idx > this%arena%size) cycle
+                if (.not. allocated(this%arena%entries(child_idx)%node)) cycle
+                select type (child => this%arena%entries(child_idx)%node)
+                    type is (contains_node)
+                    found = .true.
+                    return
+                end select
+            end do
+        end select
+
+    end function detector_program_has_contains
 
     pure logical function name_in_list(names, name) result(found)
         character(len=*), intent(in) :: names(:)
