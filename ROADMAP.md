@@ -1,99 +1,62 @@
-# fluff Roadmap
+# fluff roadmap
 
-## Current Reality
+Snapshot: 2026-08-06. fluff is the FortFront-based semantic linter and
+source-preserving formatter. It owns AST-dependent analysis. fo owns the cheap
+text-level tier and invokes fluff through stable structured output.
 
-`fluff` is an experimental FortFront-based linter/formatter. It has many rule
-modules and tests, but several user-facing workflows are incomplete or have
-known regressions.
+## Current truth
 
-The project should not claim full Ruff parity until the open CLI/configuration
-issues are resolved.
+The audited baseline is `f122ab7`. Main CI is green in
+[run 30807031396](https://github.com/lazy-fortran/fluff/actions/runs/30807031396).
+Former CLI/configuration issues #235 through #244 are closed. PR #269 was
+closed unmerged. Its relevant repairs were applied directly on main.
 
-## Principles
+Two issues remain open:
 
-- Use FortFront public APIs for parsing, AST traversal, semantics, and source
-  locations.
-- Do not add a separate Fortran parser.
-- Prefer AST/semantic rules over text scanning.
-- Treat formatter semantic preservation as higher priority than style polish.
-- Keep LSP and cache features behind correctness.
+- [#262](https://github.com/lazy-fortran/fluff/issues/262): prove every test
+  program can make the build fail for a real behavioral mismatch.
+- [#77](https://github.com/lazy-fortran/fluff/issues/77): the broad MVP epic.
 
-## Priority 0: Formatter Safety
+Green CI is necessary but does not by itself close #262. A test whose negative
+control cannot fail is not an oracle.
 
-The inline-comment issue [#244](https://github.com/lazy-fortran/fluff/issues/244)
-is closed on `main` by the current formatter work. Preserve its regression
-coverage when touching formatter attachment rules.
+## Immediate order
 
-Required outcome:
+1. For each test executable, inject or select a known bad input/expected result
+   and prove a nonzero test/build result. Record which assertion failed.
+2. Close #262 only when the full set of negative controls is automated and the
+   ordinary suite remains green.
+3. Freeze versioned JSON records for diagnostics, fixes, source revision, rule
+   identity, severity, and tool revision.
+4. Complete fo [#59](https://github.com/lazy-fortran/fo/issues/59) against that
+   schema with an end-to-end process oracle, including failure propagation and
+   output larger than fo's former limits.
+5. Continue #77 by false-positive/correctness yield, with formatter semantic
+   preservation ahead of style or editor polish.
 
-- formatting must preserve comment attachment and not change executable meaning
-- add regression tests for inline comments in declarations, assignments,
-  conditionals, continuations, and trailing comments after labels
+## Architecture and reliability
 
-## Priority 1: Daily CLI Usability
+- Use public FortFront parsing, semantic, identity, and source-location APIs.
+  Do not add a second parser or depend on private arena layout.
+- One check/format engine serves CLI, JSON, and later LSP surfaces. Translation
+  layers cannot change rule outcomes or suppress failures.
+- Formatter edits preserve tokens, comments, continuation structure, labels,
+  and executable meaning. A proposed fix is emitted only when mechanical
+  application is safe.
+- AST caching waits for an explicit immutable snapshot ownership contract from
+  FortFront. Never shallow-copy arena/semantic state to save parse time.
+- Rule timing, selected rule set, source digest, and cache decision are visible
+  so performance work can be reproduced.
 
-Open issues:
+## Delivery gates
 
-- [#243](https://github.com/lazy-fortran/fluff/issues/243): stdin support
-- [#242](https://github.com/lazy-fortran/fluff/issues/242): quiet mode
-- [#241](https://github.com/lazy-fortran/fluff/issues/241): statistics
-- [#240](https://github.com/lazy-fortran/fluff/issues/240): exclude flag
-- [#239](https://github.com/lazy-fortran/fluff/issues/239): select/ignore flags
-- [#238](https://github.com/lazy-fortran/fluff/issues/238): diagnostic filename
-  spacing
-- [#237](https://github.com/lazy-fortran/fluff/issues/237): show-fixes preview
-- [#236](https://github.com/lazy-fortran/fluff/issues/236): rule listing
-- [#235](https://github.com/lazy-fortran/fluff/issues/235): configuration
-  loading regression
+Every rule needs positive and negative examples plus an independent semantic
+oracle where it can affect meaning. Formatter changes compile and run the
+original and formatted program with an independent compiler and compare
+behavior.
 
-Required outcome:
-
-- `fluff check` works predictably in CI
-- rule selection and config loading are dependable
-- output is scriptable and stable
-
-## Priority 2: Rule Accuracy
-
-Open issue:
-
-- [#77](https://github.com/lazy-fortran/fluff/issues/77): MVP tracking epic
-
-Required outcome:
-
-- each rule documents whether it is text, AST, or semantic based
-- false-positive prone performance rules use semantic context where available
-- fix suggestions are only offered when the replacement is mechanically safe
-
-## Priority 3: Cache and LSP Polish
-
-Current linter code reparses files because caching AST contexts risks shallow
-copying FortFront arena/semantic-context state. Restore caching only after
-FortFront exposes safe ownership/reuse semantics for AST contexts.
-
-LSP features should remain thin wrappers around the same check/format engine
-used by the CLI.
-
-## Deferred
-
-- plugin ecosystem
-- editor packages
-- file watching
-- broad migration tooling from other linters
-
-These should wait until formatter safety, config, and CLI basics are stable.
-
-## Current handoff (2026-08-03)
-
-- The formatter implementation baseline is `b7fdd2a`; the roadmap commits are
-  pushed on current `main`.
-- [#262](https://github.com/lazy-fortran/fluff/issues/262) remains open and
-  [PR #269](https://github.com/lazy-fortran/fluff/pull/269) is the active
-  repair branch. Its rebased head is `39045fc`; the branch is pushed but is
-  not merge-ready while the enhanced-style and quality-improvement behavioral
-  tests remain red in the full pipeline.
-- fo [#59](https://github.com/lazy-fortran/fo/issues/59) depends on stable
-  combined JSON. Do not hide a failing test or weaken its independent oracle
-  to make the JSON consumer green.
-
-The delivery gate is the focused suite plus the full `FO_JOBS=1 fo` pipeline;
-all test programs must be able to fail the build for a real behavioral reason.
+Run focused tests while editing and the full `FO_JOBS=1 fo` pipeline once for
+the final rebased commit. fo/fluff integration additionally runs a process-
+boundary JSON oracle for success, diagnostics, fixes, and a forced child
+failure. Update the contract documentation with every schema or behavior
+change.
