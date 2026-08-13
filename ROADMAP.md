@@ -34,6 +34,11 @@ control cannot fail is not an oracle.
 5. Continue #77 by false-positive/correctness yield, with formatter semantic
    preservation ahead of style or editor polish.
 
+The correctness namespace now carries C002 (division by a value not proven
+non-zero) and C003 (loop with no proven bound), both opt-in via
+`--select C002,C003` and off by default until a real codebase has been run
+through them and the noise rate is known.
+
 ## Architecture and reliability
 
 - Use public FortFront parsing, semantic, identity, and source-location APIs.
