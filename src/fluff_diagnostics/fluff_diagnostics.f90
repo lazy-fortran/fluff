@@ -4,6 +4,10 @@ module fluff_diagnostics
     implicit none
     private
 
+    type :: serialized_diagnostic_t
+        character(len=:), allocatable :: text
+    end type serialized_diagnostic_t
+
     ! Diagnostic severity levels (higher number = higher severity)
     enum, bind(c)
     enumerator :: SEVERITY_HINT = 1
@@ -207,10 +211,13 @@ contains
         end if
 
         json = '{' // new_line('a') // &
-            '  "code": "' // this%code // '",' // new_line('a') // &
-            '  "message": "' // this%message // '",' // new_line('a') // &
+            '  "code": "' // escape_json_value(this%code) // &
+            '",' // new_line('a') // &
+            '  "message": "' // escape_json_value(this%message) // &
+            '",' // new_line('a') // &
             '  "severity": "' // severity_to_string(this%severity) // '",' // new_line('a') // &
-            '  "category": "' // this%category // '",' // new_line('a') // &
+            '  "category": "' // escape_json_value(this%category) // &
+            '",' // new_line('a') // &
             '  "file": "' // file_str // '",' // new_line('a') // &
             '  "location": {' // new_line('a') // &
             '    "start": {"line": ' // trim(line_str) // ', "column": ' // trim(col_str) // '},' // new_line('a') // &
@@ -342,8 +349,7 @@ contains
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: json
 
-        character(len=:), allocatable :: parts(:)
-        character(len=:), allocatable :: diag_json
+        type(serialized_diagnostic_t), allocatable :: parts(:)
         integer :: i, total_len, pos
 
         if (this%count == 0) then
@@ -351,13 +357,12 @@ contains
             return
         end if
 
-        allocate (character(len=4096) :: parts(this%count))
+        allocate (parts(this%count))
         total_len = 2
 
         do i = 1, this%count
-            diag_json = this%diagnostics(i)%to_json()
-            parts(i) = diag_json
-            total_len = total_len + len(diag_json) + 5
+            parts(i)%text = this%diagnostics(i)%to_json()
+            total_len = total_len + len(parts(i)%text) + 5
         end do
 
         allocate (character(len=total_len) :: json)
@@ -373,8 +378,8 @@ contains
             pos = pos + 1
             json(pos:pos + 1) = "  "
             pos = pos + 2
-            json(pos:pos + len_trim(parts(i)) - 1) = trim(parts(i))
-            pos = pos + len_trim(parts(i))
+            json(pos:pos + len(parts(i)%text) - 1) = parts(i)%text
+            pos = pos + len(parts(i)%text)
         end do
 
         json(pos:pos) = new_line('a')
@@ -389,8 +394,7 @@ contains
         class(diagnostic_collection_t), intent(in) :: this
         character(len=:), allocatable :: sarif
 
-        character(len=:), allocatable :: parts(:)
-        character(len=:), allocatable :: diag_sarif
+        type(serialized_diagnostic_t), allocatable :: parts(:)
         character(len=:), allocatable :: results_array
         integer :: i, total_len, pos
 
@@ -400,13 +404,12 @@ contains
             return
         end if
 
-        allocate (character(len=4096) :: parts(this%count))
+        allocate (parts(this%count))
         total_len = 0
 
         do i = 1, this%count
-            diag_sarif = format_diagnostic_sarif(this%diagnostics(i))
-            parts(i) = diag_sarif
-            total_len = total_len + len(diag_sarif) + 7
+            parts(i)%text = format_diagnostic_sarif(this%diagnostics(i))
+            total_len = total_len + len(parts(i)%text) + 7
         end do
 
         allocate (character(len=total_len) :: results_array)
@@ -421,8 +424,8 @@ contains
             pos = pos + 1
             results_array(pos:pos + 3) = "    "
             pos = pos + 4
-            results_array(pos:pos + len_trim(parts(i)) - 1) = trim(parts(i))
-            pos = pos + len_trim(parts(i))
+            results_array(pos:pos + len(parts(i)%text) - 1) = parts(i)%text
+            pos = pos + len(parts(i)%text)
         end do
 
         results_array = results_array(1:pos - 1)
@@ -565,12 +568,15 @@ contains
         write(end_col_str, '(I0)') diagnostic%location%end%column
 
         formatted = '{' // new_line('a') // &
-            '  "ruleId": "' // diagnostic%code // '",' // new_line('a') // &
-            '  "message": {"text": "' // diagnostic%message // '"},' // new_line('a') // &
+            '  "ruleId": "' // escape_json_value(diagnostic%code) // '",' // &
+            new_line('a') // &
+            '  "message": {"text": "' // &
+            escape_json_value(diagnostic%message) // '"},' // new_line('a') // &
             '  "level": "' // severity_to_sarif_level(diagnostic%severity) // '",' // new_line('a') // &
             '  "locations": [{' // new_line('a') // &
             '    "physicalLocation": {' // new_line('a') // &
-            '      "artifactLocation": {"uri": "' // diagnostic%file_path // '"},' // new_line('a') // &
+            '      "artifactLocation": {"uri": "' // &
+            escape_json_value(diagnostic%file_path) // '"},' // new_line('a') // &
             '      "region": {"startLine": ' // trim(start_line_str) // &
             ', "startColumn": ' // trim(start_col_str) // &
             ', "endLine": ' // trim(end_line_str) // &
@@ -1044,7 +1050,7 @@ contains
 
             buf = buf // new_line('a') // '        "artifactChanges": [{' // &
                 new_line('a') // '          "artifactLocation": {"uri": "' // &
-                trim(file_path) // '"},'
+                escape_json_value(file_path) // '"},'
 
             buf = buf // new_line('a') // '          "replacements": ['
 

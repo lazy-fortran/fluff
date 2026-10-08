@@ -22,11 +22,17 @@ contains
 
     subroutine parse_command_line(args)
         type(cli_args_t), intent(inout) :: args
-        integer :: argc, i
-        character(len=256) :: argv(100)
+        integer :: argc, i, length, longest
+        character(len=:), allocatable :: argv(:)
 
         ! Get command line arguments
         argc = command_argument_count()
+        longest = 1
+        do i = 1, argc
+            call get_command_argument(i, length=length)
+            longest = max(longest, length)
+        end do
+        allocate(character(len=longest) :: argv(argc))
 
         do i = 1, argc
             call get_command_argument(i, argv(i))

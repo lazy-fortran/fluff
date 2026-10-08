@@ -114,3 +114,8 @@ See [ROADMAP.md](ROADMAP.md) and the open issues. The short version:
 ## License
 
 MIT. See `LICENSE`.
+
+JSON diagnostics preserve complete messages and escape quotes, backslashes, and
+control characters. Explicit file selections can contain more than 100 paths
+and filenames longer than 256 characters; command arguments are read at their
+actual lengths.
