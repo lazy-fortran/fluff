@@ -1,7 +1,7 @@
 module fluff_linter
     ! Linting engine and rule registry
     use fluff_ast, only: fluff_ast_context_t
-    use fluff_config, only: fluff_config_t, create_default_config
+    use fluff_config, only: fluff_config_t, create_default_config, rule_selection_t
     use fluff_diagnostics, only: diagnostic_t
     use fluff_rule_types, only: rule_info_t
     use fluff_metrics, only: metrics_collector_t, timer_t, create_metrics_collector
@@ -224,12 +224,20 @@ contains
         integer :: i, count
         logical :: enabled
 
-        ! Count enabled rules
+        ! Count enabled rules. The default_enabled flag is the base: rules such
+        ! as C002/C003 ship off by default. An explicit --select list opts in,
+        ! and an --ignore list opts out. When no explicit select list is given
+        ! the default_enabled base governs, with ignores applied on top.
         count = 0
         do i = 1, this%rule_count
             enabled = this%rules(i)%default_enabled
             if (present(selection)) then
-                enabled = selection%is_rule_enabled(this%rules(i)%code)
+                if (selection_has_explicit_select(selection)) then
+                    enabled = selection%is_rule_enabled(this%rules(i)%code)
+                else
+                    enabled = this%rules(i)%default_enabled
+                    if (enabled) enabled = selection%is_rule_enabled(this%rules(i)%code)
+                end if
             end if
             if (enabled) count = count + 1
         end do
@@ -242,7 +250,12 @@ contains
         do i = 1, this%rule_count
             enabled = this%rules(i)%default_enabled
             if (present(selection)) then
-                enabled = selection%is_rule_enabled(this%rules(i)%code)
+                if (selection_has_explicit_select(selection)) then
+                    enabled = selection%is_rule_enabled(this%rules(i)%code)
+                else
+                    enabled = this%rules(i)%default_enabled
+                    if (enabled) enabled = selection%is_rule_enabled(this%rules(i)%code)
+                end if
             end if
             if (enabled) then
                 count = count + 1
@@ -251,6 +264,17 @@ contains
         end do
 
     end function registry_get_enabled_rules
+
+    ! True if the selection carries an explicit opt-in list of rule patterns.
+    function selection_has_explicit_select(selection) result(has)
+        type(rule_selection_t), intent(in) :: selection
+        logical :: has
+
+        has = .false.
+        if (allocated(selection%select)) then
+            if (size(selection%select) > 0) has = .true.
+        end if
+    end function selection_has_explicit_select
 
     ! Get rule count
     function registry_get_rule_count(this) result(count)
