@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ startsWith(matrix.os, 'macos') && fromJSON('["self-hosted","macOS","ARM64","itp-macos"]') || fromJSON('["self-hosted","itp-ubuntu24"]') }}
     strategy:
       fail-fast: false
       matrix:
@@ -22,7 +22,56 @@ jobs:
           - os: macos-latest
             artifact: fluff-macos-arm64
             binary: fluff
-          - os: macos-13
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install gfortran (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+
+      - name: Install gfortran (macOS)
+        if: runner.os == 'macOS'
+        run: gfortran --version
+
+      - name: Install fpm
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fluff-tools"
+          "$RUNNER_TEMP/fluff-tools/bin/python" -m pip install fpm
+          echo "$RUNNER_TEMP/fluff-tools/bin" >> "$GITHUB_PATH"
+
+      - name: Build release binary
+        run: fpm build --profile release
+
+      - name: Find and prepare binary
+        run: |
+          mkdir -p dist
+          find build -name '${{ matrix.binary }}' -type f -executable | head -1 | xargs -I {} cp {} dist/
+          chmod +x dist/${{ matrix.binary }}
+
+      - name: Create tarball
+        run: |
+          cd dist
+          tar -czvf ../${{ matrix.artifact }}.tar.gz ${{ matrix.binary }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
+          retention-days: 7
+
+  build-informative:
+    name: Build Intel macOS (informative)
+    continue-on-error: true
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
             artifact: fluff-macos-x86_64
             binary: fluff
 
@@ -40,7 +89,10 @@ jobs:
         run: brew install gcc
 
       - name: Install fpm
-        run: pip install fpm
+        run: |
+          python3 -m venv "$RUNNER_TEMP/fluff-tools"
+          "$RUNNER_TEMP/fluff-tools/bin/python" -m pip install fpm
+          echo "$RUNNER_TEMP/fluff-tools/bin" >> "$GITHUB_PATH"
 
       - name: Build release binary
         run: fpm build --profile release
@@ -66,7 +118,7 @@ jobs:
   release:
     name: Create release
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
     steps:
       - uses: actions/checkout@v4
 
@@ -118,3 +170,17 @@ jobs:
             ```
 
             See [INSTALL.md](https://github.com/${{ github.repository }}/blob/main/INSTALL.md) for detailed instructions.
+
+  release-informative:
+    name: Attach informative Intel macOS asset
+    needs: [release, build-informative]
+    runs-on: [self-hosted, itp-ubuntu24]
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: fluff-macos-x86_64
+          path: informative/
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: informative/*.tar.gz
