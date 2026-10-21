@@ -1,6 +1,7 @@
 name: test
 
 on:
+  workflow_dispatch:
   merge_group:
     types: [checks_requested]
   push:
@@ -13,7 +14,12 @@ on:
 jobs:
   test:
     name: test
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, itp-ubuntu24]
+    env:
+      # Use the newer compiler available from the Ubuntu 24.04 archive.
+      # The portable guest's unversioned gfortran shadows /usr/bin in PATH.
+      FPM_FC: /usr/bin/gfortran-14
+      FC: /usr/bin/gfortran-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -21,9 +27,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+          command -v gfortran
+          gfortran --version
           sudo apt-get update
-          sudo apt-get install -y gfortran
-          pip install fpm
+          sudo apt-get install -y gfortran-14 python3-venv
+          "$FPM_FC" --version
+          python3 -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install fpm
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
 
       - name: Build fluff
         run: fpm build
@@ -33,7 +44,7 @@ jobs:
         run: fpm test
         working-directory: fluff
     if: >-
-      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]') || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
+      github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && github.actor != 'github-merge-queue[bot]')
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || format('{0}-{1}', github.ref, github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
