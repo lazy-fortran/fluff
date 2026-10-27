@@ -5,6 +5,16 @@ All notable changes to fluff will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **C002** correctness rule: reports a division whose denominator cannot be
+  shown non-zero on all paths reaching it (opt-in, off by default).
+- **C003** correctness rule: reports a `do while` loop with no proven bound, or
+  a `do` loop whose step is not a non-zero constant (opt-in, off by default).
+- `default_enabled` on a rule is now honoured when no explicit `--select` list
+  is given, so opt-in rules stay off until requested.
+
 ## [0.1.0] - 2025-01-08
 
 ### Added

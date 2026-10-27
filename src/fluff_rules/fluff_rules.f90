@@ -1,6 +1,8 @@
 module fluff_rules
     use fluff_diagnostics, only: SEVERITY_ERROR, SEVERITY_INFO, SEVERITY_WARNING
     use fluff_rule_c001, only: check_c001_undefined_var
+    use fluff_rule_c002, only: check_c002_unguarded_division
+    use fluff_rule_c003, only: check_c003_unbounded_loop
     use fluff_rule_f009, only: check_f009_inconsistent_intent_impl
     use fluff_rule_file_context, only: set_current_file_context
     use fluff_rule_f001, only: check_f001_implicit_none
@@ -124,7 +126,7 @@ contains
     function get_correctness_rules() result(rules)
         type(rule_info_t), allocatable :: rules(:)
 
-        allocate (rules(1))
+        allocate (rules(3))
 
         rules(1) = rule_info_t(code="C001", name="undefined-variable", &
             description="Use of undefined variable", &
@@ -132,6 +134,24 @@ contains
             default_enabled=.true., fixable=.false., &
             severity=SEVERITY_ERROR, &
             check=check_c001_undefined_var)
+
+        ! C002/C003 report on soundness-of-runtime-error. They intentionally
+        ! over-report and ship off by default until a real codebase has been
+        ! run through them and the noise rate is known; opt in with
+        ! --select C002,C003.
+        rules(2) = rule_info_t(code="C002", name="division-by-not-proven-nonzero", &
+            description="Division by a value not proven non-zero", &
+            category=CATEGORY_CORRECTNESS, subcategory="runtime-error", &
+            default_enabled=.false., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_c002_unguarded_division)
+
+        rules(3) = rule_info_t(code="C003", name="loop-without-proven-bound", &
+            description="Loop with no proven bound", &
+            category=CATEGORY_CORRECTNESS, subcategory="runtime-error", &
+            default_enabled=.false., fixable=.false., &
+            severity=SEVERITY_WARNING, &
+            check=check_c003_unbounded_loop)
     end function get_correctness_rules
 
     subroutine populate_style_rules(rules)
