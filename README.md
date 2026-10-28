@@ -1,121 +1,67 @@
 # fluff
 
-`fluff` is an experimental Fortran linter and formatter built on the
-FortFront AST and semantic APIs.
+fluff is an experimental linter and formatter for Fortran. It analyses source
+through the [fortfront](https://github.com/lazy-fortran/fortfront) parser, AST
+and semantic analysis instead of text matching.
 
-The project is useful as a FortFront-based tool prototype, but it is not yet a
-Ruff-equivalent production tool. Several CLI and formatter features are still
-tracked as open issues.
+Status: prototype under development; not yet ready for production use.
 
-## Role in the toolchain
+## Features
 
-`fluff` is the deep static-analysis half of a two-tool split, in the shape Go
-uses for `go vet` and staticcheck, Rust uses for cargo and clippy, and C and
-C++ use for compiler warnings and clang-tidy.
-
-`fo` owns the cheap tier: checks that need no parse tree, run on every
-invocation, and work with nothing else installed. Today that is unused imports,
-short-circuit reliance, and gfortran's own warnings.
-
-`fluff` owns every rule that needs an abstract syntax tree, because it is built
-on FortFront and `fo` is not. Type-aware rules, dead-code analysis, and
-column-major access patterns belong here. `fo lint --deep` reaches them by
-running `fluff check --output-format json` as a subprocess and merging the
-findings (lazy-fortran/fo#59).
-
-Two consequences worth stating explicitly:
-
-- Do not reimplement `fo`'s native rules here. They must keep working when
-  `fluff` is not installed.
-- The subprocess boundary is deliberate. It keeps `fo`'s dependency closure
-  free of FortFront, so `fo build` and `fo test` stay available during
-  bootstrap.
-
-Before `fo lint --deep` can rely on this repository, #260, #261, #262, and #263
-need to close. Take #262 first: while 28 test programs exit zero regardless of
-what they find, a passing run here is not evidence that the other three were
-fixed.
-
-## Current Scope
-
-Implemented or partially implemented:
-
-- style rules `F001` to `F015`
-- performance rules `P001` to `P007`
-- correctness rule `C001`
-- formatter built on FortFront `emit_fortran`
-- basic LSP components
-- JSON/SARIF/GitHub-style output code paths
-- CLI: `--select`, `--ignore`, `--exclude`, `--statistics`, `--quiet`,
-  `--show-fixes`, the `rules` listing, and stdin input via `-`
-
-Known limits:
-
-- `fluff format` is not idempotent: it prepends a space to the first line and
-  writes `print * , i` for `print *, i` (#260)
-- the test suite cannot detect either of the above, because 28 of its 94
-  programs exit zero no matter what they find (#262), and two more resolve the
-  binary under test by globbing fpm's build layout, so they can exercise a
-  stale artifact instead of the current tree (#265)
-- formatter can still move inline comments in unsafe ways (#244)
-- configuration support has open regressions
-- AST caching is disabled in the linter path because FortFront arena/context
-  copies are not yet safe enough
-  (`src/fluff_linter/fluff_linter.f90:83`), which leaves
-  `fluff_analysis_cache.f90` compiled but unreachable
+- Style rules `F001`-`F015`, performance rules `P001`-`P007` and correctness
+  rule `C001`; `C002` and `C003` are available but off by default
+  (`--select C002,C003`).
+- `fluff check` with `--select`, `--ignore`, `--exclude`, `--fix`,
+  `--show-fixes`, `--statistics` and stdin input via `-`.
+- Text, JSON and SARIF diagnostics (`--output-format`).
+- `fluff format` based on fortfront code emission, with `--check` and `--diff`.
+- `fluff rules` to list rules, and an LSP server (`fluff server`).
+- Configuration in a Fortran namelist file, `.fluff.nml` or `fluff.nml`.
 
 ## Install
 
+Requires [fpm](https://fpm.fortran-lang.org) and a Fortran compiler (gfortran); fortfront is
+fetched by fpm.
+
 ```bash
-git clone git@github.com:lazy-fortran/fluff.git
+git clone https://github.com/lazy-fortran/fluff.git
 cd fluff
 fpm build --profile release
+fpm install --profile release   # optional, installs to ~/.local/bin
 ```
 
-## Basic Usage
+## Usage
 
 ```bash
 fluff check src/
-fluff format src/
 fluff check --output-format json src/
+fluff format --check src/
+fluff format src/
 ```
 
-Use `fluff --help` for the options supported by the current build.
+`fluff --help` lists the options of the current build.
 
-## Architecture
+## Known limitations
 
-`fluff` should not parse Fortran text itself. The intended flow is:
+- Part of the test suite cannot yet fail on a behavioural mismatch
+  ([#262](https://github.com/lazy-fortran/fluff/issues/262)), so a green test
+  run is weaker evidence than it should be.
+- AST caching is disabled in the linter because fortfront arena copies are not
+  yet safe to reuse.
 
-1. read source
-2. parse with FortFront tooling APIs
-3. run FortFront semantic analysis
-4. execute AST-based lint rules
-5. format through FortFront code emission plus local cleanup passes
+## Documentation
 
-This keeps parser and semantic behavior aligned with FortFront and avoids
-regex-based language analysis.
+- [docs/design.md](docs/design.md): architecture and the division of work with fo
+- [ROADMAP.md](ROADMAP.md): planned work
+- [CHANGELOG.md](CHANGELOG.md)
 
-## Roadmap
+## Related projects
 
-See [ROADMAP.md](ROADMAP.md) and the open issues. The short version:
-
-1. fix formatter safety first
-2. finish CLI parity needed for daily use
-3. repair configuration loading
-4. only then improve cache/LSP polish
-
-## Related Projects
-
-- [fortfront](https://github.com/lazy-fortran/fortfront): parser, AST,
-  semantic analysis, formatter emission.
-- [standard](https://github.com/lazy-fortran/standard): target language-mode
-  behavior for LFortran Standard and Infer.
+- [fortfront](https://github.com/lazy-fortran/fortfront): parser, AST, semantic
+  analysis and code emission used by fluff.
+- [fo](https://github.com/lazy-fortran/fo): build driver; `fo lint --deep` runs
+  fluff and merges its findings.
 
 ## License
 
-MIT. See `LICENSE`.
-
-JSON diagnostics preserve complete messages and escape quotes, backslashes, and
-control characters. Explicit file selections can contain more than 100 paths
-and filenames longer than 256 characters; command arguments are read at their
-actual lengths.
+MIT, see [LICENSE](LICENSE).
