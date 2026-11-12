@@ -22,14 +22,6 @@ tar -xzf fluff-macos-arm64.tar.gz
 sudo mv fluff /usr/local/bin/
 ```
 
-### macOS x86_64 (Intel)
-
-```bash
-curl -LO https://github.com/lazy-fortran/fluff/releases/latest/download/fluff-macos-x86_64.tar.gz
-tar -xzf fluff-macos-x86_64.tar.gz
-sudo mv fluff /usr/local/bin/
-```
-
 ## Using fpm (Fortran Package Manager)
 
 If you have [fpm](https://fpm.fortran-lang.org/) installed:
