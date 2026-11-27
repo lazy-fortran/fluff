@@ -11,7 +11,7 @@ permissions:
 jobs:
   build:
     name: Build ${{ matrix.os }}
-    runs-on: ${{ startsWith(matrix.os, 'macos') && fromJSON('["self-hosted","macOS","ARM64","itp-macos"]') || fromJSON('["self-hosted","itp-ubuntu24"]') }}
+    runs-on: [self-hosted, itp-ubuntu24]
     strategy:
       fail-fast: false
       matrix:
@@ -19,22 +19,14 @@ jobs:
           - os: ubuntu-latest
             artifact: fluff-linux-x86_64
             binary: fluff
-          - os: macos-latest
-            artifact: fluff-macos-arm64
-            binary: fluff
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install gfortran (Linux)
-        if: runner.os == 'Linux'
+      - name: Install gfortran
         run: |
           sudo apt-get update
           sudo apt-get install -y gfortran
-
-      - name: Install gfortran (macOS)
-        if: runner.os == 'macOS'
-        run: gfortran --version
 
       - name: Install fpm
         run: |
@@ -101,10 +93,6 @@ jobs:
             ```bash
             # Linux x86_64
             tar -xzf fluff-linux-x86_64.tar.gz
-            sudo mv fluff /usr/local/bin/
-
-            # macOS ARM64 (Apple Silicon)
-            tar -xzf fluff-macos-arm64.tar.gz
             sudo mv fluff /usr/local/bin/
 
             ```
